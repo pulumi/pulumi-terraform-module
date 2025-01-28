@@ -17,3 +17,7 @@ package modprovider
 func Name() string {
 	return "terraform-module-provider"
 }
+
+func Version() string {
+	return "0.0.1"
+}
