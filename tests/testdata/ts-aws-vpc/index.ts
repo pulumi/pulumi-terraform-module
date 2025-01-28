@@ -1,6 +1,6 @@
-import * as hcl from "hcl";
+import * as mod from "@pulumi/terraform-module-provider";
 
-const vpc = new hcl.VpcAws("my-vpc", {
+const vpc = new mod.VpcAws("my-vpc", {
     cidr: "10.0.0.0/16",
 });
 

@@ -9,14 +9,25 @@ import (
 	"testing"
 
 	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAccTsVpcPackageAdd(t *testing.T) {
+func TestAccTsVpc(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
-	pt := pulumitest.NewPulumiTest(t, "testdata/ts-aws-vpc")
+	pt := pulumitest.NewPulumiTest(t, "testdata/ts-aws-vpc",
+		opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath)))
 	pt.CopyToTempDir(t)
-	pulumiPackageAdd(t, pt, localProviderBinPath, "terraform-aws-modules/vpc/aws", "5.16.0")
+
+	t.Run("pulumi package add", func(t *testing.T) {
+		pulumiPackageAdd(t, pt, localProviderBinPath, "terraform-aws-modules/vpc/aws", "5.16.0")
+	})
+
+	t.Run("pulumi preview", func(t *testing.T) {
+		pt.Preview(t)
+	})
 }
 
 func pulumiPackageAdd(t *testing.T, pt *pulumitest.PulumiTest, localProviderBinPath string, args ...string) {
