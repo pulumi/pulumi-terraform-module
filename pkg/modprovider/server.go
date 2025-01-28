@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package modprovider
 
 import (
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/modprovider"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func main() {
-	err := provider.Main(modprovider.Name(), modprovider.StartServer)
-	if err != nil {
-		cmdutil.ExitError(err.Error())
-	}
+func StartServer(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	return nil, nil
 }
