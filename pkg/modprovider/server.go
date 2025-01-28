@@ -16,11 +16,13 @@ package modprovider
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
-
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 func StartServer(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -35,7 +37,42 @@ func (s *server) Parameterize(
 	ctx context.Context,
 	req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
+	_, err := parseParameterizeRequest(req)
+	if err != nil {
+		return nil, fmt.Errorf("%s failed to parse parameters: %w", Name(), err)
+	}
 	panic("TODO")
+}
+
+func parseParameterizeRequest(request *pulumirpc.ParameterizeRequest) (ParameterizeArgs, error) {
+	switch {
+	case request.GetArgs() != nil:
+		args := request.GetArgs()
+		if len(args.Args) != 2 && len(args.Args) != 1 {
+			return ParameterizeArgs{}, fmt.Errorf("expected 1 to 2 args, got %d", len(args.Args))
+		}
+		result := ParameterizeArgs{
+			TFModuleSource: TFModuleSource(args.Args[0]),
+		}
+		if len(args.Args) == 2 {
+			result.TFModuleVersion = TFModuleVersion(args.Args[1])
+		}
+		return result, nil
+	case request.GetValue() != nil:
+		value := request.GetValue()
+		var args ParameterizeArgs
+		err := json.Unmarshal(value.Value, &args)
+		if err != nil {
+			return args, fmt.Errorf("parameters are not JSON-encoded: %w", err)
+		}
+		if args.TFModuleSource == "" {
+			return args, fmt.Errorf("module parameter cannot be empty")
+		}
+		return args, nil
+	default:
+		contract.Assertf(false, "received a malformed pulumirpc.ParameterizeRequest")
+		return ParameterizeArgs{}, nil
+	}
 }
 
 func (s *server) GetSchema(
