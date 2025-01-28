@@ -31,17 +31,22 @@ func StartServer(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, err
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
+	params *ParameterizeArgs
 }
 
 func (s *server) Parameterize(
 	ctx context.Context,
 	req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	_, err := parseParameterizeRequest(req)
+	pargs, err := parseParameterizeRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s failed to parse parameters: %w", Name(), err)
 	}
-	panic("TODO")
+	s.params = &pargs
+	return &pulumirpc.ParameterizeResponse{
+		Name:    Name(),
+		Version: Version(),
+	}, nil
 }
 
 func parseParameterizeRequest(request *pulumirpc.ParameterizeRequest) (ParameterizeArgs, error) {
@@ -79,7 +84,18 @@ func (s *server) GetSchema(
 	ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	panic("TODO")
+	if s.params == nil {
+		return nil, fmt.Errorf("Expected Parameterize() call before a GetSchema() call to set parameters")
+	}
+	spec, err := inferPulumiSchemaForModule(s.params)
+	if err != nil {
+		return nil, err
+	}
+	specBytes, err := json.Marshal(spec)
+	if err != nil {
+		return nil, fmt.Errorf("json.Marshal failure over Pulumi Package schema: %w", err)
+	}
+	return &pulumirpc.GetSchemaResponse{Schema: string(specBytes)}, nil
 }
 
 func (*server) GetPluginInfo(
