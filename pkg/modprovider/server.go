@@ -21,17 +21,22 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-func StartServer(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-	return &server{}, nil
+func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	return &server{
+		hostClient: hostClient,
+	}, nil
 }
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	params *ParameterizeArgs
+	params     *ParameterizeArgs
+	hostClient *provider.HostClient
 }
 
 func (s *server) Parameterize(
@@ -123,7 +128,31 @@ func (rps *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	panic("TODO")
+	return pulumiprovider.Construct(ctx, req, rps.hostClient.EngineConn(), rps.construct)
+}
+
+func (rps *server) construct(
+	ctx *pulumi.Context,
+	typ, name string,
+	inputs pulumiprovider.ConstructInputs,
+	options pulumi.ResourceOption,
+) (*pulumiprovider.ConstructResult, error) {
+	// TODO the static dispatch will not be sufficient in prod; need to parse the token for the component resource
+	// and dispatch accordingly.
+	switch typ {
+	case fmt.Sprintf("%s:index:VpcAws", Name()):
+		component, err := NewModuleComponentResource(ctx, typ, name, &ModuleComponentArgs{})
+		if err != nil {
+			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+		}
+		constructResult, err := pulumiprovider.NewConstructResult(component)
+		if err != nil {
+			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
+		}
+		return constructResult, nil
+	default:
+		return nil, fmt.Errorf("TODO: only hcl:index:VpcAws is supported in the prototype")
+	}
 }
 
 func (rps *server) Check(
