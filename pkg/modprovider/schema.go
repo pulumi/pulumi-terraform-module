@@ -31,7 +31,7 @@ func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, e
 			Name:    Name(),
 			Version: Version(),
 			Resources: map[string]schema.ResourceSpec{
-				"hcl:index:VpcAws": {
+				fmt.Sprintf("%s:index:VpcAws", Name()): {
 					InputProperties: map[string]schema.PropertySpec{
 						"cidr": {
 							TypeSpec: schema.TypeSpec{Type: "string"},
