@@ -47,6 +47,9 @@ sequenceDiagram
   ModRes->>PulumiCLI:   RegisterResource(children...)
   ModRes->>StateRes:    newStatePromise.Fulfill(n) // in-memory
 
+  ModRes->>PulumiCLI:   RegisterResourceOutputs()
+  ModRes->>PulumiCLI:   ConstructResult(..)
+
   StateRes->>PulumiCLI: DiffResult(o, n)
   PulumiCLI->>StateRes: Update(...)
 
