@@ -17,6 +17,7 @@ package modprovider
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -29,6 +30,7 @@ type ModuleComponentArgs struct{}
 
 func NewModuleComponentResource(
 	ctx *pulumi.Context,
+	stateStore moduleStateStore,
 	t string,
 	name string,
 	args *ModuleComponentArgs,
@@ -40,11 +42,22 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
 	}
 
+	go func() {
+		_, err := newModuleStateResource(ctx, Name(), pulumi.Parent(&component))
+		contract.AssertNoErrorf(err, "newModuleStateResource failed")
+	}()
+
+	state := stateStore.AwaitOldState()
+
 	if ctx.DryRun() {
 		// Running pulumi preview
 	} else {
 		// Running pulumi up
 	}
+
+	// Save any modifications to state that may have been done in the course of pulumi up. This is expected to be
+	// called even if the state is not modified.
+	stateStore.SetNewState(state)
 
 	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {
 		return nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)

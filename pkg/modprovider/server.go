@@ -28,15 +28,21 @@ import (
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-	return &server{
-		hostClient: hostClient,
-	}, nil
+	moduleStateHandler := newModuleStateHandler(hostClient)
+	srv := &server{
+		hostClient:         hostClient,
+		stateStore:         moduleStateHandler,
+		moduleStateHandler: moduleStateHandler,
+	}
+	return srv, nil
 }
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	params     *ParameterizeArgs
-	hostClient *provider.HostClient
+	params             *ParameterizeArgs
+	hostClient         *provider.HostClient
+	stateStore         moduleStateStore
+	moduleStateHandler *moduleStateHandler
 }
 
 func (s *server) Parameterize(
@@ -141,7 +147,7 @@ func (rps *server) construct(
 	// and dispatch accordingly.
 	switch typ {
 	case fmt.Sprintf("%s:index:VpcAws", Name()):
-		component, err := NewModuleComponentResource(ctx, typ, name, &ModuleComponentArgs{})
+		component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
 		if err != nil {
 			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
 		}
@@ -159,33 +165,58 @@ func (rps *server) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Check(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Diff(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Create(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Update(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Delete(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
