@@ -71,14 +71,14 @@ func TestCreateTFFile(t *testing.T) {
 		t.Logf("WorkingDir: %s", tofu.WorkingDir())
 		err = tofu.CreateTFFile("simple", "terraform-aws-modules/vpc/aws", "5.16.0", resource.PropertyMap{
 			"cidr": resource.NewStringProperty("10.0.0.0/16"),
-			"private_subnets": resource.NewArrayProperty([]resource.PropertyValue{
+			"privateSubnets": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("10.0.101.0/24"),
 				resource.NewStringProperty("10.0.102.0/24"),
 				resource.NewStringProperty("10.0.103.0/24"),
 			}),
-			"create_database_subnet_group": resource.NewBoolProperty(false),
-			"manage_default_network_acl":   resource.NewBoolProperty(false),
-			"customer_gateways": resource.NewObjectProperty(resource.PropertyMap{
+			"createDatabaseSubnetGroup": resource.NewBoolProperty(false),
+			"manageDefaultNetworkAcl":   resource.NewBoolProperty(false),
+			"customerGateways": resource.NewObjectProperty(resource.PropertyMap{
 				"IP1": resource.NewObjectProperty(resource.PropertyMap{
 					"bgp_asn":     resource.NewNumberProperty(65112),
 					"ip_address":  resource.NewStringProperty("1.2.3.4"),
@@ -89,7 +89,7 @@ func TestCreateTFFile(t *testing.T) {
 					"ip_address": resource.NewStringProperty("5.6.7.8"),
 				}),
 			}),
-			"intra_subnet_names": resource.NewArrayProperty([]resource.PropertyValue{}),
+			"intraSubnetNames": resource.NewArrayProperty([]resource.PropertyValue{}),
 			"tags": resource.NewObjectProperty(resource.PropertyMap{
 				"Name": resource.NewStringProperty("simple-vpc"),
 			}),
@@ -110,15 +110,15 @@ func TestCreateTFFile(t *testing.T) {
 		t.Logf("WorkingDir: %s", tofu.WorkingDir())
 		err = tofu.CreateTFFile("simple", "terraform-aws-modules/security-group/aws", "5.3.0", resource.PropertyMap{
 			"name": resource.NewStringProperty("complete-sg"),
-			"ingress_cidr_blocks": resource.NewArrayProperty([]resource.PropertyValue{
+			"ingressCidrBlocks": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("10.0.101.0/24"),
 				resource.NewStringProperty("10.0.102.0/24"),
 				resource.NewStringProperty("10.0.103.0/24"),
 			}),
 			// TODO: [pulumi/pulumi-terraform-module-provider#28] support unknowns
 			// "vpc_id": resource.MakeComputed(resource.NewStringProperty("")),
-			"number_of_computed_ingress_rules": resource.NewNumberProperty(1),
-			"ingress_with_cidr_blocks": resource.NewArrayProperty([]resource.PropertyValue{
+			"numberOfComputedIngressRules": resource.NewNumberProperty(1),
+			"ingressWithCidrBlocks": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{
 					"from_port":   resource.NewNumberProperty(0),
 					"to_port":     resource.NewNumberProperty(65535),
@@ -131,7 +131,7 @@ func TestCreateTFFile(t *testing.T) {
 					"cidr_blocks": resource.NewStringProperty("0.0.0.0/0,2.2.2.2/32"),
 				}),
 			}),
-			"computed_ingress_with_cidr_blocks": resource.NewArrayProperty([]resource.PropertyValue{
+			"computedIngressWithCidrBlocks": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{
 					"from_port": resource.NewNumberProperty(0),
 					"to_port":   resource.NewNumberProperty(65535),

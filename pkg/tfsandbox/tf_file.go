@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/pulumi/pulumi-go-provider/resourcex"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -17,7 +18,17 @@ func (t *Tofu) CreateTFFile(name, source, version string, inputs resource.Proper
 
 	values := resourcex.Decode(inputs)
 	for k, v := range values {
-		moduleProps[k] = v
+		// TODO: I'm only converting the top layer properties for now
+		// It doesn't look like modules have info on nested properties, typically
+		// the type looks something like `map(map(string))`.
+		// Will these be sent as `key_name` or `keyName`?
+		tfKey := tfbridge.PulumiToTerraformName(
+			k,
+			// TODO: we might have these available from parsing the schema at some point
+			nil, /* shim.SchemaMap */
+			nil, /* map[string]*info.Schema */
+		)
+		moduleProps[tfKey] = v
 	}
 
 	tfFile := map[string]interface{}{
