@@ -69,6 +69,7 @@ func formatPascalCaseTypeName(typeName string) string {
 func convertType(
 	terraformType cty.Type,
 	typeName string,
+	packageName string,
 	supportingTypes map[string]schema.ComplexTypeSpec,
 ) schema.TypeSpec {
 	if terraformType.Equals(cty.String) {
@@ -84,12 +85,12 @@ func convertType(
 	}
 
 	if terraformType.IsListType() || terraformType.IsSetType() {
-		elementType := convertType(terraformType.ElementType(), typeName, supportingTypes)
+		elementType := convertType(terraformType.ElementType(), typeName, packageName, supportingTypes)
 		return arrayType(elementType)
 	}
 
 	if terraformType.IsMapType() {
-		elementType := convertType(terraformType.ElementType(), typeName, supportingTypes)
+		elementType := convertType(terraformType.ElementType(), typeName, packageName, supportingTypes)
 		return mapType(elementType)
 	}
 
@@ -98,7 +99,7 @@ func convertType(
 		for propertyName, propertyType := range terraformType.AttributeTypes() {
 			nestedTypeName := fmt.Sprintf("%s_%s", typeName, propertyName)
 			propertiesMap[propertyName] = schema.PropertySpec{
-				TypeSpec: convertType(propertyType, nestedTypeName, supportingTypes),
+				TypeSpec: convertType(propertyType, nestedTypeName, packageName, supportingTypes),
 			}
 		}
 
@@ -109,8 +110,9 @@ func convertType(
 			},
 		}
 
-		ref := fmt.Sprintf("#/types/%s", formatPascalCaseTypeName(typeName))
-		supportingTypes[ref] = complexType
+		objectTypeToken := fmt.Sprintf("%s:index:%s", packageName, formatPascalCaseTypeName(typeName))
+		ref := fmt.Sprintf("#/types/%s", objectTypeToken)
+		supportingTypes[objectTypeToken] = complexType
 		return refType(ref)
 	}
 
@@ -118,7 +120,7 @@ func convertType(
 	return stringType
 }
 
-func InferModuleSchema(moduleAddress string, version string) (*InferredModuleSchema, error) {
+func InferModuleSchema(packageName string, moduleAddress string, version string) (*InferredModuleSchema, error) {
 	module, err := extractModuleContent(moduleAddress, version)
 	if err != nil {
 		return nil, err
@@ -132,7 +134,7 @@ func InferModuleSchema(moduleAddress string, version string) (*InferredModuleSch
 	}
 
 	for variableName, variable := range module.Variables {
-		variableType := convertType(variable.Type, variableName, inferredModuleSchema.SupportingTypes)
+		variableType := convertType(variable.Type, variableName, packageName, inferredModuleSchema.SupportingTypes)
 		inferredModuleSchema.Inputs[variableName] = schema.PropertySpec{
 			Description: variable.Description,
 			Secret:      variable.Sensitive,

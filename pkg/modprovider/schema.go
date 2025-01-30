@@ -42,7 +42,6 @@ func packageNameAndMainResourceName(packageSource string) (packageName string, r
 	return "", "", fmt.Errorf("unable to infer package and resource name from '%s'", packageSource)
 }
 
-// TODO this is a stub to hard-code the schema to get started with experimentation. In a real implementation a TF
 // sandbox will be available and having run `terraform init` it will have resolved and downloaded the module sources.
 // The code will need to run input/output schema inference for these sources to compute an appropriate PackageSpec.
 func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
@@ -53,7 +52,7 @@ func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, e
 		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", packageSource, err)
 	}
 
-	inferredModule, err := InferModuleSchema(packageSource, packageVersion)
+	inferredModule, err := InferModuleSchema(packageName, packageSource, packageVersion)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring module schema for %s@%s: %w", packageSource, packageVersion, err)
 	}

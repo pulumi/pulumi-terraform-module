@@ -13,7 +13,8 @@ func TestExtractModuleContentWorks(t *testing.T) {
 }
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
-	awsVpcSchema, err := InferModuleSchema("terraform-aws-modules/vpc/aws", "5.18.1")
+	packageName := "terraform-aws-modules"
+	awsVpcSchema, err := InferModuleSchema(packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 }

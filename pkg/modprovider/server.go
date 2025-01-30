@@ -54,9 +54,15 @@ func (s *server) Parameterize(
 		return nil, fmt.Errorf("%s failed to parse parameters: %w", Name(), err)
 	}
 	s.params = &pargs
+
+	packageName, _, err := packageNameAndMainResourceName(string(pargs.TFModuleSource))
+	if err != nil {
+		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", pargs.TFModuleSource, err)
+	}
+
 	return &pulumirpc.ParameterizeResponse{
-		Name:    Name(),
-		Version: Version(),
+		Name:    packageName,
+		Version: string(pargs.TFModuleVersion),
 	}, nil
 }
 
@@ -145,12 +151,15 @@ func (rps *server) construct(
 ) (*pulumiprovider.ConstructResult, error) {
 	// TODO the static dispatch will not be sufficient in prod; need to parse the token for the component resource
 	// and dispatch accordingly.
+	packageName, _, _ := packageNameAndMainResourceName(string(rps.params.TFModuleSource))
 	switch typ {
-	case fmt.Sprintf("%s:index:VpcAws", Name()):
-		component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
-		if err != nil {
-			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
-		}
+	case fmt.Sprintf("%s:index:Vpc", packageName):
+		// TODO: fix hang during pulumi preview
+		//component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
+		//if err != nil {
+		//	return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+		//}
+		component := &ModuleComponentResource{}
 		constructResult, err := pulumiprovider.NewConstructResult(component)
 		if err != nil {
 			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
