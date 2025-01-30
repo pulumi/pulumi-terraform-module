@@ -82,7 +82,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 		Config:          map[string]string{},
 		DryRun:          false, // pulumi up, not pulumi preivew
 		MonitorEndpoint: resmonPath,
-		Type:            fmt.Sprintf("%s:index:VpcAws", Name()),
+		Type:            fmt.Sprintf("terraform-aws-modules:index:Vpc"),
 		Name:            "myModuleInstance",
 	})
 	require.NoErrorf(t, err, "Construct failed")
