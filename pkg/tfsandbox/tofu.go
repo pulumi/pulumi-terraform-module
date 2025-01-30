@@ -2,6 +2,7 @@ package tfsandbox
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -23,20 +24,24 @@ func (t *Tofu) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, moduleName string) (*Tofu, error) {
+func NewTofu(ctx context.Context) (*Tofu, error) {
 	execPath, err := downloadTofu(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error downloading tofu: %w", err)
 	}
 
-	workDir, err := getTempDir(moduleName)
+	// We will create a separate directory for each module,
+	// and MkdirTemp appends a random string to the end of the directory
+	// name to ensure uniqueness. Using the system temp directory should
+	// ensure the system cleans up after itself
+	workDir, err := os.MkdirTemp("", "pulumi-module-workdir")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating a tf module directory: %w", err)
 	}
 
 	tf, err := tfexec.NewTerraform(workDir, execPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
 	return &Tofu{
@@ -50,7 +55,20 @@ func downloadTofu(ctx context.Context) (string, error) {
 		return "", err
 	}
 
+	file := "tofu"
+	if runtime.GOOS == "windows" {
+		file += ".exe"
+	}
+
 	tmpDir := path.Join(os.TempDir(), "tofu-install")
+	absFile := path.Join(tmpDir, file)
+
+	// If the file already exists (we've already downloaded it)
+	// then just use that
+	if _, err := os.Stat(absFile); err == nil {
+		return absFile, nil
+	}
+
 	_, err = os.Stat(tmpDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -82,13 +100,6 @@ func downloadTofu(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	file := "tofu"
-	if runtime.GOOS == "windows" {
-		file += ".exe"
-	}
-
-	absFile := path.Join(tmpDir, file)
 
 	if err := os.WriteFile(absFile, binary, 0755); err != nil {
 		return "", err
