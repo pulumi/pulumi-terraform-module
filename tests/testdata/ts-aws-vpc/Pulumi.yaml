@@ -1,0 +1,6 @@
+name: ts-aws-vpc
+description: Running the AWS VPC TF module in Pulumi TypeScript
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

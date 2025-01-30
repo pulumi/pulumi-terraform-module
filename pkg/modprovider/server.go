@@ -21,17 +21,28 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
-func StartServer(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-	return &server{}, nil
+func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	moduleStateHandler := newModuleStateHandler(hostClient)
+	srv := &server{
+		hostClient:         hostClient,
+		stateStore:         moduleStateHandler,
+		moduleStateHandler: moduleStateHandler,
+	}
+	return srv, nil
 }
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	params *ParameterizeArgs
+	params             *ParameterizeArgs
+	hostClient         *provider.HostClient
+	stateStore         moduleStateStore
+	moduleStateHandler *moduleStateHandler
 }
 
 func (s *server) Parameterize(
@@ -123,40 +134,89 @@ func (rps *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	panic("TODO")
+	return pulumiprovider.Construct(ctx, req, rps.hostClient.EngineConn(), rps.construct)
+}
+
+func (rps *server) construct(
+	ctx *pulumi.Context,
+	typ, name string,
+	inputs pulumiprovider.ConstructInputs,
+	options pulumi.ResourceOption,
+) (*pulumiprovider.ConstructResult, error) {
+	// TODO the static dispatch will not be sufficient in prod; need to parse the token for the component resource
+	// and dispatch accordingly.
+	switch typ {
+	case fmt.Sprintf("%s:index:VpcAws", Name()):
+		component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
+		if err != nil {
+			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+		}
+		constructResult, err := pulumiprovider.NewConstructResult(component)
+		if err != nil {
+			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
+		}
+		return constructResult, nil
+	default:
+		return nil, fmt.Errorf("TODO: only hcl:index:VpcAws is supported in the prototype")
+	}
 }
 
 func (rps *server) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Check(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Diff(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Create(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Update(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
 
 func (rps *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
-	panic("TODO")
+	switch req.GetType() {
+	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+		return rps.moduleStateHandler.Delete(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
 }
