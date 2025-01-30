@@ -30,6 +30,10 @@ func TestCreateModuleSavesModuleState(t *testing.T) {
 		t:     t,
 		proj:  "myproj",
 		stack: "mystack",
+		params: &ParameterizeArgs{
+			TFModuleSource:  "terraform-aws-modules/vpc/aws",
+			TFModuleVersion: "5.16.0",
+		},
 	}
 	checkModuleStateIsSaved(t, s)
 }
@@ -41,6 +45,10 @@ func TestUpdateModuleSavesModuleState(t *testing.T) {
 		t:     t,
 		proj:  "myproj",
 		stack: "mystack",
+		params: &ParameterizeArgs{
+			TFModuleSource:  "terraform-aws-modules/vpc/aws",
+			TFModuleVersion: "5.16.0",
+		},
 		oldModuleState: &pulumirpc.RegisterResourceResponse{
 			Urn:    "",
 			Id:     moduleStateResourceId,
@@ -65,8 +73,8 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 		Parameters: &pulumirpc.ParameterizeRequest_Args{
 			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 				Args: []string{
-					"terraform-aws-modules/vpc/aws",
-					"5.16.0",
+					string(s.params.TFModuleSource),
+					string(s.params.TFModuleVersion),
 				},
 			},
 		},
