@@ -155,11 +155,10 @@ func (rps *server) construct(
 	switch typ {
 	case fmt.Sprintf("%s:index:Vpc", packageName):
 		// TODO: fix hang during pulumi preview
-		//component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
-		//if err != nil {
-		//	return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
-		//}
-		component := &ModuleComponentResource{}
+		component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
+		if err != nil {
+			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+		}
 		constructResult, err := pulumiprovider.NewConstructResult(component)
 		if err != nil {
 			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
