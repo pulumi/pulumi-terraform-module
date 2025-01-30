@@ -9,7 +9,7 @@ import (
 )
 
 func TestTofuInit(t *testing.T) {
-	tofu, err := NewTofu(context.Background(), "test")
+	tofu, err := NewTofu(context.Background())
 	assert.NoError(t, err)
 	tofu.WorkingDir()
 
