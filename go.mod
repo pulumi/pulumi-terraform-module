@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/terraform-svchost v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opentofu/registry-address v0.0.0-20230922120653-901b9ae4061a
-	github.com/opentofu/tofudl v0.0.0-20250129123822-d4254f2a6147
+	github.com/opentofu/tofudl v0.0.0-20240923062014-8c1e00f33ce6
 	github.com/pulumi/providertest v0.1.5
 	github.com/pulumi/pulumi/pkg/v3 v3.147.0
 	github.com/pulumi/pulumi/sdk/v3 v3.147.0
