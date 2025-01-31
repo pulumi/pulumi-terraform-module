@@ -164,6 +164,8 @@ type testResourceMonitorServer struct {
 	t *testing.T
 	pulumirpc.UnimplementedResourceMonitorServer
 
+	params *ParameterizeArgs
+
 	// The current provider under test.
 	provider pulumirpc.ResourceProviderServer
 
@@ -204,10 +206,17 @@ func (s *testResourceMonitorServer) RegisterResource(
 	ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
+
+	tfModuleSource := string(s.params.TFModuleSource)
+	packageName, resourceName, err := packageNameAndMainResourceName(tfModuleSource)
+	if err != nil {
+		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", tfModuleSource, err)
+	}
+
 	switch req.Type {
-	case fmt.Sprintf("%s:index:VpcAws", Name()):
+	case fmt.Sprintf("%s:index:%s", packageName, resourceName):
 		return &pulumirpc.RegisterResourceResponse{}, nil
-	case fmt.Sprintf("%s:index:ModuleState", Name()):
+	case fmt.Sprintf("%s:index:ModuleState", packageName):
 		// Assume we are creating; issue Check() and Create()
 		urn := string(urn.New(s.stack, s.proj, "", tokens.Type(req.Type), req.Name))
 		checkResp, err := s.provider.Check(ctx, &pulumirpc.CheckRequest{
@@ -266,7 +275,7 @@ func (s *testResourceMonitorServer) RegisterResource(
 		s.resources = append(s.resources, &response)
 		return &response, nil
 	default:
-		err := fmt.Errorf("Unexpected RegisterResource call")
+		err := fmt.Errorf("Unexpected RegisterResource call: %q", req.Type)
 		s.t.Error(err)
 		return nil, err
 	}

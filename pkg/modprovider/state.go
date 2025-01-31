@@ -94,12 +94,12 @@ func (moduleStateResourceArgs) ElementType() reflect.Type {
 
 func newModuleStateResource(
 	ctx *pulumi.Context,
-	providerName string,
+	subProviderName string,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
 	args := &moduleStateResourceArgs{}
 	var resource moduleStateResource
-	moduleStateResourceType := fmt.Sprintf("%s:index:%s", providerName, moduleStateTypeName)
+	moduleStateResourceType := fmt.Sprintf("%s:index:%s", subProviderName, moduleStateTypeName)
 	err := ctx.RegisterResource(moduleStateResourceType, moduleStateResourceName, args, &resource, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)

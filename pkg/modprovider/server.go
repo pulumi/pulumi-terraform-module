@@ -43,6 +43,7 @@ type server struct {
 	hostClient         *provider.HostClient
 	stateStore         moduleStateStore
 	moduleStateHandler *moduleStateHandler
+	packageName        string
 }
 
 func (s *server) Parameterize(
@@ -59,6 +60,8 @@ func (s *server) Parameterize(
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", pargs.TFModuleSource, err)
 	}
+
+	s.packageName = packageName
 
 	return &pulumirpc.ParameterizeResponse{
 		Name:    packageName,
@@ -174,7 +177,7 @@ func (rps *server) Check(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
 		return rps.moduleStateHandler.Check(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -186,7 +189,7 @@ func (rps *server) Diff(
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
 		return rps.moduleStateHandler.Diff(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -198,7 +201,7 @@ func (rps *server) Create(
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
 		return rps.moduleStateHandler.Create(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -210,7 +213,7 @@ func (rps *server) Update(
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
 		return rps.moduleStateHandler.Update(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -222,7 +225,7 @@ func (rps *server) Delete(
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", Name(), moduleStateTypeName):
+	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
 		return rps.moduleStateHandler.Delete(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())

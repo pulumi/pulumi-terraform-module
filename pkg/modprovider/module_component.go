@@ -17,6 +17,7 @@ package modprovider
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -42,8 +43,13 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
 	}
 
+	tt, err := tokens.ParseTypeToken(t)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid type token: %q", t)
+	}
+
 	go func() {
-		_, err := newModuleStateResource(ctx, Name(), pulumi.Parent(&component))
+		_, err := newModuleStateResource(ctx, tt.Package().String(), pulumi.Parent(&component))
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
 	}()
 
