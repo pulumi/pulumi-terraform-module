@@ -2,6 +2,7 @@ package tfsandbox
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 
@@ -10,10 +11,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func (t *Tofu) CreateTFFile(name, source, version string, inputs resource.PropertyMap) error {
+func CreateTFFile(name, source, version, workingDir string, inputs resource.PropertyMap) error {
 	moduleProps := map[string]interface{}{
-		"source":  source,
-		"version": version,
+		"source": source,
+	}
+	// local modules don't have a version
+	if version != "" {
+		moduleProps["version"] = version
+	}
+
+	containsUnknowns := false
+	resourcex.Walk(resource.NewObjectProperty(inputs), func(pv resource.PropertyValue, ws resourcex.WalkState) {
+		if ws.Entering {
+			if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
+				containsUnknowns = true
+			}
+		}
+	})
+
+	// TODO: [pulumi/pulumi-terraform-module-provider#28] Support unknown values
+	if containsUnknowns {
+		return fmt.Errorf("unknown values are not yet supported")
 	}
 
 	values := resourcex.Decode(inputs)
@@ -24,7 +42,7 @@ func (t *Tofu) CreateTFFile(name, source, version string, inputs resource.Proper
 		// Will these be sent as `key_name` or `keyName`?
 		tfKey := tfbridge.PulumiToTerraformName(
 			k,
-			// TODO: we might have these available from parsing the schema at some point
+			// we will never know this information
 			nil, /* shim.SchemaMap */
 			nil, /* map[string]*info.Schema */
 		)
@@ -48,7 +66,7 @@ func (t *Tofu) CreateTFFile(name, source, version string, inputs resource.Proper
 		return err
 	}
 
-	if err := os.WriteFile(path.Join(t.WorkingDir(), "pulumi.tf.json"), contents, 0644); err != nil {
+	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0644); err != nil {
 		return err
 	}
 	return nil
