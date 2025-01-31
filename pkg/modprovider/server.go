@@ -43,7 +43,9 @@ type server struct {
 	hostClient         *provider.HostClient
 	stateStore         moduleStateStore
 	moduleStateHandler *moduleStateHandler
-	packageName        string
+	packageName        packageName
+	packageVersion     packageVersion
+	componentTypeName  componentTypeName
 }
 
 func (s *server) Parameterize(
@@ -56,16 +58,19 @@ func (s *server) Parameterize(
 	}
 	s.params = &pargs
 
-	packageName, _, err := packageNameAndMainResourceName(string(pargs.TFModuleSource))
+	packageName, compTypName, err := packageNameAndMainResourceName(pargs.TFModuleSource)
 	if err != nil {
-		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", pargs.TFModuleSource, err)
+		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w",
+			pargs.TFModuleSource, err)
 	}
 
+	s.componentTypeName = compTypName
 	s.packageName = packageName
+	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
 
 	return &pulumirpc.ParameterizeResponse{
-		Name:    packageName,
-		Version: string(pargs.TFModuleVersion),
+		Name:    string(s.packageName),
+		Version: string(s.packageVersion),
 	}, nil
 }
 
@@ -152,24 +157,22 @@ func (rps *server) construct(
 	inputs pulumiprovider.ConstructInputs,
 	options pulumi.ResourceOption,
 ) (*pulumiprovider.ConstructResult, error) {
-	// TODO the static dispatch will not be sufficient in prod; need to parse the token for the component resource
-	// and dispatch accordingly.
-	packageName, _, _ := packageNameAndMainResourceName(string(rps.params.TFModuleSource))
+	ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
 	switch typ {
-	case fmt.Sprintf("%s:index:Vpc", packageName):
-		// TODO: fix hang during pulumi preview
-		//component, err := NewModuleComponentResource(ctx, rps.stateStore, typ, name, &ModuleComponentArgs{})
-		//if err != nil {
-		//	return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
-		//}
-		component := &ModuleComponentResource{}
+	case string(ctok):
+		component, err := NewModuleComponentResource(ctx, rps.stateStore,
+			rps.packageName, rps.packageVersion, rps.componentTypeName,
+			name, &ModuleComponentArgs{})
+		if err != nil {
+			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+		}
 		constructResult, err := pulumiprovider.NewConstructResult(component)
 		if err != nil {
 			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
 		}
 		return constructResult, nil
 	default:
-		return nil, fmt.Errorf("TODO: only hcl:index:VpcAws is supported in the prototype")
+		return nil, fmt.Errorf("Unsupported typ=%q expecting %q", typ, ctok)
 	}
 }
 
@@ -178,7 +181,7 @@ func (rps *server) Check(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
+	case string(moduleStateTypeToken(rps.packageName)):
 		return rps.moduleStateHandler.Check(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -190,7 +193,7 @@ func (rps *server) Diff(
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
+	case string(moduleStateTypeToken(rps.packageName)):
 		return rps.moduleStateHandler.Diff(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -202,7 +205,7 @@ func (rps *server) Create(
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
+	case string(moduleStateTypeToken(rps.packageName)):
 		return rps.moduleStateHandler.Create(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -214,7 +217,7 @@ func (rps *server) Update(
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
+	case string(moduleStateTypeToken(rps.packageName)):
 		return rps.moduleStateHandler.Update(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
@@ -226,7 +229,7 @@ func (rps *server) Delete(
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	switch req.GetType() {
-	case fmt.Sprintf("%s:index:%s", rps.packageName, moduleStateTypeName):
+	case string(moduleStateTypeToken(rps.packageName)):
 		return rps.moduleStateHandler.Delete(ctx, req)
 	default:
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())

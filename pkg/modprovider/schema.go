@@ -27,41 +27,48 @@ import (
 // and the name of the only resource the package will have
 // for example terraform-aws-modules/vpc/aws -> terraform-aws-modules, Vpc
 // where terraform-aws-modules is the package name and Vpc is the resource
-func packageNameAndMainResourceName(packageSource string) (packageName string, resourceName string, err error) {
-	parts := strings.Split(packageSource, "/")
+func packageNameAndMainResourceName(packageSource TFModuleSource) (packageName, componentTypeName, error) {
+	// TODO account for many kinds of TFModuleSource such as local sources.
+	parts := strings.Split(string(packageSource), "/")
 	// package-name/module-name/target
 	if len(parts) == 3 {
-		return parts[0], strings.Title(parts[1]), nil
+		return packageName(parts[0]), componentTypeName(strings.Title(parts[1])), nil
 	}
 
 	// <registry-source>/package-name/module-name/target
 	if len(parts) == 4 {
-		return parts[2], strings.Title(parts[3]), nil
+		return packageName(parts[2]), componentTypeName(strings.Title(parts[3])), nil
 	}
 
 	return "", "", fmt.Errorf("unable to infer package and resource name from '%s'", packageSource)
 }
 
+// TODO this can get more complicated if versionSpec is a range and not a precise version.
+func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
+	return packageVersion(versionSpec)
+}
+
 // sandbox will be available and having run `terraform init` it will have resolved and downloaded the module sources.
 // The code will need to run input/output schema inference for these sources to compute an appropriate PackageSpec.
 func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
-	packageSource := string(pargs.TFModuleSource)
-	packageVersion := string(pargs.TFModuleVersion)
-	packageName, resourceName, err := packageNameAndMainResourceName(packageSource)
+	pkgVer := inferPackageVersion(pargs.TFModuleVersion)
+	packageName, resourceName, err := packageNameAndMainResourceName(pargs.TFModuleSource)
 	if err != nil {
-		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", packageSource, err)
+		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w",
+			pargs.TFModuleSource, err)
 	}
 
-	inferredModule, err := InferModuleSchema(packageName, packageSource, packageVersion)
+	inferredModule, err := InferModuleSchema(packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
 	if err != nil {
-		return nil, fmt.Errorf("error while inferring module schema for %s@%s: %w", packageSource, packageVersion, err)
+		return nil, fmt.Errorf("error while inferring module schema for %s@%s: %w",
+			pargs.TFModuleSource, pargs.TFModuleVersion, err)
 	}
 
 	mainResourceToken := fmt.Sprintf("%s:index:%s", packageName, resourceName)
 
 	packageSpec := &schema.PackageSpec{
-		Name:    packageName,
-		Version: packageVersion,
+		Name:    string(packageName),
+		Version: string(pkgVer),
 		Types:   inferredModule.SupportingTypes,
 		Resources: map[string]schema.ResourceSpec{
 			mainResourceToken: {
