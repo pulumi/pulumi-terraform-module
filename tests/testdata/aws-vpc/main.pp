@@ -1,6 +1,6 @@
 package "terraform-aws-modules" {
     baseProviderName = "terraform-module-provider"
-    baseProviderVersion = "0.1.0"
+    baseProviderVersion = "0.0.1"
     parameterization {
         name = "terraform-aws-modules"
         version = "5.18.1"

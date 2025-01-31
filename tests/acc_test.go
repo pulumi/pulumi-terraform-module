@@ -14,12 +14,11 @@ import (
 )
 
 func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
-	t.Parallel()
-
 	localProviderBinPath := ensureCompiledProvider(t)
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
 	os.Setenv("PATH", path)
+	os.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 	root := getRoot(t)
 	programDir := filepath.Join(root, "tests", "testdata", "aws-vpc")
