@@ -17,12 +17,9 @@ package modprovider
 import (
 	"context"
 	"fmt"
-	"net"
-	"path/filepath"
-	"sync"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,35 +125,25 @@ func (t *testEngineServer) Log(ctx context.Context, req *pulumirpc.LogRequest) (
 
 // Starts a ResourceMonitorServer for testing, listening on a unix socket. Returns the socket path.
 func startResourceMonitorServer(t *testing.T, srv pulumirpc.ResourceMonitorServer) string {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "grpc.socket")
+	cancellation := make(chan bool)
 
-	grpcServer := grpc.NewServer()
-	pulumirpc.RegisterResourceMonitorServer(grpcServer, srv)
-	pulumirpc.RegisterEngineServer(grpcServer, &testEngineServer{t: t})
-
-	listener, err := net.Listen("unix", socketPath)
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancellation,
+		Init: func(grpcServer *grpc.Server) error {
+			pulumirpc.RegisterResourceMonitorServer(grpcServer, srv)
+			pulumirpc.RegisterEngineServer(grpcServer, &testEngineServer{t: t})
+			return nil
+		},
+	})
 	require.NoError(t, err)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		err = grpcServer.Serve(listener)
-		require.NoError(t, err)
-	}()
 
 	t.Cleanup(func() {
-		grpcServer.GracefulStop()
-		wg.Wait()
-		err := listener.Close()
-		contract.IgnoreError(err)
+		close(cancellation)
+		err := <-handle.Done
+		require.NoError(t, err)
 	})
 
-	absSocketPath, err := filepath.Abs(socketPath)
-	require.NoError(t, err)
-	return fmt.Sprintf("unix://%s", absSocketPath)
+	return fmt.Sprintf("127.0.0.1:%v", handle.Port)
 }
 
 // Implements just enough engine behavior to serve as a test double for ResourceMonitorServer.
