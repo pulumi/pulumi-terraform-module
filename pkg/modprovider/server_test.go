@@ -207,7 +207,7 @@ func (s *testResourceMonitorServer) RegisterResource(
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
 
-	tfModuleSource := string(s.params.TFModuleSource)
+	tfModuleSource := s.params.TFModuleSource
 	packageName, resourceName, err := packageNameAndMainResourceName(tfModuleSource)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", tfModuleSource, err)
