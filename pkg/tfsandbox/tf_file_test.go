@@ -29,6 +29,9 @@ variable "tf_var" {
 func TestCreateTFFile(t *testing.T) {
 	t.Parallel()
 
+	// Test the different types of Module variables that could exist
+	// see https://developer.hashicorp.com/terraform/language/expressions/types
+	// see https://developer.hashicorp.com/terraform/language/expressions/type-constraints
 	tests := []struct {
 		name           string
 		tfVariableType string
