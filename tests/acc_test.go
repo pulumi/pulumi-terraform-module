@@ -15,21 +15,20 @@ import (
 
 func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	path := os.Getenv("PATH")
-	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
-	os.Setenv("PATH", path)
-	os.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+	testDir := t.TempDir()
 
-	root := getRoot(t)
-	programDir := filepath.Join(root, "tests", "testdata", "aws-vpc")
-
-	t.Run("typescript", func(t *testing.T) {
-		pulumiConvert(t, programDir, "typescript")
+	t.Run("convert to typescript", func(t *testing.T) {
+		pulumiConvert(t, localProviderBinPath,
+			filepath.Join("testdata", "aws-vpc"),
+			testDir,
+			"typescript")
 	})
 
-	convertedProgramDir := filepath.Join(programDir, "typescript")
+	pt := pulumitest.NewPulumiTest(t, testDir,
+		opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath)),
+		opttest.SkipInstall())
+	pt.CopyToTempDir(t)
 
-	pt := pulumitest.NewPulumiTest(t, convertedProgramDir, opttest.TestInPlace())
 	t.Run("pulumi preview", func(t *testing.T) {
 		pt.Preview(t, optpreview.ErrorProgressStreams(os.Stderr))
 	})
@@ -62,18 +61,18 @@ func dirExists(dir string) bool {
 	return !os.IsNotExist(err)
 }
 
-func pulumiConvert(t *testing.T, dir string, language string) {
-	targetDirectory := filepath.Join(dir, language)
-	if dirExists(targetDirectory) {
-		os.RemoveAll(targetDirectory)
-	}
-
+func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string) {
 	cmd := exec.Command("pulumi", "convert",
 		"--strict",
 		"--from", "pcl",
 		"--language", language,
-		"--out", targetDirectory)
-	cmd.Dir = dir
+		"--out", targetDir)
+
+	path := os.Getenv("PATH")
+	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
+
+	cmd.Dir = sourceDir
+	cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s", path))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("failed to run pulumi convert: %v\n%s", err, out)

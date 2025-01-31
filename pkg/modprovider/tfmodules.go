@@ -69,7 +69,7 @@ func formatPascalCaseTypeName(typeName string) string {
 func convertType(
 	terraformType cty.Type,
 	typeName string,
-	packageName string,
+	packageName packageName,
 	supportingTypes map[string]schema.ComplexTypeSpec,
 ) schema.TypeSpec {
 	if terraformType.Equals(cty.String) {
@@ -120,8 +120,8 @@ func convertType(
 	return stringType
 }
 
-func InferModuleSchema(packageName string, moduleAddress string, version string) (*InferredModuleSchema, error) {
-	module, err := extractModuleContent(moduleAddress, version)
+func InferModuleSchema(packageName packageName, mod TFModuleSource, ver TFModuleVersion) (*InferredModuleSchema, error) {
+	module, err := extractModuleContent(mod, ver)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func InferModuleSchema(packageName string, moduleAddress string, version string)
 	return inferredModuleSchema, nil
 }
 
-func extractModuleContent(packageRemoteSource string, version string) (*configs.Module, error) {
+func extractModuleContent(packageRemoteSource TFModuleSource, version TFModuleVersion) (*configs.Module, error) {
 	fetcher := getmodules.NewPackageFetcher()
 	tempPath, err := os.MkdirTemp("", "pulumi-tf-modules")
 	if err != nil {
@@ -171,7 +171,7 @@ func extractModuleContent(packageRemoteSource string, version string) (*configs.
 
 	defer os.RemoveAll(tempPath)
 	installationPath := filepath.Join(tempPath, "src")
-	src, err := tfaddr.ParseModuleSource(packageRemoteSource)
+	src, err := tfaddr.ParseModuleSource(string(packageRemoteSource))
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing module source %s: %w", packageRemoteSource, err)
 	}
@@ -195,7 +195,8 @@ func extractModuleContent(packageRemoteSource string, version string) (*configs.
 
 	moduleVersionFound := false
 	for _, moduleVersion := range versionsResponse.Modules[0].Versions {
-		if moduleVersion.Version == version {
+		// TODO what about version ranges in TFModuleVersion?
+		if moduleVersion.Version == string(version) {
 			moduleVersionFound = true
 			break
 		}
@@ -205,12 +206,12 @@ func extractModuleContent(packageRemoteSource string, version string) (*configs.
 		return nil, fmt.Errorf("module %s version %s not found on the registry", packageRemoteSource, version)
 	}
 
-	realModuleAddress, err := reg.ModuleLocation(context.TODO(), regsrcAddr, version)
+	realModuleAddress, err := reg.ModuleLocation(context.TODO(), regsrcAddr, string(version))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching module location for %s version %s: %w", packageRemoteSource, version, err)
 	}
 
-	packageMain, packageSubdir := getmodules.SplitPackageSubdir(packageRemoteSource)
+	packageMain, packageSubdir := getmodules.SplitPackageSubdir(string(packageRemoteSource))
 
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing module source %s: %w", packageMain, err)

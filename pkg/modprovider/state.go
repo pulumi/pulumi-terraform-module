@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -92,15 +93,19 @@ func (moduleStateResourceArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*moduleStateResourceArgs)(nil)).Elem()
 }
 
+func moduleStateTypeToken(pkgName packageName) tokens.Type {
+	return tokens.Type(fmt.Sprintf("%s:index:%s", pkgName, moduleStateTypeName))
+}
+
 func newModuleStateResource(
 	ctx *pulumi.Context,
-	subProviderName string,
+	pkgName packageName,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
 	args := &moduleStateResourceArgs{}
 	var resource moduleStateResource
-	moduleStateResourceType := fmt.Sprintf("%s:index:%s", subProviderName, moduleStateTypeName)
-	err := ctx.RegisterResource(moduleStateResourceType, moduleStateResourceName, args, &resource, opts...)
+	tok := moduleStateTypeToken(pkgName)
+	err := ctx.RegisterResource(string(tok), moduleStateResourceName, args, &resource, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)
 	}

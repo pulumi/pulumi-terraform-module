@@ -29,27 +29,42 @@ type ModuleComponentResource struct {
 
 type ModuleComponentArgs struct{}
 
+func componentTypeToken(packageName packageName, compTypeName componentTypeName) tokens.Type {
+	return tokens.Type(fmt.Sprintf("%s:index:%s", packageName, compTypeName))
+}
+
 func NewModuleComponentResource(
 	ctx *pulumi.Context,
 	stateStore moduleStateStore,
-	t string,
+	pkgName packageName,
+	pkgVer packageVersion,
+	compTypeName componentTypeName,
 	name string,
 	args *ModuleComponentArgs,
 	opts ...pulumi.ResourceOption,
 ) (*ModuleComponentResource, error) {
 	component := ModuleComponentResource{}
-	err := ctx.RegisterComponentResource(t, name, &component, opts...)
+	tok := componentTypeToken(pkgName, compTypeName)
+	err := ctx.RegisterComponentResource(string(tok), name, &component, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
 	}
 
-	tt, err := tokens.ParseTypeToken(t)
-	if err != nil {
-		return nil, fmt.Errorf("Invalid type token: %q", t)
-	}
-
 	go func() {
-		_, err := newModuleStateResource(ctx, tt.Package().String(), pulumi.Parent(&component))
+		_, err := newModuleStateResource(ctx,
+			pkgName,
+			pulumi.Parent(&component),
+			// TODO ideally we could use pulumi.Provider/s option here instead to point to self. It is
+			// really important that this resource is registered against the same provider instance as is
+			// currently executing. If that does not happen, or if Version is omitted, Pulumi starts trying
+			// to install the wrong combination of packageName, Version()=0.0.1 that does not exist.
+			//
+			// Leaving the Version workaround for now.
+			//
+			// Need to test if this works if pkgVer is empty.
+			pulumi.Version(string(pkgVer)),
+		)
+
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
 	}()
 
