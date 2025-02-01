@@ -3,6 +3,7 @@ package modprovider
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,4 +18,98 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 	awsVpcSchema, err := InferModuleSchema(packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
+	// verify a sample of the inputs with different inferred types
+	expectedSampleInputs := map[string]*schema.PropertySpec{
+		"cidr": {
+			Description: "(Optional) The IPv4 CIDR block for the VPC. CIDR can be explicitly set or it can be derived from IPAM using `ipv4_netmask_length` & `ipv4_ipam_pool_id`",
+			Secret:      false,
+			TypeSpec:    stringType,
+		},
+		"create_database_subnet_route_table": {
+			Description: "Controls if separate route table for database should be created",
+			Secret:      false,
+			TypeSpec:    boolType,
+		},
+		"azs": {
+			Description: "A list of availability zones names or ids in the region",
+			Secret:      false,
+			TypeSpec:    arrayType(stringType),
+		},
+		"customer_gateway_tags": {
+			Description: "Additional tags for the Customer Gateway",
+			Secret:      false,
+			TypeSpec:    mapType(stringType),
+		},
+		"customer_gateways": {
+			Description: "Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)",
+			Secret:      false,
+			TypeSpec:    mapType(mapType(stringType)),
+		},
+		"database_inbound_acl_rules": {
+			Description: "Database subnets inbound network ACL rules",
+			Secret:      false,
+			TypeSpec:    arrayType(mapType(stringType)),
+		},
+	}
+
+	for name, expected := range expectedSampleInputs {
+		actual, ok := awsVpcSchema.Inputs[name]
+		assert.True(t, ok, "input %s is missing from the schema", name)
+		assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+		assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
+		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+	}
+
+	// verify a sample of the outputs with different inferred types
+	expectedSampleOutputs := map[string]*schema.PropertySpec{
+		"vpc_id": {
+			Description: "The ID of the VPC",
+			Secret:      false,
+			TypeSpec:    stringType,
+		},
+		// from expression compact(aws_vpc_ipv4_cidr_block_association.this[*].cidr_block)
+		"vpc_secondary_cidr_blocks": {
+			Description: "List of secondary CIDR blocks of the VPC",
+			Secret:      false,
+			TypeSpec:    arrayType(stringType),
+		},
+		// from expression aws_subnet.public[*].id
+		"public_subnets": {
+			Description: "List of IDs of public subnets",
+			Secret:      false,
+			TypeSpec:    arrayType(stringType),
+		},
+		// from conditional expression
+		// length(aws_route_table.database[*].id) > 0
+		//     ? aws_route_table.database[*].id
+		//     : aws_route_table.private[*].id
+		"database_route_table_ids": {
+			Description: "List of IDs of database route tables",
+			Secret:      false,
+			TypeSpec:    arrayType(stringType),
+		},
+		// from expression [for k, v in aws_customer_gateway.this : v.id]
+		"cgw_ids": {
+			Description: "List of IDs of Customer Gateway",
+			Secret:      false,
+			TypeSpec:    arrayType(stringType),
+		},
+		// from expression var.flow_log_destination_type
+		// which is a variable defined in the module
+		// we take the same type as that variable
+		"vpc_flow_log_destination_type": {
+			Description: "The type of the destination for VPC Flow Logs",
+			Secret:      false,
+			TypeSpec:    awsVpcSchema.Inputs["flow_log_destination_type"].TypeSpec,
+		},
+	}
+
+	for name, expected := range expectedSampleOutputs {
+		actual, ok := awsVpcSchema.Outputs[name]
+		assert.True(t, ok, "output %s is missing from the schema", name)
+		assert.Equal(t, expected.Description, actual.Description, "output %s description is incorrect", name)
+		assert.Equal(t, expected.Secret, actual.Secret, "output %s secret is incorrect", name)
+		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "output %s type is incorrect", name)
+	}
+
 }
