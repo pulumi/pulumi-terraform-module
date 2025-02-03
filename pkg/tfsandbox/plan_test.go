@@ -144,12 +144,3 @@ func TestProcessPlan(t *testing.T) {
 		}).Equal(t, res)
 	})
 }
-
-func getCwd(t *testing.T) string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.FailNow()
-	}
-
-	return cwd
-}
