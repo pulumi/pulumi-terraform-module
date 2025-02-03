@@ -15,6 +15,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
 	"github.com/spf13/afero"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-svchost/disco"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/zclconf/go-cty/cty"
@@ -120,6 +122,64 @@ func convertType(
 	return stringType
 }
 
+func inferExpressionType(expr hcl.Expression) schema.TypeSpec {
+	if functionCall, ok := expr.(*hclsyntax.FunctionCallExpr); ok {
+		switch functionCall.Name {
+		case "compact":
+			// compact function has return type string[]
+			return arrayType(stringType)
+		}
+	}
+
+	if _, ok := expr.(*hclsyntax.SplatExpr); ok {
+		// splat expressions resolve to arrays
+		// for example aws_subnet.public[*].id
+		// is a computation: [ for subnet in aws_subnet.public: subnet.id ]
+		return arrayType(stringType)
+	}
+
+	if conditional, ok := expr.(*hclsyntax.ConditionalExpr); ok {
+		// when encountering a conditional of the form:
+		// <condition> ? <true-result> : <false-result>
+		// we infer the type of the expression to be the type of the true-result
+		// assumes that the true-result and false-result have the same type
+		return inferExpressionType(conditional.TrueResult)
+	}
+
+	if _, ok := expr.(*hclsyntax.ForExpr); ok {
+		// for expressions do not _necessarily_ return an array of strings
+		// but choosing this as a default for now until we have a proper type checker
+		return arrayType(stringType)
+	}
+
+	return stringType
+}
+
+// isVariableReference checks if the given expression is a reference to a variable
+// the expression looks like this: var.<variable-name>
+// so we check if the expression is a scope traversal with two parts
+// where the first part is a "root" traversal with the name "var"
+// and the second part is the name of the variable
+func isVariableReference(expr hcl.Expression) (string, bool) {
+	scopeTraversalExpr, ok := expr.(*hclsyntax.ScopeTraversalExpr)
+	if !ok {
+		return "", false
+	}
+
+	if len(scopeTraversalExpr.Traversal) != 2 {
+		return "", false
+	}
+
+	if root, ok := scopeTraversalExpr.Traversal[0].(hcl.TraverseRoot); ok && root.Name == "var" {
+		if attr, ok := scopeTraversalExpr.Traversal[1].(hcl.TraverseAttr); ok {
+			// the name of the attribute is the name of the variable
+			return attr.Name, true
+		}
+	}
+
+	return "", false
+}
+
 func InferModuleSchema(packageName packageName, mod TFModuleSource, ver TFModuleVersion) (*InferredModuleSchema, error) {
 	module, err := extractModuleContent(mod, ver)
 	if err != nil {
@@ -147,15 +207,20 @@ func InferModuleSchema(packageName packageName, mod TFModuleSource, ver TFModule
 	}
 
 	for outputName, output := range module.Outputs {
-		// TODO: fix handle output types
-		// right now we are defaulting to strings because we don't have a way to infer the type
-		// unless we apply some heuristics on the output value expressions
+		// TODO: handle proper output types
+		// right now we are using basic heuristics based on the shape of the ouput value expression
+		// but it is not always correct
+		var inferredType schema.TypeSpec
+		if referencedVariableName, ok := isVariableReference(output.Expr); ok {
+			inferredType = inferredModuleSchema.Inputs[referencedVariableName].TypeSpec
+		} else {
+			inferredType = inferExpressionType(output.Expr)
+		}
+
 		inferredModuleSchema.Outputs[outputName] = schema.PropertySpec{
 			Description: output.Description,
 			Secret:      output.Sensitive,
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
+			TypeSpec:    inferredType,
 		}
 	}
 
