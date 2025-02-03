@@ -37,6 +37,9 @@ type ModuleName string
 type ResourceAddress string
 
 // PlanResources is a map of resource addresses to their converted properties
+// TODO: A PropertyMap is not going to contain enough information for us to do everything
+// we need to do (e.g. we need to know which properties are causing replacements). For now
+// this gets us enough to do a RegisterResource call, but we will need to expand this later.
 type PlanResources map[ResourceAddress]resource.PropertyMap
 
 // ConvertedResources is a map of module names to their resources
@@ -56,8 +59,8 @@ type planConverter struct {
 // populated with values (i.e. the resource inputs). The `PlannedValues` can contain information about
 // both inputs and outputs.
 //
-// NOTE: Terraform plans show everything as inputs, even if they are optional computed values that the user didn't specify,
-// whereas Pulumi plans show only the inputs that the user specified. We are attempting to do some filtering to
+// NOTE: Terraform plans show everything as inputs, even if they are optional computed values that the module didn't specify,
+// whereas Pulumi plans show only the inputs that the module specified. We are attempting to do some filtering to
 // make the Pulumi plan more Pulumi like, but if we want to instead just pass the plan through as is we could
 // simplify this.
 func (pc *planConverter) convertModulesFromConfig(moduleCalls map[string]*tfjson.ModuleCall) {
