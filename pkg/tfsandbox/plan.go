@@ -19,7 +19,7 @@ func (t *Tofu) Plan(ctx context.Context) (*tfjson.Plan, error) {
 
 	plan, err := t.tf.ShowPlanFile(ctx, planFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error running show plan: %w", err)
 	}
 
 	return plan, nil
