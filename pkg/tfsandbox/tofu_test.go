@@ -3,15 +3,17 @@ package tfsandbox
 import (
 	"bytes"
 	"context"
+	"path"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTofuInit(t *testing.T) {
 	tofu, err := NewTofu(context.Background())
 	assert.NoError(t, err)
-	tofu.WorkingDir()
+	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
 	var res bytes.Buffer
 	err = tofu.tf.InitJSON(context.Background(), &res)
@@ -20,4 +22,52 @@ func TestTofuInit(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Contains(t, res.String(), "OpenTofu initialized in an empty directory")
+}
+
+func TestTofuPlan(t *testing.T) {
+	tofu, err := NewTofu(context.Background())
+	assert.NoError(t, err)
+	t.Logf("WorkingDir: %s", tofu.WorkingDir())
+	ctx := context.Background()
+
+	err = CreateTFFile("test", path.Join(getCwd(t), "testdata", "modules", "test_module"), "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputVar": "test",
+	}))
+	assert.NoErrorf(t, err, "error creating tf file")
+
+	err = tofu.Init(ctx)
+	assert.NoErrorf(t, err, "error running tofu init")
+
+	plan, err := tofu.Plan(ctx)
+	assert.NoErrorf(t, err, "error running tofu plan")
+	childModules := plan.PlannedValues.RootModule.ChildModules
+	assert.Len(t, childModules, 1)
+	assert.Len(t, childModules[0].Resources, 1)
+	assert.Equal(t, "module.test.terraform_data.example", childModules[0].Resources[0].Address)
+}
+
+func TestTofuApply(t *testing.T) {
+	tofu, err := NewTofu(context.Background())
+	assert.NoError(t, err)
+	t.Logf("WorkingDir: %s", tofu.WorkingDir())
+	ctx := context.Background()
+
+	err = CreateTFFile("test", path.Join(getCwd(t), "testdata", "modules", "test_module"), "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+		"inputVar": "test",
+	}))
+	assert.NoErrorf(t, err, "error creating tf file")
+
+	err = tofu.Init(ctx)
+	assert.NoErrorf(t, err, "error running tofu init")
+
+	state, err := tofu.Apply(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, "module.test.terraform_data.example", state.Values.RootModule.ChildModules[0].Resources[0].Address)
+
+	state, err = tofu.Refresh(ctx)
+	assert.NoError(t, err, "error running tofu refresh")
+	assert.Equal(t, "module.test.terraform_data.example", state.Values.RootModule.ChildModules[0].Resources[0].Address)
+
+	err = tofu.Destroy(ctx)
+	assert.NoErrorf(t, err, "error running tofu destroy")
 }
