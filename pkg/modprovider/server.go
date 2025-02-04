@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -150,32 +151,44 @@ func (rps *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	return pulumiprovider.Construct(ctx, req, rps.hostClient.EngineConn(), rps.construct)
-}
-
-func (rps *server) construct(
-	ctx *pulumi.Context,
-	typ, name string,
-	inputs pulumiprovider.ConstructInputs,
-	options pulumi.ResourceOption,
-) (*pulumiprovider.ConstructResult, error) {
-	ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
-	switch typ {
-	case string(ctok):
-		component, err := NewModuleComponentResource(ctx, rps.stateStore,
-			rps.packageName, rps.packageVersion, rps.componentTypeName,
-			name, &ModuleComponentArgs{})
-		if err != nil {
-			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
-		}
-		constructResult, err := pulumiprovider.NewConstructResult(component)
-		if err != nil {
-			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
-		}
-		return constructResult, nil
-	default:
-		return nil, fmt.Errorf("Unsupported typ=%q expecting %q", typ, ctok)
+	inputProps, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
+
+	return pulumiprovider.Construct(ctx, req, rps.hostClient.EngineConn(), func(
+		ctx *pulumi.Context, typ, name string,
+		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+	) (*pulumiprovider.ConstructResult, error) {
+		ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
+		switch typ {
+		case string(ctok):
+			component, err := NewModuleComponentResource(ctx,
+				rps.stateStore,
+				rps.packageName,
+				rps.packageVersion,
+				rps.componentTypeName,
+				rps.params.TFModuleSource,
+				rps.params.TFModuleVersion,
+				name,
+				inputProps)
+			if err != nil {
+				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+			}
+			constructResult, err := pulumiprovider.NewConstructResult(component)
+			if err != nil {
+				return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
+			}
+			return constructResult, nil
+		default:
+			return nil, fmt.Errorf("Unsupported typ=%q expecting %q", typ, ctok)
+		}
+	})
 }
 
 func (rps *server) Check(

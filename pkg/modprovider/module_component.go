@@ -15,8 +15,11 @@
 package modprovider
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -26,8 +29,6 @@ import (
 type ModuleComponentResource struct {
 	pulumi.ResourceState
 }
-
-type ModuleComponentArgs struct{}
 
 func componentTypeToken(packageName packageName, compTypeName componentTypeName) tokens.Type {
 	return tokens.Type(fmt.Sprintf("%s:index:%s", packageName, compTypeName))
@@ -39,8 +40,10 @@ func NewModuleComponentResource(
 	pkgName packageName,
 	pkgVer packageVersion,
 	compTypeName componentTypeName,
+	tfModuleSource TFModuleSource,
+	tfModuleVersion TFModuleVersion,
 	name string,
-	args *ModuleComponentArgs,
+	args resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (*ModuleComponentResource, error) {
 	component := ModuleComponentResource{}
@@ -71,9 +74,42 @@ func NewModuleComponentResource(
 	state := stateStore.AwaitOldState()
 
 	if ctx.DryRun() {
-		// Running pulumi preview
+		tf, err := tfsandbox.NewTofu(ctx.Context())
+		if err != nil {
+			return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+		}
+		contract.AssertNoErrorf(err, "NewTofu failed")
+
+		err = tfsandbox.CreateTFFile("mymodule", tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
+		if err != nil {
+			return nil, fmt.Errorf("Seed file generation failed: %w", err)
+		}
+
+		err = tf.Init(ctx.Context())
+		if err != nil {
+			return nil, fmt.Errorf("Init failed: %w", err)
+		}
+
+		plan, err := tf.Plan(ctx.Context())
+		if err != nil {
+			return nil, fmt.Errorf("Plan failed: %w", err)
+		}
+
+		var errs []error
+		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
+			_, err := newChildResource(ctx, pkgName, rp,
+				pulumi.Parent(&component),
+				pulumi.Version(string(pkgVer)))
+			errs = append(errs, err)
+		})
+		if err := errors.Join(errs...); err != nil {
+			return nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
 	} else {
 		// Running pulumi up
+
+		// TODO perform terraform apply
+
 	}
 
 	// Save any modifications to state that may have been done in the course of pulumi up. This is expected to be
