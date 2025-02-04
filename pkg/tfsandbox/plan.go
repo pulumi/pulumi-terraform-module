@@ -35,10 +35,10 @@ type ResourceAddress string
 // TODO: A PropertyMap is not going to contain enough information for us to do everything
 // we need to do (e.g. we need to know which properties are causing replacements). For now
 // this gets us enough to do a RegisterResource call, but we will need to expand this later.
-type PlanResources map[ResourceAddress]resource.PropertyMap
+type planResources map[ResourceAddress]resource.PropertyMap
 
 type planConverter struct {
-	finalResources PlanResources
+	finalResources planResources
 }
 
 // extractResourcesFromPlannedValues extracts a list of resources from the planned values.
@@ -77,9 +77,9 @@ func (pc *planConverter) extractResourcesFromPlannedValues(module *tfjson.StateM
 }
 
 // PulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
-func PulumiResourcesFromTFPlan(plan *tfjson.Plan) (PlanResources, error) {
+func PulumiResourcesFromTFPlan(plan *tfjson.Plan) (planResources, error) {
 	pc := &planConverter{
-		finalResources: PlanResources{},
+		finalResources: planResources{},
 	}
 
 	for _, module := range plan.PlannedValues.RootModule.ChildModules {
