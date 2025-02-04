@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -52,7 +53,8 @@ func newChildResource(
 	name := childResourceName(sop.Resource())
 	// TODO this should be RegisterPackageResource
 	// If not RegisterPackageResource it needs the Version workaround.
-	err := ctx.RegisterResource(string(t), name, newPulumiMap(inputs), &resource, opts...)
+	inputsMap := property.MustUnmarshalPropertyMap(ctx, inputs)
+	err := ctx.RegisterResource(string(t), name, inputsMap, &resource, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for a child resource: %w", err)
 	}
@@ -252,8 +254,4 @@ func marshalStruct(m map[string]any) (*structpb.Struct, error) {
 		KeepResources:    true,
 		KeepOutputValues: true,
 	})
-}
-
-func newPulumiMap(pm resource.PropertyMap) pulumi.Map {
-	panic("TODO")
 }

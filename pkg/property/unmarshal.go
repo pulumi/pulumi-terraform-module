@@ -212,3 +212,9 @@ func unmarshalPropertyValue(ctx *pulumi.Context, v resource.PropertyValue) (inte
 		return v.V, false, nil
 	}
 }
+
+func MustUnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) pulumi.Map {
+	m, err := UnmarshalPropertyMap(ctx, v)
+	contract.AssertNoErrorf(err, "UnmarshalPropertyMap failed unexpectedly")
+	return m
+}
