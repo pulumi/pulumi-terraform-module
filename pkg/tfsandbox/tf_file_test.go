@@ -140,12 +140,3 @@ func assertValidateSuccess(t *testing.T, tofu *Tofu) {
 	assert.Equalf(t, 0, val.WarningCount, "Tofu validation - expected warning count=0, got %d", val.WarningCount)
 
 }
-
-func getCwd(t *testing.T) string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.FailNow()
-	}
-
-	return cwd
-}
