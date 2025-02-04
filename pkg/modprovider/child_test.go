@@ -32,17 +32,19 @@ func TestChildResoruceTypeToken(t *testing.T) {
 }
 
 func TestNewChildResource(t *testing.T) {
-
+	t.Skip("TODO")
 }
 
 func TestChildResourceCheck(t *testing.T) {
 	ctx := context.Background()
 	h := newChildHandler()
+
 	news, err := structpb.NewStruct(map[string]any{
 		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
 		"force_destroy":              true,
 	})
 	require.NoError(t, err)
+
 	resp, err := h.Check(ctx, &pulumirpc.CheckRequest{
 		Type: "terraform-aws-module:tf:aws_s3_bucket",
 		News: news,
@@ -54,23 +56,45 @@ func TestChildResourceCheck(t *testing.T) {
 	assert.Equal(t, true, checkedInputs["force_destroy"])
 }
 
-func TestChildResourceCreate(t *testing.T) {
+func TestChildResourceCreatePreview(t *testing.T) {
+	ctx := context.Background()
+	h := newChildHandler()
 
+	properties, err := structpb.NewStruct(map[string]any{
+		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+		"force_destroy":              true,
+	})
+	require.NoError(t, err)
+
+	resp, err := h.Create(ctx, &pulumirpc.CreateRequest{
+		Preview:    true,
+		Type:       "terraform-aws-module:tf:aws_s3_bucket",
+		Properties: properties,
+	})
+	require.NoError(t, err)
+
+	createdProperties := resp.Properties.AsMap()
+	assert.Equal(t, 0, len(createdProperties))
+	assert.Equal(t, "", resp.Id)
+}
+
+func TestChildResourceCreate(t *testing.T) {
+	t.Skip("TODO")
 }
 
 func TestChildResourceDiff(t *testing.T) {
-
+	t.Skip("TODO")
 }
 
 func TestChildResourceUpdate(t *testing.T) {
+	t.Skip("TODO")
 
 }
 
 func TestChildResourceDelete(t *testing.T) {
+	t.Skip("TODO")
 
 }
-
-func newPlanSource() {}
 
 func testPackageName() packageName {
 	return packageName("terraform-aws-module")
