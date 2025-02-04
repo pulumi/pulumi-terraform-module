@@ -24,8 +24,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// Plan runs a Terraform plan and returns the plan output json
-func (t *Tofu) Plan(ctx context.Context) (*tfjson.Plan, error) {
+// Plan runs terraform plan and returns the plan representation.
+func (t *Tofu) Plan(ctx context.Context) (*Plan, error) {
+	plan, err := t.plan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return newPlan(plan), nil
+}
+
+func (t *Tofu) plan(ctx context.Context) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), "plan.out")
 	_ /*hasChanges*/, err := t.tf.Plan(ctx, tfexec.Out(planFile))
 	if err != nil {
