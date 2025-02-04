@@ -107,7 +107,6 @@ func extractPropertyMap(stateResource *tfjson.StateResource) resource.PropertyMa
 
 // pulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
 func pulumiResourcesFromTFPlan(plan *tfjson.Plan) (planResources, error) {
-
 	pc := &planConverter{
 		finalResources: planResources{},
 	}
