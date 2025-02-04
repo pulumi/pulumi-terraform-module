@@ -72,6 +72,11 @@ func NewModuleComponentResource(
 	}()
 
 	state := stateStore.AwaitOldState()
+	defer func() {
+		// Save any modifications to state that may have been done in the course of pulumi up. This is expected
+		// to be called even if the state is not modified.
+		stateStore.SetNewState(state)
+	}()
 
 	if ctx.DryRun() {
 		tf, err := tfsandbox.NewTofu(ctx.Context())
@@ -111,10 +116,6 @@ func NewModuleComponentResource(
 		// TODO perform terraform apply
 
 	}
-
-	// Save any modifications to state that may have been done in the course of pulumi up. This is expected to be
-	// called even if the state is not modified.
-	stateStore.SetNewState(state)
 
 	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {
 		return nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
