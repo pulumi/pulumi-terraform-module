@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -42,15 +43,15 @@ type childResource struct {
 func newChildResource(
 	ctx *pulumi.Context,
 	pkgName packageName,
-	sop *ResourceStateOrPlan,
+	sop ResourceStateOrPlan,
 	opts ...pulumi.ResourceOption,
 ) (*childResource, error) {
 	contract.Assertf(ctx != nil, "ctx must not be nil")
 	contract.Assertf(sop != nil, "sop must not be nil")
 	var resource childResource
-	inputs := childResourceInputs(sop.Resource().Address(), sop.Values())
-	t := childResourceTypeToken(pkgName, sop.Resource().Type())
-	name := childResourceName(sop.Resource())
+	inputs := childResourceInputs(sop.GetResource().Address(), sop.Values())
+	t := childResourceTypeToken(pkgName, sop.GetResource().Type())
+	name := childResourceName(sop.GetResource())
 	// TODO this should be RegisterPackageResource
 	// If not RegisterPackageResource it needs the Version workaround.
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, inputs)
@@ -82,6 +83,12 @@ func childResourceName(resource Resource) string {
 	case int:
 		if ix != 0 {
 			return fmt.Sprintf("%s%d", baseName, ix)
+		}
+		return baseName
+	case float64:
+		ixi := int(ix)
+		if ixi != 0 {
+			return fmt.Sprintf("%s%d", baseName, ixi)
 		}
 		return baseName
 	case string:
@@ -117,8 +124,8 @@ func childResourceInputs(addr ResourceAddress, inputs resource.PropertyMap) reso
 
 // The implementation of the ChildResource life cycle.
 type childHandler struct {
-	plan  Plan
-	state State
+	plan  Plan[ResourcePlan]
+	state State[ResourceState]
 }
 
 // The caller should call [SetPlan] and [SetState] when this information is available.
@@ -126,11 +133,11 @@ func newChildHandler() *childHandler {
 	return &childHandler{}
 }
 
-func (h *childHandler) SetPlan(plan Plan) {
+func (h *childHandler) SetPlan(plan Plan[ResourcePlan]) {
 	h.plan = plan
 }
 
-func (h *childHandler) SetState(state State) {
+func (h *childHandler) SetState(state State[ResourceState]) {
 	h.state = state
 }
 
@@ -158,22 +165,23 @@ func (h *childHandler) Diff(
 ) (*pulumirpc.DiffResponse, error) {
 	addr := h.mustParseAddress(req.GetNews())
 	contract.Assertf(h.plan != nil, "plan has not been computed yet")
-	rplan := MustFindResource(h.plan, addr)
+	rplan, ok := h.plan.FindResource(addr)
+	contract.Assertf(ok, "failed to find plan for %q", addr)
 	resp := &pulumirpc.DiffResponse{}
 	switch rplan.ChangeKind() {
-	case NoOp:
+	case tfsandbox.NoOp:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_NONE
-	case Update:
+	case tfsandbox.Update:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
 		// TODO do we need to populate resp.Diffs?
-	case Replace, ReplaceDestroyBeforeCreate:
+	case tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
-		if rplan.ChangeKind() == ReplaceDestroyBeforeCreate {
+		if rplan.ChangeKind() == tfsandbox.ReplaceDestroyBeforeCreate {
 			resp.DeleteBeforeReplace = true
 		}
 		// TODO need to populate replaces with actual replace paths.
 		resp.Replaces = []string{"todo"}
-	case Create, Read, Delete, Forget:
+	case tfsandbox.Create, tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
 		contract.Failf("Unexpected ChangeKind in Diff: %v", rplan.ChangeKind())
 		return nil, nil
 	default:
@@ -208,7 +216,8 @@ func (h *childHandler) Create(
 
 	addr := h.mustParseAddress(req.GetProperties())
 	contract.Assertf(h.state != nil, "state has not been acquired yet")
-	rstate := MustFindResource(h.state, addr)
+	rstate, ok := h.state.FindResource(addr)
+	contract.Assertf(ok, "failed to find state for %q", addr)
 
 	return &pulumirpc.CreateResponse{
 		Id:         childResourceID(rstate),
@@ -224,14 +233,19 @@ func (h *childHandler) Update(
 
 	if req.Preview {
 		contract.Assertf(h.plan != nil, "plan has not been computed yet")
-		rplan := MustFindResource(h.plan, addr)
+
+		rplan, ok := h.plan.FindResource(addr)
+		contract.Assertf(ok, "failed to find plan for %q", addr)
+
 		return &pulumirpc.UpdateResponse{
 			Properties: h.outputsStruct(rplan.PlannedValues()),
 		}, nil
 	}
 
 	contract.Assertf(h.state != nil, "state has not been acquired yet")
-	rstate := MustFindResource(h.state, addr)
+
+	rstate, ok := h.state.FindResource(addr)
+	contract.Assertf(ok, "failed to find state for %q", addr)
 
 	return &pulumirpc.UpdateResponse{
 		Properties: h.outputsStruct(rstate.AttributeValues()),

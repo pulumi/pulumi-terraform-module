@@ -1,14 +1,16 @@
 package modprovider
 
 import (
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type ResourceAddress string
-
-// Represents the TF resource type, example: "aws_instance" for aws_instance.foo.
-type TFResourceType string
+type (
+	ResourceAddress     = tfsandbox.ResourceAddress
+	TFResourceType      = tfsandbox.TFResourceType
+	ChangeKind          = tfsandbox.ChangeKind
+	ResourceStateOrPlan = tfsandbox.ResourceStateOrPlan
+)
 
 type Resource interface {
 	Address() ResourceAddress
@@ -27,29 +29,7 @@ type Resource interface {
 	Index() interface{}
 }
 
-type Resources[T any] interface {
-	VisitResources(func(T))
-	FindResource(ResourceAddress) (T, bool)
-}
-
-func MustFindResource[T any](collection Resources[T], addr ResourceAddress) T {
-	r, ok := collection.FindResource(addr)
-	contract.Assertf(ok, "Failed to find a resource at %q", addr)
-	return r
-}
-
-type ChangeKind int
-
-const (
-	NoOp ChangeKind = iota + 1
-	Update
-	Replace
-	ReplaceDestroyBeforeCreate
-	Create
-	Read
-	Delete
-	Forget
-)
+var _ Resource = (*tfsandbox.Resource)(nil)
 
 type ResourcePlan interface {
 	Resource
@@ -57,34 +37,28 @@ type ResourcePlan interface {
 	PlannedValues() resource.PropertyMap
 }
 
+var _ ResourcePlan = (*tfsandbox.ResourcePlan)(nil)
+
 type ResourceState interface {
 	Resource
 	AttributeValues() resource.PropertyMap
 }
 
-type ResourceStateOrPlan struct {
-	State ResourceState
-	Plan  ResourcePlan
+type Resources[T any] interface {
+	VisitResources(func(T))
+	FindResource(ResourceAddress) (T, bool)
 }
 
-func (sop *ResourceStateOrPlan) Resource() Resource {
-	if sop.State != nil {
-		return sop.State
-	}
-	return sop.Plan
+var _ ResourceState = (*tfsandbox.ResourceState)(nil)
+
+type Plan[T ResourcePlan] interface {
+	Resources[T]
 }
 
-func (sop *ResourceStateOrPlan) Values() resource.PropertyMap {
-	if sop.State != nil {
-		return sop.State.AttributeValues()
-	}
-	return sop.Plan.PlannedValues()
+var _ Plan[*tfsandbox.ResourcePlan] = (*tfsandbox.Plan)(nil)
+
+type State[T ResourceState] interface {
+	Resources[T]
 }
 
-type Plan interface {
-	Resources[ResourcePlan]
-}
-
-type State interface {
-	Resources[ResourceState]
-}
+var _ State[*tfsandbox.ResourceState] = (*tfsandbox.State)(nil)

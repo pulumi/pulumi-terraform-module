@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,33 @@ func TestChildResourceCreatePreview(t *testing.T) {
 }
 
 func TestChildResourceCreate(t *testing.T) {
-	t.Skip("TODO")
+	ctx := context.Background()
+	h := newChildHandler()
+
+	h.SetState(&testState{&testResourceState{
+		address: "module.s3_bucket.aws_s3_bucket.this[0]",
+		name:    "this",
+		index:   float64(0),
+		attrs: resource.PropertyMap{
+			"force_destroy": resource.NewBoolProperty(true),
+		},
+	}})
+
+	properties, err := structpb.NewStruct(map[string]any{
+		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+		"force_destroy":              true,
+	})
+	require.NoError(t, err)
+
+	resp, err := h.Create(ctx, &pulumirpc.CreateRequest{
+		Type:       "terraform-aws-module:tf:aws_s3_bucket",
+		Properties: properties,
+	})
+	require.NoError(t, err)
+
+	createdProperties := resp.Properties.AsMap()
+	assert.Equal(t, 0, len(createdProperties))
+	assert.NotEmpty(t, resp.Id)
 }
 
 func TestChildResourceDiff(t *testing.T) {
@@ -95,6 +122,39 @@ func TestChildResourceDelete(t *testing.T) {
 	t.Skip("TODO")
 
 }
+
+type testResourceState struct {
+	address ResourceAddress
+	type_   TFResourceType
+	name    string
+	index   interface{}
+	attrs   resource.PropertyMap
+}
+
+func (s *testResourceState) Address() ResourceAddress              { return s.address }
+func (s *testResourceState) Type() TFResourceType                  { return s.type_ }
+func (s *testResourceState) Name() string                          { return s.name }
+func (s *testResourceState) Index() interface{}                    { return s.index }
+func (s *testResourceState) AttributeValues() resource.PropertyMap { return s.attrs }
+
+var _ ResourceState = (*testResourceState)(nil)
+
+type testState struct {
+	res ResourceState
+}
+
+func (ts *testState) VisitResources(visitor func(ResourceState)) {
+	visitor(ts.res)
+}
+
+func (ts *testState) FindResource(addr ResourceAddress) (ResourceState, bool) {
+	if addr == ts.res.Address() {
+		return ts.res, true
+	}
+	return nil, false
+}
+
+var _ State[ResourceState] = (*testState)(nil)
 
 func testPackageName() packageName {
 	return packageName("terraform-aws-module")
