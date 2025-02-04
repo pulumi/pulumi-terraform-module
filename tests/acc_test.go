@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/providertest/pulumitest"
@@ -30,6 +31,16 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	pt.CopyToTempDir(t)
 
 	t.Run("pulumi preview", func(t *testing.T) {
+		awsConfigured := false
+		for _, envVar := range os.Environ() {
+			if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
+				awsConfigured = true
+			}
+		}
+		if !awsConfigured {
+			t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
+		}
+
 		pt.Preview(t,
 			optpreview.Diff(),
 			optpreview.ErrorProgressStreams(os.Stderr),
