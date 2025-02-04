@@ -8,7 +8,16 @@ import (
 )
 
 // Apply runs the terraform apply command and returns the final state
-func (t *Tofu) Apply(ctx context.Context) (*tfjson.State, error) {
+func (t *Tofu) Apply(ctx context.Context) (*State, error) {
+	state, err := t.apply(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return newState(state), nil
+}
+
+// Apply runs the terraform apply command and returns the final state
+func (t *Tofu) apply(ctx context.Context) (*tfjson.State, error) {
 	if err := t.tf.Apply(ctx); err != nil {
 		return nil, fmt.Errorf("error running tofu apply: %w", err)
 	}

@@ -1,3 +1,17 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tfsandbox
 
 import (
@@ -10,8 +24,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// Plan runs a Terraform plan and returns the plan output json
-func (t *Tofu) Plan(ctx context.Context) (*tfjson.Plan, error) {
+// Plan runs terraform plan and returns the plan representation.
+func (t *Tofu) Plan(ctx context.Context) (*Plan, error) {
+	plan, err := t.plan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return newPlan(plan), nil
+}
+
+func (t *Tofu) plan(ctx context.Context) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), "plan.out")
 	_ /*hasChanges*/, err := t.tf.Plan(ctx, tfexec.Out(planFile))
 	if err != nil {
@@ -35,10 +57,10 @@ type ResourceAddress string
 // TODO: A PropertyMap is not going to contain enough information for us to do everything
 // we need to do (e.g. we need to know which properties are causing replacements). For now
 // this gets us enough to do a RegisterResource call, but we will need to expand this later.
-type PlanResources map[ResourceAddress]resource.PropertyMap
+type planResources map[ResourceAddress]resource.PropertyMap
 
 type planConverter struct {
-	finalResources PlanResources
+	finalResources planResources
 }
 
 // extractResourcesFromPlannedValues extracts a list of resources from the planned values.
@@ -61,25 +83,32 @@ func (pc *planConverter) extractResourcesFromPlannedValues(module *tfjson.StateM
 	}
 
 	for _, res := range module.Resources {
-		resourceConfig := resource.PropertyMap{}
-		for attrKey, attrValue := range res.AttributeValues {
-			key := resource.PropertyKey(attrKey)
-			if attrValue != nil {
-				resourceConfig[key] = resource.NewPropertyValue(attrValue)
-				continue
-			}
-			// if it is nil, it means the property is unknown or unset, we don't know which based on this info
-			resourceConfig[key] = resource.MakeComputed(resource.NewStringProperty(""))
-		}
+		resourceConfig := extractPropertyMap(res)
 		pc.finalResources[ResourceAddress(res.Address)] = resourceConfig
 	}
 	return nil
 }
 
-// PulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
-func PulumiResourcesFromTFPlan(plan *tfjson.Plan) (PlanResources, error) {
+// This is not suitable for previews as it will not have unknowns.
+func extractPropertyMap(stateResource *tfjson.StateResource) resource.PropertyMap {
+	resourceConfig := resource.PropertyMap{}
+	// TODO respect stateResource.SensitiveValues
+	for attrKey, attrValue := range stateResource.AttributeValues {
+		key := resource.PropertyKey(attrKey)
+		if attrValue != nil {
+			resourceConfig[key] = resource.NewPropertyValue(attrValue)
+			continue
+		}
+		// if it is nil, it means the property is unknown or unset, we don't know which based on this info
+		resourceConfig[key] = resource.MakeComputed(resource.NewStringProperty(""))
+	}
+	return resourceConfig
+}
+
+// pulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
+func pulumiResourcesFromTFPlan(plan *tfjson.Plan) (planResources, error) {
 	pc := &planConverter{
-		finalResources: PlanResources{},
+		finalResources: planResources{},
 	}
 
 	for _, module := range plan.PlannedValues.RootModule.ChildModules {
