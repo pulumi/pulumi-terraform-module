@@ -69,9 +69,9 @@ type ResourceStateOrPlan struct {
 
 func (sop *ResourceStateOrPlan) Resource() Resource {
 	if sop.State != nil {
-		return sop.Resource()
+		return sop.State
 	}
-	return sop.Resource()
+	return sop.Plan
 }
 
 func (sop *ResourceStateOrPlan) Values() resource.PropertyMap {
