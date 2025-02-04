@@ -205,6 +205,23 @@ func (h *moduleStateHandler) Delete(
 	return &emptypb.Empty{}, nil
 }
 
+func (h *moduleStateHandler) Read(
+	ctx context.Context,
+	req *pulumirpc.ReadRequest,
+) (*pulumirpc.ReadResponse, error) {
+	// Get the current module state
+	// Pass it back to the component
+	// wait for new state and save it
+	oldState := moduleState{}
+	oldState.Unmarshal(req.Properties)
+	h.oldState.fulfill(oldState)
+	newState := h.newState.await()
+	return &pulumirpc.ReadResponse{
+		Id:         req.Id,
+		Properties: newState.Marshal(),
+	}, nil
+}
+
 type promise[T any] struct {
 	wg    sync.WaitGroup
 	value T

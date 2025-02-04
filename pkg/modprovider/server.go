@@ -235,3 +235,31 @@ func (rps *server) Delete(
 		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
 	}
 }
+
+func (rps *server) Read(
+	ctx context.Context,
+	req *pulumirpc.ReadRequest,
+) (*pulumirpc.ReadResponse, error) {
+	if req.Inputs == nil || req.Properties == nil {
+		return nil, fmt.Errorf("Read is only supported as part of Refresh")
+	}
+
+	switch req.GetType() {
+	case string(moduleStateTypeToken(rps.packageName)):
+		return rps.moduleStateHandler.Read(ctx, req)
+	case string(componentTypeToken(rps.packageName, rps.componentTypeName)):
+		// Wait for the current module state
+		// Run TF refresh
+		// Save the new state
+		oldState := rps.moduleStateHandler.AwaitOldState()
+		// TODO Run refresh
+		rps.moduleStateHandler.SetNewState(oldState)
+		return &pulumirpc.ReadResponse{
+			Id:         req.Id,
+			Properties: oldState.Marshal(),
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
+	}
+}
