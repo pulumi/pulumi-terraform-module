@@ -14,19 +14,14 @@
 
 package modprovider
 
-// Reference to a Terraform module, for example "terraform-aws-modules/vpc/aws".
-//
-// Local paths are also supported.
-//
-// See also: https://developer.hashicorp.com/terraform/language/modules/sources
-type TFModuleSource string
+import (
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+)
 
-// Version specification for a Terraform module, for example "5.16.0".
-//
-// May indicate version constraints, or be empty.
-//
-// See also: https://developer.hashicorp.com/terraform/language/modules/syntax#version
-type TFModuleVersion string
+type (
+	TFModuleSource  = tfsandbox.TFModuleSource
+	TFModuleVersion = tfsandbox.TFModuleVersion
+)
 
 // The parameters for the provider identify the Terraform module to specialize to.
 type ParameterizeArgs struct {

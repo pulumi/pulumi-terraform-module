@@ -11,7 +11,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func CreateTFFile(name, source, version, workingDir string, inputs resource.PropertyMap) error {
+// Writes a pulumi.tf.json file in the workingDir that instructs Terraform to call a given module instance.
+func CreateTFFile(
+	name string, // name of the module instance
+	source TFModuleSource,
+	version TFModuleVersion,
+	workingDir string,
+	inputs resource.PropertyMap,
+) error {
 	moduleProps := map[string]interface{}{
 		"source": source,
 	}
