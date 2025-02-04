@@ -1,3 +1,17 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tfsandbox
 
 import (
@@ -61,19 +75,26 @@ func (pc *planConverter) extractResourcesFromPlannedValues(module *tfjson.StateM
 	}
 
 	for _, res := range module.Resources {
-		resourceConfig := resource.PropertyMap{}
-		for attrKey, attrValue := range res.AttributeValues {
-			key := resource.PropertyKey(attrKey)
-			if attrValue != nil {
-				resourceConfig[key] = resource.NewPropertyValue(attrValue)
-				continue
-			}
-			// if it is nil, it means the property is unknown or unset, we don't know which based on this info
-			resourceConfig[key] = resource.MakeComputed(resource.NewStringProperty(""))
-		}
+		resourceConfig := extractPropertyMap(res)
 		pc.finalResources[ResourceAddress(res.Address)] = resourceConfig
 	}
 	return nil
+}
+
+// This is not suitable for previews as it will not have unknowns.
+func extractPropertyMap(stateResource *tfjson.StateResource) resource.PropertyMap {
+	resourceConfig := resource.PropertyMap{}
+	// TODO respect stateResource.SensitiveValues
+	for attrKey, attrValue := range stateResource.AttributeValues {
+		key := resource.PropertyKey(attrKey)
+		if attrValue != nil {
+			resourceConfig[key] = resource.NewPropertyValue(attrValue)
+			continue
+		}
+		// if it is nil, it means the property is unknown or unset, we don't know which based on this info
+		resourceConfig[key] = resource.MakeComputed(resource.NewStringProperty(""))
+	}
+	return resourceConfig
 }
 
 // pulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
