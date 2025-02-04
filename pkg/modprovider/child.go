@@ -198,22 +198,19 @@ func (h *childHandler) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	addr := h.mustParseAddress(req.GetProperties())
-
 	if req.Preview {
-		contract.Assertf(h.plan != nil, "plan has not been computed yet")
-		rplan := MustFindResource(h.plan, addr)
 		return &pulumirpc.CreateResponse{
-			Properties: h.outputsStruct(rplan.PlannedValues()),
+			Properties: h.outputsStruct(childResourceOutputs()),
 		}, nil
 	}
 
+	addr := h.mustParseAddress(req.GetProperties())
 	contract.Assertf(h.state != nil, "state has not been acquired yet")
 	rstate := MustFindResource(h.state, addr)
 
 	return &pulumirpc.CreateResponse{
 		Id:         childResourceID(rstate),
-		Properties: h.outputsStruct(rstate.AttributeValues()),
+		Properties: h.outputsStruct(childResourceOutputs()),
 	}, nil
 }
 
