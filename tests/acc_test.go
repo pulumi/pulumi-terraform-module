@@ -30,7 +30,11 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	pt.CopyToTempDir(t)
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		pt.Preview(t, optpreview.ErrorProgressStreams(os.Stderr))
+		pt.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(os.Stderr),
+			optpreview.ProgressStreams(os.Stdout),
+		)
 	})
 }
 
