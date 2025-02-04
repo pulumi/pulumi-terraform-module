@@ -20,9 +20,9 @@ func TestProcessPlan(t *testing.T) {
 		err = json.Unmarshal(planData, &tfState)
 		assert.NoError(t, err)
 
-		res, err := PulumiResourcesFromTFPlan(tfState)
+		res, err := pulumiResourcesFromTFPlan(tfState)
 		assert.NoError(t, err)
-		autogold.Expect(PlanResources{
+		autogold.Expect(planResources{
 			ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"): resource.PropertyMap{
 				resource.PropertyKey("force_destroy"):       resource.PropertyValue{V: true},
 				resource.PropertyKey("object_lock_enabled"): resource.PropertyValue{V: false},
@@ -59,9 +59,9 @@ func TestProcessPlan(t *testing.T) {
 		err = json.Unmarshal(planData, &tfState)
 		assert.NoError(t, err)
 
-		res, err := PulumiResourcesFromTFPlan(tfState)
+		res, err := pulumiResourcesFromTFPlan(tfState)
 		assert.NoError(t, err)
-		autogold.Expect(PlanResources{
+		autogold.Expect(planResources{
 			ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"): resource.PropertyMap{
 				resource.PropertyKey("acceleration_status"): resource.PropertyValue{V: ""},
 				resource.PropertyKey("acl"): resource.PropertyValue{V: resource.Computed{
@@ -167,9 +167,9 @@ func TestProcessPlan(t *testing.T) {
 		err = json.Unmarshal(planData, &tfState)
 		assert.NoError(t, err)
 
-		res, err := PulumiResourcesFromTFPlan(tfState)
+		res, err := pulumiResourcesFromTFPlan(tfState)
 		assert.NoError(t, err)
-		autogold.Expect(PlanResources{
+		autogold.Expect(planResources{
 			ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"): resource.PropertyMap{
 				resource.PropertyKey("acceleration_status"): resource.PropertyValue{V: ""},
 				resource.PropertyKey("acl"): resource.PropertyValue{V: resource.Computed{

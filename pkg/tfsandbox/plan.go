@@ -76,8 +76,8 @@ func (pc *planConverter) extractResourcesFromPlannedValues(module *tfjson.StateM
 	return nil
 }
 
-// PulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
-func PulumiResourcesFromTFPlan(plan *tfjson.Plan) (planResources, error) {
+// pulumiResourcesFromTFPlan process the Terraform plan and extracts information about the resources
+func pulumiResourcesFromTFPlan(plan *tfjson.Plan) (planResources, error) {
 	pc := &planConverter{
 		finalResources: planResources{},
 	}
