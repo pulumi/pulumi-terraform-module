@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGenerateTerraformAwsModulesTypeScriptSDK(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	pulumiConvert(t, localProviderBinPath,
+		filepath.Join("testdata", "aws-vpc"),
+		"node", // ./testdata/aws-vpc/node folder
+		"typescript")
+}
+
 func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 	testDir := t.TempDir()
