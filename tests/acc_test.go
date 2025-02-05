@@ -11,6 +11,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,13 +31,14 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		opttest.SkipInstall())
 	pt.CopyToTempDir(t)
 
-	t.Run("pulumi preview", func(t *testing.T) {
-		awsConfigured := false
-		for _, envVar := range os.Environ() {
-			if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
-				awsConfigured = true
-			}
+	awsConfigured := false
+	for _, envVar := range os.Environ() {
+		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
+			awsConfigured = true
 		}
+	}
+
+	t.Run("pulumi preview", func(t *testing.T) {
 		if !awsConfigured {
 			t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
 		}
@@ -46,6 +48,23 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			optpreview.ErrorProgressStreams(os.Stderr),
 			optpreview.ProgressStreams(os.Stdout),
 		)
+	})
+
+	t.Run("pulumi up", func(t *testing.T) {
+		if !awsConfigured {
+			t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
+		}
+
+		res := pt.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		// TODO: this is not quite correct, since the children are not included in the summary
+		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{"create": 3})
+
+		stack := pt.ExportStack(t)
+		t.Logf("deployment: %s", stack.Deployment)
 	})
 }
 

@@ -78,23 +78,22 @@ func NewModuleComponentResource(
 		stateStore.SetNewState(state)
 	}()
 
+	tf, err := tfsandbox.NewTofu(ctx.Context())
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
+
+	err = tfsandbox.CreateTFFile("mymodule", tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
+	if err != nil {
+		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+	}
+
+	err = tf.Init(ctx.Context())
+	if err != nil {
+		return nil, fmt.Errorf("Init failed: %w", err)
+	}
+
 	if ctx.DryRun() {
-		tf, err := tfsandbox.NewTofu(ctx.Context())
-		if err != nil {
-			return nil, fmt.Errorf("Sandbox construction failed: %w", err)
-		}
-		contract.AssertNoErrorf(err, "NewTofu failed")
-
-		err = tfsandbox.CreateTFFile("mymodule", tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
-		if err != nil {
-			return nil, fmt.Errorf("Seed file generation failed: %w", err)
-		}
-
-		err = tf.Init(ctx.Context())
-		if err != nil {
-			return nil, fmt.Errorf("Init failed: %w", err)
-		}
-
 		plan, err := tf.Plan(ctx.Context())
 		if err != nil {
 			return nil, fmt.Errorf("Plan failed: %w", err)
@@ -112,9 +111,14 @@ func NewModuleComponentResource(
 		}
 	} else {
 		// Running pulumi up
-
-		// TODO perform terraform apply
-
+		tfState, err := tf.Apply(ctx.Context())
+		if err != nil {
+			return nil, fmt.Errorf("Apply failed: %w", err)
+		}
+		state = moduleState{
+			rawState: tfState.RawState(),
+		}
+		// TODO: children
 	}
 
 	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {
