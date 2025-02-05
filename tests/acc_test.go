@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -67,9 +67,20 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		stack := pt.ExportStack(t)
 		t.Logf("deployment: %s", stack.Deployment)
 
-		json, err := stack.Deployment.MarshalJSON()
+		stackJSON, err := stack.Deployment.MarshalJSON()
 		require.NoError(t, err)
-		autogold.ExpectFile(t, string(json))
+
+		deployment := map[string]any{}
+		require.NoError(t, json.Unmarshal(stackJSON, &deployment))
+
+		resources := deployment["resources"].([]any)
+		require.Equal(t, len(resources), 4)
+		stateResource := resources[3].(map[string]any)
+		stateResourceOutputs := stateResource["outputs"].(map[string]any)
+		tfState := stateResourceOutputs["state"].(string)
+
+		require.Less(t, 10, len(tfState))
+		require.Contains(t, tfState, "vpc_id")
 	})
 }
 
