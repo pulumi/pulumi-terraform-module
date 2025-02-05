@@ -38,9 +38,11 @@ jobs:
         uses: pulumi/git-status-check-action@v1
         with:
           # Keep these in sync with the Renovate step below to avoid them getting checked in.
+          # TODO[pulumi/pulumi-terraform-module-provider#79] unwanted file generated
           allowed-changes: |
             **/pulumi-plugin.json
             **/*.csproj
             **/pulumiUtilities.go
             **/package.json
             **/pyproject.toml
+            **/schema-terraform-module-provider.json
