@@ -274,3 +274,7 @@ func (s *testResourceMonitorServer) RegisterResourceOutputs(
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
+
+func TestIsChildResourceType(t *testing.T) {
+	require.True(t, isChildResourceType("terraform-aws-modules:tf:aws_s3_bucket"))
+}

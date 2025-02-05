@@ -30,7 +30,8 @@ func TestTofuPlan(t *testing.T) {
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 	ctx := context.Background()
 
-	err = CreateTFFile("test", path.Join(getCwd(t), "testdata", "modules", "test_module"), "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
+	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputVar": "test",
 	}))
 	assert.NoErrorf(t, err, "error creating tf file")
@@ -52,7 +53,8 @@ func TestTofuApply(t *testing.T) {
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 	ctx := context.Background()
 
-	err = CreateTFFile("test", path.Join(getCwd(t), "testdata", "modules", "test_module"), "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
+	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputVar": "test",
 	}))
 	assert.NoErrorf(t, err, "error creating tf file")

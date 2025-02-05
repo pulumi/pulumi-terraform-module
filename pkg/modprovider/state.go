@@ -105,6 +105,7 @@ func newModuleStateResource(
 	args := &moduleStateResourceArgs{}
 	var resource moduleStateResource
 	tok := moduleStateTypeToken(pkgName)
+	// TODO[pulumi/pulumi-terraform-module-protovider#56] use RegisterPackageResource
 	err := ctx.RegisterResource(string(tok), moduleStateResourceName, args, &resource, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)
