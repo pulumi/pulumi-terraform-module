@@ -1,0 +1,63 @@
+`{
+        "manifest": {
+            "time": "2025-02-05T15:59:13.864768+02:00",
+            "magic": "6eab39818ce1c1d200133d5ea19e1dce4da966b3329e75da6a5c9e690b230a34",
+            "version": "v3.148.0"
+        },
+        "secrets_providers": {
+            "type": "passphrase",
+            "state": {
+                "salt": "v1:8RqS+ZwtQmE=:v1:rgNp8I/r3tfR4OuS:ifeO00aZ31n1xKuTEqg63tChRn6zEA=="
+            }
+        },
+        "resources": [
+            {
+                "urn": "urn:pulumi:test::aws-vpc::pulumi:pulumi:Stack::aws-vpc-test",
+                "custom": false,
+                "type": "pulumi:pulumi:Stack",
+                "created": "2025-02-05T13:58:28.549864Z",
+                "modified": "2025-02-05T13:58:28.549864Z",
+                "sourcePosition": "project:///node_modules/@pulumi/runtime/stack.ts#38,23"
+            },
+            {
+                "urn": "urn:pulumi:test::aws-vpc::pulumi:providers:terraform-aws-modules::default_5_18_1",
+                "custom": true,
+                "id": "d3366db8-d413-425b-be40-60e74c3c470b",
+                "type": "pulumi:providers:terraform-aws-modules",
+                "inputs": {
+                    "__internal": {
+                        "name": "terraform-module-provider",
+                        "parameterization": "ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIKfQ==",
+                        "version": "0.0.1"
+                    },
+                    "version": "5.18.1"
+                },
+                "outputs": {
+                    "version": "5.18.1"
+                },
+                "created": "2025-02-05T13:58:28.91942Z",
+                "modified": "2025-02-05T13:58:28.91942Z"
+            },
+            {
+                "urn": "urn:pulumi:test::aws-vpc::terraform-aws-modules:index:Vpc::vpc",
+                "custom": false,
+                "type": "terraform-aws-modules:index:Vpc",
+                "created": "2025-02-05T13:58:28.92268Z",
+                "modified": "2025-02-05T13:58:28.92268Z"
+            },
+            {
+                "urn": "urn:pulumi:test::aws-vpc::terraform-aws-modules:index:Vpc$terraform-aws-modules:index:ModuleState::moduleState",
+                "custom": true,
+                "id": "moduleStateResource",
+                "type": "terraform-aws-modules:index:ModuleState",
+                "outputs": {
+                    "state": "null"
+                },
+                "parent": "urn:pulumi:test::aws-vpc::terraform-aws-modules:index:Vpc::vpc",
+                "provider": "urn:pulumi:test::aws-vpc::pulumi:providers:terraform-aws-modules::default_5_18_1::d3366db8-d413-425b-be40-60e74c3c470b",
+                "created": "2025-02-05T13:59:13.840772Z",
+                "modified": "2025-02-05T13:59:13.840772Z"
+            }
+        ],
+        "metadata": {}
+    }`
