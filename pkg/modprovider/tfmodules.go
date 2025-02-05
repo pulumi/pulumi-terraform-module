@@ -180,8 +180,13 @@ func isVariableReference(expr hcl.Expression) (string, bool) {
 	return "", false
 }
 
-func InferModuleSchema(packageName packageName, mod TFModuleSource, ver TFModuleVersion) (*InferredModuleSchema, error) {
-	module, err := extractModuleContent(mod, ver)
+func InferModuleSchema(
+	ctx context.Context,
+	packageName packageName,
+	mod TFModuleSource,
+	ver TFModuleVersion,
+) (*InferredModuleSchema, error) {
+	module, err := extractModuleContent(ctx, mod, ver)
 	if err != nil {
 		return nil, err
 	}
@@ -207,9 +212,7 @@ func InferModuleSchema(packageName packageName, mod TFModuleSource, ver TFModule
 	}
 
 	for outputName, output := range module.Outputs {
-		// TODO: handle proper output types
-		// right now we are using basic heuristics based on the shape of the ouput value expression
-		// but it is not always correct
+		// TODO[pulumi/pulumi-terraform-module-provider#70] reconsider output type inference vs config
 		var inferredType schema.TypeSpec
 		if referencedVariableName, ok := isVariableReference(output.Expr); ok {
 			inferredType = inferredModuleSchema.Inputs[referencedVariableName].TypeSpec
@@ -227,7 +230,11 @@ func InferModuleSchema(packageName packageName, mod TFModuleSource, ver TFModule
 	return inferredModuleSchema, nil
 }
 
-func extractModuleContent(packageRemoteSource TFModuleSource, version TFModuleVersion) (*configs.Module, error) {
+func extractModuleContent(
+	ctx context.Context,
+	packageRemoteSource TFModuleSource,
+	version TFModuleVersion,
+) (*configs.Module, error) {
 	fetcher := getmodules.NewPackageFetcher()
 	tempPath, err := os.MkdirTemp("", "pulumi-tf-modules")
 	if err != nil {
@@ -249,7 +256,7 @@ func extractModuleContent(packageRemoteSource TFModuleSource, version TFModuleVe
 	services := disco.NewWithCredentialsSource(nil)
 	reg := registry.NewClient(services, nil)
 	regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(moduleSource.Package)
-	versionsResponse, err := reg.ModuleVersions(context.TODO(), regsrcAddr)
+	versionsResponse, err := reg.ModuleVersions(ctx, regsrcAddr)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching module versions for %s: %w", packageRemoteSource, err)
 	}
@@ -260,7 +267,7 @@ func extractModuleContent(packageRemoteSource TFModuleSource, version TFModuleVe
 
 	moduleVersionFound := false
 	for _, moduleVersion := range versionsResponse.Modules[0].Versions {
-		// TODO what about version ranges in TFModuleVersion?
+		// TODO[pulumi/pulumi-terraform-module-provider#50] TFModuleVersion may have ranges
 		if moduleVersion.Version == string(version) {
 			moduleVersionFound = true
 			break
@@ -271,7 +278,7 @@ func extractModuleContent(packageRemoteSource TFModuleSource, version TFModuleVe
 		return nil, fmt.Errorf("module %s version %s not found on the registry", packageRemoteSource, version)
 	}
 
-	realModuleAddress, err := reg.ModuleLocation(context.TODO(), regsrcAddr, string(version))
+	realModuleAddress, err := reg.ModuleLocation(ctx, regsrcAddr, string(version))
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching module location for %s version %s: %w", packageRemoteSource, version, err)
 	}
@@ -282,7 +289,7 @@ func extractModuleContent(packageRemoteSource TFModuleSource, version TFModuleVe
 		return nil, fmt.Errorf("error while parsing module source %s: %w", packageMain, err)
 	}
 
-	err = fetcher.FetchPackage(context.TODO(), installationPath, realModuleAddress)
+	err = fetcher.FetchPackage(ctx, installationPath, realModuleAddress)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching module: %w", err)
 	}

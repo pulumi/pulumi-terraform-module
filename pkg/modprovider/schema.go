@@ -15,6 +15,7 @@
 package modprovider
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -28,7 +29,7 @@ import (
 // for example terraform-aws-modules/vpc/aws -> terraform-aws-modules, Vpc
 // where terraform-aws-modules is the package name and Vpc is the resource
 func packageNameAndMainResourceName(packageSource TFModuleSource) (packageName, componentTypeName, error) {
-	// TODO account for many kinds of TFModuleSource such as local sources.
+	// TODO[pulumi/pulumi-terraform-module-provider#50] account every kind of TFModuleSource
 	parts := strings.Split(string(packageSource), "/")
 	// package-name/module-name/target
 	if len(parts) == 3 {
@@ -43,14 +44,15 @@ func packageNameAndMainResourceName(packageSource TFModuleSource) (packageName, 
 	return "", "", fmt.Errorf("unable to infer package and resource name from '%s'", packageSource)
 }
 
-// TODO this can get more complicated if versionSpec is a range and not a precise version.
+// TODO[pulumi/pulumi-terraform-module-provider#50] this can get more complicated if versionSpec is a range and not a
+// precise version.
 func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 	return packageVersion(versionSpec)
 }
 
 // sandbox will be available and having run `terraform init` it will have resolved and downloaded the module sources.
 // The code will need to run input/output schema inference for these sources to compute an appropriate PackageSpec.
-func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
+func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
 	pkgVer := inferPackageVersion(pargs.TFModuleVersion)
 	packageName, resourceName, err := packageNameAndMainResourceName(pargs.TFModuleSource)
 	if err != nil {
@@ -58,7 +60,7 @@ func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, e
 			pargs.TFModuleSource, err)
 	}
 
-	inferredModule, err := InferModuleSchema(packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
+	inferredModule, err := InferModuleSchema(ctx, packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring module schema for %s@%s: %w",
 			pargs.TFModuleSource, pargs.TFModuleVersion, err)

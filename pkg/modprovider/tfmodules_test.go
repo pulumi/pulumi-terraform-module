@@ -1,6 +1,7 @@
 package modprovider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -8,14 +9,16 @@ import (
 )
 
 func TestExtractModuleContentWorks(t *testing.T) {
-	awsVpc, err := extractModuleContent("terraform-aws-modules/vpc/aws", "5.18.1")
+	ctx := context.Background()
+	awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1")
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
 }
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
+	ctx := context.Background()
 	packageName := packageName("terraform-aws-modules")
-	awsVpcSchema, err := InferModuleSchema(packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
+	awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 	// verify a sample of the inputs with different inferred types
