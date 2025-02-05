@@ -46,3 +46,4 @@ jobs:
             **/package.json
             **/pyproject.toml
             **/schema-terraform-module-provider.json
+            **/pom.xml
