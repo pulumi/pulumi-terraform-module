@@ -186,5 +186,6 @@ func newState(rawState *tfjson.State) *State {
 				}
 			},
 		},
+		rawState: rawState,
 	}
 }
