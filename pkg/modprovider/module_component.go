@@ -57,14 +57,9 @@ func NewModuleComponentResource(
 		_, err := newModuleStateResource(ctx,
 			pkgName,
 			pulumi.Parent(&component),
-			// TODO ideally we could use pulumi.Provider/s option here instead to point to self. It is
-			// really important that this resource is registered against the same provider instance as is
-			// currently executing. If that does not happen, or if Version is omitted, Pulumi starts trying
-			// to install the wrong combination of packageName, Version()=0.0.1 that does not exist.
-			//
-			// Leaving the Version workaround for now.
-			//
-			// Need to test if this works if pkgVer is empty.
+
+			// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
+			// RegisterPackageResource ideally
 			pulumi.Version(string(pkgVer)),
 		)
 
@@ -104,6 +99,9 @@ func NewModuleComponentResource(
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
 			_, err := newChildResource(ctx, pkgName, rp,
 				pulumi.Parent(&component),
+
+				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
+				// RegisterPackageResource ideally
 				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
 		})
