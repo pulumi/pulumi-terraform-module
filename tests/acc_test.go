@@ -38,25 +38,26 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 
 	t.Run("python", func(t *testing.T) {
 		d := dest("python")
-		t.Skip("TODO auto-installing global Python deps makes this fail")
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#76] auto-installing global Python deps makes this fail")
 		pulumiConvert(t, localProviderBinPath, example, d, "python", generateOnly)
 	})
 
 	t.Run("dotnet", func(t *testing.T) {
 		d := dest("dotnet")
-		t.Skip("TODO the generated project is missing the SDK and is not buildable")
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#77] the generated project is missing the SDK and is not buildable")
 		pulumiConvert(t, localProviderBinPath, example, d, "dotnet", generateOnly)
 	})
 
 	t.Run("go", func(t *testing.T) {
 		d := dest("go")
-		t.Skip("TODO currently failing with failed to link SDK to project")
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#78] pulumi convert fails when generating a Go SDK")
 		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
 	})
 
 	t.Run("java", func(t *testing.T) {
 		d := dest("java")
-		t.Skip("TODO generated code does not compile")
+		// Note that pulumi convert prints instructions how to make the result compile.
+		// They are not yet entirely accurate, and we do not yet attemt to compile the result.
 		pulumiConvert(t, localProviderBinPath, example, d, "java", generateOnly)
 	})
 }
