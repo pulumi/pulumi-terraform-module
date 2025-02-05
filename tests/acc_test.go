@@ -32,17 +32,8 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		opttest.SkipInstall())
 	pt.CopyToTempDir(t)
 
-	awsConfigured := false
-	for _, envVar := range os.Environ() {
-		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
-			awsConfigured = true
-		}
-	}
-
 	t.Run("pulumi preview", func(t *testing.T) {
-		if !awsConfigured {
-			t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
-		}
+		skipLocalRunsWithoutCreds(t)
 
 		pt.Preview(t,
 			optpreview.Diff(),
@@ -52,9 +43,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
-		if !awsConfigured {
-			t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
-		}
+		skipLocalRunsWithoutCreds(t)
 
 		res := pt.Up(t,
 			optup.ErrorProgressStreams(os.Stderr),
@@ -126,5 +115,22 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("failed to run pulumi convert: %v\n%s", err, out)
+	}
+}
+
+// Skip the test if it is being run locally without cloud credentials being configured.
+func skipLocalRunsWithoutCreds(t *testing.T) {
+	if _, ci := os.LookupEnv("CI"); ci {
+		return // never skip when in CI
+	}
+
+	awsConfigured := false
+	for _, envVar := range os.Environ() {
+		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
+			awsConfigured = true
+		}
+	}
+	if !awsConfigured {
+		t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
 	}
 }

@@ -115,7 +115,7 @@ func (s *server) GetSchema(
 	if s.params == nil {
 		return nil, fmt.Errorf("Expected Parameterize() call before a GetSchema() call to set parameters")
 	}
-	spec, err := inferPulumiSchemaForModule(s.params)
+	spec, err := inferPulumiSchemaForModule(ctx, s.params)
 	if err != nil {
 		return nil, err
 	}

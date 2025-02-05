@@ -52,8 +52,7 @@ func newChildResource(
 	inputs := childResourceInputs(sop.GetResource().Address(), sop.Values())
 	t := childResourceTypeToken(pkgName, sop.GetResource().Type())
 	name := childResourceName(sop.GetResource())
-	// TODO this should be RegisterPackageResource
-	// If not RegisterPackageResource it needs the Version workaround.
+	// TODO[pulumi/pulumi-terraform-module-protovider#56] Use RegisterPackageResource
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, inputs)
 	err := ctx.RegisterResource(string(t), name, inputsMap, &resource, opts...)
 	if err != nil {
