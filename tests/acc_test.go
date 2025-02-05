@@ -88,6 +88,10 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 
 // Skip the test if it is being run locally without cloud credentials being configured.
 func skipLocalRunsWithoutCreds(t *testing.T) {
+	if _, ci := os.LookupEnv("CI"); ci {
+		return // never skip when in CI
+	}
+
 	awsConfigured := false
 	for _, envVar := range os.Environ() {
 		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
