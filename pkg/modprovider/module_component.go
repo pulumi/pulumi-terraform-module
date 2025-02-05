@@ -111,13 +111,12 @@ func NewModuleComponentResource(
 		}
 	} else {
 		// Running pulumi up
+		// TODO: old state
 		tfState, err := tf.Apply(ctx.Context())
 		if err != nil {
 			return nil, fmt.Errorf("Apply failed: %w", err)
 		}
-		state = moduleState{
-			rawState: tfState.RawState(),
-		}
+		state.rawState = tfState.RawState()
 		// TODO: children
 	}
 
