@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,6 +40,36 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			optpreview.ErrorProgressStreams(os.Stderr),
 			optpreview.ProgressStreams(os.Stdout),
 		)
+	})
+
+	t.Run("pulumi up", func(t *testing.T) {
+		skipLocalRunsWithoutCreds(t)
+
+		res := pt.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		// TODO: this is not quite correct, since the children are not included in the summary
+		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{"create": 3})
+
+		stack := pt.ExportStack(t)
+		t.Logf("deployment: %s", stack.Deployment)
+
+		stackJSON, err := stack.Deployment.MarshalJSON()
+		require.NoError(t, err)
+
+		deployment := map[string]any{}
+		require.NoError(t, json.Unmarshal(stackJSON, &deployment))
+
+		resources := deployment["resources"].([]any)
+		require.Equal(t, len(resources), 4)
+		stateResource := resources[3].(map[string]any)
+		stateResourceOutputs := stateResource["outputs"].(map[string]any)
+		tfState := stateResourceOutputs["state"].(string)
+
+		require.Less(t, 10, len(tfState))
+		require.Contains(t, tfState, "vpc_id")
 	})
 }
 
