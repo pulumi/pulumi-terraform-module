@@ -33,3 +33,14 @@ jobs:
         run: make build
       - name: Test
         run: make test
+      - name: Check worktree clean
+        id: worktreeClean
+        uses: pulumi/git-status-check-action@v1
+        with:
+          # Keep these in sync with the Renovate step below to avoid them getting checked in.
+          allowed-changes: |
+            **/pulumi-plugin.json
+            **/*.csproj
+            **/pulumiUtilities.go
+            **/package.json
+            **/pyproject.toml
