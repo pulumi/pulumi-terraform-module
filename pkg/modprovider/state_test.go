@@ -25,40 +25,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateModuleSavesModuleState(t *testing.T) {
-	s := &testResourceMonitorServer{
-		t:     t,
-		proj:  "myproj",
-		stack: "mystack",
-		params: &ParameterizeArgs{
-			TFModuleSource:  "terraform-aws-modules/vpc/aws",
-			TFModuleVersion: "5.16.0",
-		},
-	}
-	checkModuleStateIsSaved(t, s)
+func TestSavingModuleState(t *testing.T) {
+	t.Parallel()
+
+	var realisticState []byte
+
+	t.Run("create", func(t *testing.T) {
+		s := &testResourceMonitorServer{
+			t:     t,
+			proj:  "myproj",
+			stack: "mystack",
+			params: &ParameterizeArgs{
+				TFModuleSource:  "terraform-aws-modules/vpc/aws",
+				TFModuleVersion: "5.16.0",
+			},
+		}
+		realisticState = checkModuleStateIsSaved(t, s)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		s := &testResourceMonitorServer{
+			t:     t,
+			proj:  "myproj",
+			stack: "mystack",
+			params: &ParameterizeArgs{
+				TFModuleSource:  "terraform-aws-modules/vpc/aws",
+				TFModuleVersion: "5.16.0",
+			},
+			oldModuleState: &pulumirpc.RegisterResourceResponse{
+				Urn:    "",
+				Id:     moduleStateResourceId,
+				Object: (&moduleState{rawState: realisticState}).Marshal(),
+			},
+		}
+		checkModuleStateIsSaved(t, s)
+	})
 }
 
-func TestUpdateModuleSavesModuleState(t *testing.T) {
-	st := moduleState{rawState: []byte(`rawState`)}
-
-	s := &testResourceMonitorServer{
-		t:     t,
-		proj:  "myproj",
-		stack: "mystack",
-		params: &ParameterizeArgs{
-			TFModuleSource:  "terraform-aws-modules/vpc/aws",
-			TFModuleVersion: "5.16.0",
-		},
-		oldModuleState: &pulumirpc.RegisterResourceResponse{
-			Urn:    "",
-			Id:     moduleStateResourceId,
-			Object: st.Marshal(),
-		},
-	}
-	checkModuleStateIsSaved(t, s)
-}
-
-func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
+func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte {
 	ctx := context.Background()
 	resmonPath := startResourceMonitorServer(t, s)
 	hostClient, err := provider.NewHostClient(resmonPath)
@@ -98,6 +102,8 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 	// Verify that ModuleState resource is allocated with some state.
 	mstate := s.FindResourceByName(moduleStateResourceName)
 	props := mstate.Object.AsMap()
-	_, gotState := props["state"]
+	state, gotState := props["state"]
+	t.Logf("state: %s", state)
 	assert.Truef(t, gotState, "Expected %q to register a state argument", moduleStateResourceName)
+	return []byte(state.(string))
 }
