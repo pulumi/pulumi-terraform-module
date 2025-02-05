@@ -88,7 +88,13 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("Init failed: %w", err)
 	}
 
+	err = tf.PushState(ctx.Context(), state.rawState)
+	if err != nil {
+		return nil, fmt.Errorf("PushState failed: %w", err)
+	}
+
 	if ctx.DryRun() {
+		// DryRun() = true corresponds to running pulumi preview
 		plan, err := tf.Plan(ctx.Context())
 		if err != nil {
 			return nil, fmt.Errorf("Plan failed: %w", err)
@@ -108,15 +114,20 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 	} else {
-		// Running pulumi up
-		// TODO: old state
-		tfState, err := tf.Apply(ctx.Context())
+		// DryRun() = false corresponds to running pulumi up
+		_, err := tf.Apply(ctx.Context())
 		if err != nil {
 			return nil, fmt.Errorf("Apply failed: %w", err)
 		}
-		state.rawState = tfState.RawState()
-		// TODO: children
 
+		rawState, ok, err := tf.PullState(ctx.Context())
+		if err != nil {
+			return nil, fmt.Errorf("PullState failed: %w", err)
+		}
+		if !ok {
+			return nil, errors.New("PullState did not find state")
+		}
+		state.rawState = rawState
 	}
 
 	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {

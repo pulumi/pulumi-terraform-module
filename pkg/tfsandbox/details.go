@@ -15,8 +15,6 @@
 package tfsandbox
 
 import (
-	"encoding/json"
-
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -164,12 +162,6 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 type State struct {
 	Resources[*ResourceState]
 	rawState *tfjson.State
-}
-
-func (s *State) RawState() []byte {
-	rawState, err := json.Marshal(s.rawState)
-	contract.AssertNoErrorf(err, "failed to marshal raw state")
-	return rawState
 }
 
 func newState(rawState *tfjson.State) (*State, error) {
