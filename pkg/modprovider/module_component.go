@@ -78,7 +78,6 @@ func NewModuleComponentResource(
 		if err != nil {
 			return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 		}
-		contract.AssertNoErrorf(err, "NewTofu failed")
 
 		err = tfsandbox.CreateTFFile("mymodule", tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
 		if err != nil {
