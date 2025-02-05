@@ -28,3 +28,5 @@ bin
 .envrc
 
 tests/testdata/**/package-lock.json
+tests/testdata/**/build/lib
+tests/testdata/**/*.egg-info

@@ -1,0 +1,3 @@
+sdks/terraform-aws-modules
+pulumi-terraform-aws-modules==5.18.1
+pulumi>=3.0.0,<4.0.0
