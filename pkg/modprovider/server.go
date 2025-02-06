@@ -217,10 +217,24 @@ func (rps *server) Construct(
 		ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
 		switch typ {
 		case string(ctok):
+			// TODO promises are insufficient for multiple instances.
+			stateChan := make(chan State)
+			planChan := make(chan Plan)
+
+			go func() {
+				state := <-stateChan
+				rps.childHandler.SetState(state)
+			}()
+
+			go func() {
+				plan := <-planChan
+				rps.childHandler.SetPlan(plan)
+			}()
+
 			component, err := NewModuleComponentResource(ctx,
 				rps.stateStore,
-				nil, // TODO
-				nil, // TODO
+				planChan,
+				stateChan,
 				rps.packageName,
 				rps.packageVersion,
 				rps.componentTypeName,

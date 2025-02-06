@@ -125,21 +125,24 @@ func childResourceInputs(addr ResourceAddress, inputs resource.PropertyMap) reso
 
 // The implementation of the ChildResource life cycle.
 type childHandler struct {
-	plan  Plan
-	state State
+	planPromise  *promise[Plan]
+	statePromise *promise[State]
 }
 
 // The caller should call [SetPlan] and [SetState] when this information is available.
 func newChildHandler() *childHandler {
-	return &childHandler{}
+	return &childHandler{
+		planPromise:  newPromise[Plan](),
+		statePromise: newPromise[State](),
+	}
 }
 
 func (h *childHandler) SetPlan(plan Plan) {
-	h.plan = plan
+	h.planPromise.fulfill(plan)
 }
 
-func (h *childHandler) SetState1(state State) {
-	h.state = state
+func (h *childHandler) SetState(state State) {
+	h.statePromise.fulfill(state)
 }
 
 func (h *childHandler) Check(
@@ -164,9 +167,10 @@ func (h *childHandler) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+	plan := h.planPromise.await()
 	addr := h.mustParseAddress(req.GetNews())
-	contract.Assertf(h.plan != nil, "plan has not been computed yet")
-	stateOrPlan, ok := h.plan.FindResourceStateOrPlan(addr)
+	contract.Assertf(plan != nil, "plan cannot be nil")
+	stateOrPlan, ok := plan.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find plan for %q", addr)
 	rplan, ok := stateOrPlan.(ResourcePlan)
 	contract.Assertf(ok, "failed to cast plan for %q", addr)
@@ -217,9 +221,10 @@ func (h *childHandler) Create(
 		}, nil
 	}
 
+	state := h.statePromise.await()
 	addr := h.mustParseAddress(req.GetProperties())
-	contract.Assertf(h.state != nil, "state has not been acquired yet")
-	stateOrPlan, ok := h.state.FindResourceStateOrPlan(addr)
+	contract.Assertf(state != nil, "state cannot be nil")
+	stateOrPlan, ok := state.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find state for %q", addr)
 	rstate, ok := stateOrPlan.(ResourceState)
 	contract.Assertf(ok, "failed to cast state for %q", addr)
@@ -237,9 +242,10 @@ func (h *childHandler) Update(
 	addr := h.mustParseAddress(req.GetNews())
 
 	if req.Preview {
-		contract.Assertf(h.plan != nil, "plan has not been computed yet")
+		plan := h.planPromise.await()
+		contract.Assertf(plan != nil, "plan has not been computed yet")
 
-		stateOrPlan, ok := h.plan.FindResourceStateOrPlan(addr)
+		stateOrPlan, ok := plan.FindResourceStateOrPlan(addr)
 		contract.Assertf(ok, "failed to find plan for %q", addr)
 		rplan, ok := stateOrPlan.(ResourcePlan)
 		contract.Assertf(ok, "failed to cast plan for %q", addr)
@@ -249,9 +255,10 @@ func (h *childHandler) Update(
 		}, nil
 	}
 
-	contract.Assertf(h.state != nil, "state has not been acquired yet")
+	state := h.statePromise.await()
+	contract.Assertf(state != nil, "state has not been acquired yet")
 
-	stateOrPlan, ok := h.state.FindResourceStateOrPlan(addr)
+	stateOrPlan, ok := state.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find state for %q", addr)
 	rstate, ok := stateOrPlan.(ResourceState)
 	contract.Assertf(ok, "failed to cast state for %q", addr)

@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -204,35 +203,4 @@ func (h *moduleStateHandler) Delete(
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
-}
-
-type promise[T any] struct {
-	wg    sync.WaitGroup
-	value T
-}
-
-func newPromise[T any]() *promise[T] {
-	p := promise[T]{wg: sync.WaitGroup{}}
-	p.wg.Add(1)
-	return &p
-}
-
-func goPromise[T any](create func() T) *promise[T] {
-	p := newPromise[T]()
-	go func() {
-		value := create()
-		p.fulfill(value)
-	}()
-	return p
-}
-
-// Must be called only once, will panic if called twice.
-func (p *promise[T]) fulfill(value T) {
-	p.value = value
-	p.wg.Done() // this panics if called twice
-}
-
-func (p *promise[T]) await() T {
-	p.wg.Wait() // could add timeouts here
-	return p.value
 }

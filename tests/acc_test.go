@@ -61,7 +61,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		)
 
 		autogold.Expect(&map[string]int{
-			"create": 3,
+			"create": 4,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
 		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
