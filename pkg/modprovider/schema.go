@@ -25,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// TODO[pulumi/pulumi-terraform-module-provider#89] the heuristics here are not well-founded.
+//
 // packageNameAndMainResourceName returns the name of the package to be generated
 // and the name of the only resource the package will have
 // for example terraform-aws-modules/vpc/aws -> terraform-aws-modules, Vpc
