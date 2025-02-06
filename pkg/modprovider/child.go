@@ -125,8 +125,8 @@ func childResourceInputs(addr ResourceAddress, inputs resource.PropertyMap) reso
 
 // The implementation of the ChildResource life cycle.
 type childHandler struct {
-	plan  Plan[ResourcePlan]
-	state State[ResourceState]
+	plan  Plan
+	state State
 }
 
 // The caller should call [SetPlan] and [SetState] when this information is available.
@@ -134,11 +134,11 @@ func newChildHandler() *childHandler {
 	return &childHandler{}
 }
 
-func (h *childHandler) SetPlan(plan Plan[ResourcePlan]) {
+func (h *childHandler) SetPlan(plan Plan) {
 	h.plan = plan
 }
 
-func (h *childHandler) SetState(state State[ResourceState]) {
+func (h *childHandler) SetState1(state State) {
 	h.state = state
 }
 
@@ -166,8 +166,10 @@ func (h *childHandler) Diff(
 ) (*pulumirpc.DiffResponse, error) {
 	addr := h.mustParseAddress(req.GetNews())
 	contract.Assertf(h.plan != nil, "plan has not been computed yet")
-	rplan, ok := h.plan.FindResource(addr)
+	stateOrPlan, ok := h.plan.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find plan for %q", addr)
+	rplan, ok := stateOrPlan.(ResourcePlan)
+	contract.Assertf(ok, "failed to cast plan for %q", addr)
 	resp := &pulumirpc.DiffResponse{}
 	switch rplan.ChangeKind() {
 	case tfsandbox.NoOp:
@@ -217,8 +219,10 @@ func (h *childHandler) Create(
 
 	addr := h.mustParseAddress(req.GetProperties())
 	contract.Assertf(h.state != nil, "state has not been acquired yet")
-	rstate, ok := h.state.FindResource(addr)
+	stateOrPlan, ok := h.state.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find state for %q", addr)
+	rstate, ok := stateOrPlan.(ResourceState)
+	contract.Assertf(ok, "failed to cast state for %q", addr)
 
 	return &pulumirpc.CreateResponse{
 		Id:         childResourceID(rstate),
@@ -235,8 +239,10 @@ func (h *childHandler) Update(
 	if req.Preview {
 		contract.Assertf(h.plan != nil, "plan has not been computed yet")
 
-		rplan, ok := h.plan.FindResource(addr)
+		stateOrPlan, ok := h.plan.FindResourceStateOrPlan(addr)
 		contract.Assertf(ok, "failed to find plan for %q", addr)
+		rplan, ok := stateOrPlan.(ResourcePlan)
+		contract.Assertf(ok, "failed to cast plan for %q", addr)
 
 		return &pulumirpc.UpdateResponse{
 			Properties: h.outputsStruct(rplan.PlannedValues()),
@@ -245,8 +251,10 @@ func (h *childHandler) Update(
 
 	contract.Assertf(h.state != nil, "state has not been acquired yet")
 
-	rstate, ok := h.state.FindResource(addr)
+	stateOrPlan, ok := h.state.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find state for %q", addr)
+	rstate, ok := stateOrPlan.(ResourceState)
+	contract.Assertf(ok, "failed to cast state for %q", addr)
 
 	return &pulumirpc.UpdateResponse{
 		Properties: h.outputsStruct(rstate.AttributeValues()),

@@ -38,6 +38,7 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 		hostClient:         hostClient,
 		stateStore:         moduleStateHandler,
 		moduleStateHandler: moduleStateHandler,
+		childHandler:       newChildHandler(),
 	}
 	return srv, nil
 }
@@ -218,6 +219,8 @@ func (rps *server) Construct(
 		case string(ctok):
 			component, err := NewModuleComponentResource(ctx,
 				rps.stateStore,
+				nil, // TODO
+				nil, // TODO
 				rps.packageName,
 				rps.packageVersion,
 				rps.componentTypeName,

@@ -37,6 +37,8 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 func NewModuleComponentResource(
 	ctx *pulumi.Context,
 	stateStore moduleStateStore,
+	planChan chan<- Plan,
+	stateChan chan<- State,
 	pkgName packageName,
 	pkgVer packageVersion,
 	compTypeName componentTypeName,
@@ -100,6 +102,8 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Plan failed: %w", err)
 		}
 
+		planChan <- plan
+
 		var errs []error
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
 			_, err := newChildResource(ctx, pkgName, rp,
@@ -115,10 +119,12 @@ func NewModuleComponentResource(
 		}
 	} else {
 		// DryRun() = false corresponds to running pulumi up
-		_, err := tf.Apply(ctx.Context())
+		tfState, err := tf.Apply(ctx.Context())
 		if err != nil {
 			return nil, fmt.Errorf("Apply failed: %w", err)
 		}
+
+		stateChan <- tfState
 
 		rawState, ok, err := tf.PullState(ctx.Context())
 		if err != nil {
@@ -128,6 +134,20 @@ func NewModuleComponentResource(
 			return nil, errors.New("PullState did not find state")
 		}
 		state.rawState = rawState
+
+		var errs []error
+		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
+			_, err := newChildResource(ctx, pkgName, rp,
+				pulumi.Parent(&component),
+
+				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
+				// RegisterPackageResource ideally
+				pulumi.Version(string(pkgVer)))
+			errs = append(errs, err)
+		})
+		if err := errors.Join(errs...); err != nil {
+			return nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
 	}
 
 	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {

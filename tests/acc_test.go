@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -45,11 +44,10 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		var preview bytes.Buffer
 		previewResult := pt.Preview(t,
 			optpreview.Diff(),
 			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(&preview),
+			optpreview.ProgressStreams(os.Stdout),
 		)
 		autogold.Expect(map[apitype.OpType]int{
 			apitype.OpType("create"): 4,
@@ -69,6 +67,9 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
 		require.Contains(t, upResult.StdOut+upResult.StdErr,
 			"warning: Undefined value (randomPriority) will not show as a stack output.")
+
+		deploy := pt.ExportStack(t)
+		t.Logf("STATE: %s", string(deploy.Deployment))
 	})
 }
 

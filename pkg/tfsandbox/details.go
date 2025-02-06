@@ -44,6 +44,20 @@ func (rs *Resources[T]) VisitResources(visit func(T)) {
 	}
 }
 
+func (rs *Resources[T]) VisitResourcesStateOrPlans(visit func(ResourceStateOrPlan)) {
+	rs.VisitResources(func(t T) {
+		visit(t)
+	})
+}
+
+func (rs *Resources[T]) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
+	v, ok := rs.FindResource(addr)
+	if !ok {
+		return nil, false
+	}
+	return v, true
+}
+
 func (rs *Resources[T]) FindResource(addr ResourceAddress) (T, bool) {
 	found, ok := rs.resources[addr]
 	return rs.newT(found), ok

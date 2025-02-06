@@ -44,21 +44,21 @@ type ResourceState interface {
 	AttributeValues() resource.PropertyMap
 }
 
-type Resources[T any] interface {
-	VisitResources(func(T))
-	FindResource(ResourceAddress) (T, bool)
+type Resources interface {
+	//VisitResources(func(tfsandbox.ResourceStateOrPlan))
+	FindResourceStateOrPlan(ResourceAddress) (tfsandbox.ResourceStateOrPlan, bool)
 }
 
 var _ ResourceState = (*tfsandbox.ResourceState)(nil)
 
-type Plan[T ResourcePlan] interface {
-	Resources[T]
+type Plan interface {
+	Resources
 }
 
-var _ Plan[*tfsandbox.ResourcePlan] = (*tfsandbox.Plan)(nil)
+var _ Plan = (*tfsandbox.Plan)(nil)
 
-type State[T ResourceState] interface {
-	Resources[T]
+type State interface {
+	Resources // returns ResourceStateOrPlan=ResourceState
 }
 
-var _ State[*tfsandbox.ResourceState] = (*tfsandbox.State)(nil)
+var _ State = (*tfsandbox.State)(nil)
