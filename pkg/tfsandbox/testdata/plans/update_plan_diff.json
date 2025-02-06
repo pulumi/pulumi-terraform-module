@@ -225,6 +225,23 @@
                   {}
                 ]
               }
+            },
+            {
+              "address": "module.s3_bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]",
+              "mode": "managed",
+              "type": "aws_s3_bucket_server_side_encryption_configuration",
+              "name": "this",
+              "index": 0,
+              "provider_name": "registry.terraform.io/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "bucket": "terraform-20250131154056635300000001",
+                "expected_bucket_owner": "",
+                "id": "terraform-20250205181746271500000001"
+              },
+              "sensitive_values": {
+                "rule": []
+              }
             }
           ],
           "address": "module.s3_bucket"
@@ -233,6 +250,71 @@
     }
   },
   "resource_drift": [
+    {
+      "address": "module.s3_bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]",
+      "module_address": "module.s3_bucket",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "this",
+      "index": 0,
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "bucket": "terraform-20250131154056635300000001",
+          "expected_bucket_owner": "",
+          "id": "terraform-20250205181746271500000001",
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "kms_master_key_id": "",
+                  "sse_algorithm": "AES256"
+                }
+              ],
+              "bucket_key_enabled": null
+            }
+          ]
+        },
+        "after": {
+          "bucket": "terraform-20250131154056635300000001",
+          "expected_bucket_owner": "",
+          "id": "terraform-20250205181746271500000001",
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "kms_master_key_id": "",
+                  "sse_algorithm": "AES256"
+                }
+              ],
+              "bucket_key_enabled": false
+            }
+          ]
+        },
+        "after_unknown": {},
+        "before_sensitive": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {}
+              ]
+            }
+          ]
+        },
+        "after_sensitive": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {}
+              ]
+            }
+          ]
+        }
+      }
+    },
     {
       "address": "module.s3_bucket.aws_s3_bucket.this[0]",
       "module_address": "module.s3_bucket",
@@ -804,6 +886,56 @@
       }
     },
     {
+      "address": "module.s3_bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]",
+      "module_address": "module.s3_bucket",
+      "mode": "managed",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "this",
+      "index": 0,
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "bucket": "terraform-20250131154056635300000001",
+          "expected_bucket_owner": "",
+          "id": "terraform-20250205181746271500000001",
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "kms_master_key_id": "",
+                  "sse_algorithm": "AES256"
+                }
+              ],
+              "bucket_key_enabled": false
+            }
+          ]
+        },
+        "after": {
+          "bucket": "terraform-20250131154056635300000001",
+          "expected_bucket_owner": "",
+          "id": "terraform-20250205181746271500000001"
+        },
+        "after_unknown": {
+          "rule": true
+        },
+        "before_sensitive": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {}
+              ]
+            }
+          ]
+        },
+        "after_sensitive": {
+          "rule": []
+        }
+      }
+    },
+    {
       "address": "module.s3_bucket.aws_s3_bucket_versioning.this[0]",
       "module_address": "module.s3_bucket",
       "mode": "managed",
@@ -1273,6 +1405,12 @@
             "control_object_ownership": {
               "constant_value": true
             },
+            "server_side_encryption_configuration": {
+              "references": [
+                "aws_kms_key.objects.arn",
+                "aws_kms_key.objects"
+              ]
+            },
             "force_destroy": {
               "constant_value": true
             },
@@ -1429,6 +1567,34 @@
                 "count_expression": {
                   "references": [
                     "local.create_bucket"
+                  ]
+                }
+              },
+              {
+                "address": "aws_s3_bucket_server_side_encryption_configuration.this",
+                "mode": "managed",
+                "type": "aws_s3_bucket_server_side_encryption_configuration",
+                "name": "this",
+                "provider_config_key": "aws",
+                "expressions": {
+                  "bucket": {
+                    "references": [
+                      "aws_s3_bucket.this[0].id",
+                      "aws_s3_bucket.this[0]",
+                      "aws_s3_bucket.this"
+                    ]
+                  },
+                  "expected_bucket_owner": {
+                    "references": [
+                      "var.expected_bucket_owner"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_bucket",
+                    "var.server_side_encryption_configuration"
                   ]
                 }
               },

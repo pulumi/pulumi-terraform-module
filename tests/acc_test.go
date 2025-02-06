@@ -126,7 +126,10 @@ func skipLocalRunsWithoutCreds(t *testing.T) {
 
 	awsConfigured := false
 	for _, envVar := range os.Environ() {
-		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_") {
+		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_ACCESS_KEY_ID") {
+			awsConfigured = true
+		}
+		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_PROFILE") {
 			awsConfigured = true
 		}
 	}

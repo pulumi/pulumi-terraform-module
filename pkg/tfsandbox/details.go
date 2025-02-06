@@ -26,7 +26,8 @@ import (
 type TFResourceType string
 
 type Resource struct {
-	sr tfjson.StateResource
+	sr    tfjson.StateResource
+	props resource.PropertyMap
 }
 
 func (r *Resource) Address() ResourceAddress { return ResourceAddress(r.sr.Address) }
@@ -35,27 +36,19 @@ func (r *Resource) Name() string             { return r.sr.Name }
 func (r *Resource) Index() interface{}       { return r.sr.Index }
 
 type Resources[T ResourceStateOrPlan] struct {
-	stateValues tfjson.StateValues
-	newT        func(*tfjson.StateResource) T
+	resources StateResources
+	newT      func(Resource) T
 }
 
 func (rs *Resources[T]) VisitResources(visit func(T)) {
-	visitResources(rs.stateValues.RootModule, func(sr *tfjson.StateResource) {
-		visit(rs.newT(sr))
-	})
+	for _, res := range rs.resources {
+		visit(rs.newT(res))
+	}
 }
 
 func (rs *Resources[T]) FindResource(addr ResourceAddress) (T, bool) {
-	// TODO faster than O(n) possible here by drilling down addr.
-	found := false
-	var result T
-	rs.VisitResources(func(t T) {
-		if t.GetResource().Address() == addr {
-			result = t
-			found = true
-		}
-	})
-	return result, found
+	found, ok := rs.resources[addr]
+	return rs.newT(found), ok
 }
 
 func MustFindResource[T ResourceStateOrPlan](collection Resources[T], addr ResourceAddress) T {
@@ -84,7 +77,7 @@ type ResourcePlan struct {
 }
 
 func (s *ResourcePlan) GetResource() *Resource       { return &s.Resource }
-func (s *ResourcePlan) Values() resource.PropertyMap { return s.PlannedValues() }
+func (s *ResourcePlan) Values() resource.PropertyMap { return s.props }
 func (s *ResourcePlan) isResourceStateOrPlan()       {}
 
 var _ ResourceStateOrPlan = (*ResourcePlan)(nil)
@@ -117,7 +110,7 @@ func (p *ResourcePlan) ChangeKind() ChangeKind {
 
 func (p *ResourcePlan) PlannedValues() resource.PropertyMap {
 	// TODO this drops unknowns, need to engage `tfjson.Change.AfterUnknown`
-	return extractPropertyMap(&p.Resource.sr)
+	return p.props
 }
 
 type ResourceStateOrPlan interface {
@@ -134,7 +127,7 @@ type ResourceState struct {
 var _ ResourceStateOrPlan = (*ResourceState)(nil)
 
 func (s *ResourceState) AttributeValues() resource.PropertyMap {
-	return extractPropertyMap(&s.Resource.sr)
+	return s.props
 }
 
 func (s *ResourceState) isResourceStateOrPlan()       {}
@@ -145,24 +138,28 @@ type Plan struct {
 	Resources[*ResourcePlan]
 }
 
-func newPlan(rawPlan *tfjson.Plan) *Plan {
+func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	// TODO what about PreviousAddress, can TF plan resources changing addresses? How does this work?
 	changeByAddress := map[ResourceAddress]*tfjson.ResourceChange{}
 	for _, ch := range rawPlan.ResourceChanges {
 		changeByAddress[ResourceAddress(ch.Address)] = ch
 	}
+	resources, err := NewStateResources(rawPlan.PlannedValues.RootModule, changeByAddress)
+	if err != nil {
+		return nil, err
+	}
 	return &Plan{
 		Resources: Resources[*ResourcePlan]{
-			stateValues: *rawPlan.PlannedValues,
-			newT: func(sr *tfjson.StateResource) *ResourcePlan {
-				chg := changeByAddress[ResourceAddress(sr.Address)]
+			resources: resources,
+			newT: func(resource Resource) *ResourcePlan {
+				chg := changeByAddress[ResourceAddress(resource.sr.Address)]
 				return &ResourcePlan{
-					Resource:       Resource{sr: *sr},
+					Resource:       resource,
 					resourceChange: chg,
 				}
 			},
 		},
-	}
+	}, nil
 }
 
 type State struct {
@@ -176,16 +173,20 @@ func (s *State) RawState() []byte {
 	return rawState
 }
 
-func newState(rawState *tfjson.State) *State {
+func newState(rawState *tfjson.State) (*State, error) {
+	resources, err := NewStateResources(rawState.Values.RootModule, map[ResourceAddress]*tfjson.ResourceChange{})
+	if err != nil {
+		return nil, err
+	}
 	return &State{
 		Resources: Resources[*ResourceState]{
-			stateValues: *rawState.Values,
-			newT: func(sr *tfjson.StateResource) *ResourceState {
+			resources: resources,
+			newT: func(resource Resource) *ResourceState {
 				return &ResourceState{
-					Resource: Resource{sr: *sr},
+					Resource: resource,
 				}
 			},
 		},
 		rawState: rawState,
-	}
+	}, nil
 }
