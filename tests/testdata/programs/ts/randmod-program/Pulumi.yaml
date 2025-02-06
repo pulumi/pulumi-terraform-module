@@ -1,0 +1,5 @@
+name: ts-randmod-program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
