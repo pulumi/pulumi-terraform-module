@@ -137,7 +137,8 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 func TestResolveModuleSources(t *testing.T) {
 	t.Run("local path-based module source", func(t *testing.T) {
 		ctx := context.Background()
-		p, err := filepath.Abs("../../tests/testdata/randmod/randmod")
+		src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
+		p, err := filepath.Abs(src)
 		require.NoError(t, err)
 		d, err := resolveModuleSources(ctx, TFModuleSource(p), "")
 		require.NoError(t, err)
