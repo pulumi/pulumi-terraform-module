@@ -79,6 +79,8 @@ func childResourceTypeToken(pkgName packageName, tfType TFResourceType) tokens.T
 func childResourceName(resource Resource) string {
 	baseName := resource.Name()
 	switch ix := resource.Index().(type) {
+	case nil:
+		return baseName
 	case int:
 		if ix != 0 {
 			return fmt.Sprintf("%s%d", baseName, ix)
@@ -96,7 +98,7 @@ func childResourceName(resource Resource) string {
 		}
 		return baseName
 	default:
-		contract.Failf("Index must be an int or a string")
+		contract.Failf("Index must be an int or a string, got #%T", ix)
 		return ""
 	}
 }

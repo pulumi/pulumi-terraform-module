@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,12 +11,65 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 )
+
+// testdata/randmod is a fully local module written for test purposes that uses resources from the
+// random provider without cloud access, making it especially suitable for testing. Generate a
+// TypeScript SDK and go through some updates to test the integration end to end.
+func Test_RandMod_TypeScript(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Module written to support the test.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	require.NoError(t, err)
+
+	// Program written to support the test.
+	randModProg := filepath.Join("testdata", "programs", "ts", "randmod-program")
+
+	moduleProvider := "terraform-module-provider"
+	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
+	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt.CopyToTempDir(t)
+
+	t.Run("pulumi package add", func(t *testing.T) {
+		// pulumi package add <provider-path> <randmod-path>
+		pulumiPackageAdd(t, pt, localProviderBinPath, randMod)
+	})
+
+	t.Run("pulumi preview", func(t *testing.T) {
+		var preview bytes.Buffer
+		previewResult := pt.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(os.Stderr),
+			optpreview.ProgressStreams(&preview),
+		)
+		autogold.Expect(map[apitype.OpType]int{
+			apitype.OpType("create"): 4,
+		}).Equal(t, previewResult.ChangeSummary)
+	})
+
+	t.Run("pulumi up", func(t *testing.T) {
+		upResult := pt.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		autogold.Expect(&map[string]int{
+			"create": 3,
+		}).Equal(t, upResult.Summary.ResourceChanges)
+
+		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
+		require.Contains(t, upResult.StdOut+upResult.StdErr,
+			"warning: Undefined value (randomPriority) will not show as a stack output.")
+	})
+}
 
 func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
@@ -190,4 +245,29 @@ func skipLocalRunsWithoutCreds(t *testing.T) {
 	if !awsConfigured {
 		t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
 	}
+}
+
+func pulumiPackageAdd(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	localProviderBinPath string,
+	args ...string,
+) {
+	ctx := context.Background()
+	allArgs := append([]string{"package", "add", localProviderBinPath}, args...)
+	stdout, stderr, exitCode, err := pt.CurrentStack().Workspace().PulumiCommand().Run(
+		ctx,
+		pt.WorkingDir(),
+		nil, /* reader */
+		nil, /* additionalOutput */
+		nil, /* additionalErrorOutput */
+		nil, /* additionalEnv */
+		allArgs...,
+	)
+	if err != nil || exitCode != 0 {
+		t.Errorf("Failed to run pulumi package add\nExit code: %d\nError: %v\n%s\n%s",
+			exitCode, err, stdout, stderr)
+	}
+	require.NoError(t, err)
+	require.Equal(t, 0, exitCode)
 }
