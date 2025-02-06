@@ -217,7 +217,7 @@ func (rps *server) Construct(
 		ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
 		switch typ {
 		case string(ctok):
-			// TODO promises are insufficient for multiple instances.
+			// TODO[pulumi/pulumi-terraform-module-provider#92] remove promises
 			stateChan := make(chan State)
 			planChan := make(chan Plan)
 
