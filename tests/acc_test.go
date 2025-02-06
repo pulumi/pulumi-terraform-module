@@ -65,7 +65,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"create": 3,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
-		// TODO implement pulumi up properly and remove this.
+		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
 		require.Contains(t, upResult.StdOut+upResult.StdErr,
 			"warning: Undefined value (randomPriority) will not show as a stack output.")
 	})
