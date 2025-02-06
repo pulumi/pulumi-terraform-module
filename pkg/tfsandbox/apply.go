@@ -13,7 +13,11 @@ func (t *Tofu) Apply(ctx context.Context) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newState(state), nil
+	s, err := newState(state)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // Apply runs the terraform apply command and returns the final state

@@ -33,7 +33,8 @@ func TestPlan(t *testing.T) {
 	err = json.Unmarshal(planData, &tfPlan)
 	require.NoError(t, err)
 
-	p := newPlan(tfPlan)
+	p, err := newPlan(tfPlan)
+	assert.NoError(t, err)
 
 	nResources := 0
 	p.VisitResources(func(rp *ResourcePlan) {
@@ -49,10 +50,34 @@ func TestPlan(t *testing.T) {
 	assert.Equal(t, Create, r.ChangeKind())
 
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
-		"force_destroy":       resource.NewBoolProperty(true),
-		"object_lock_enabled": resource.NewBoolProperty(false),
-		"tags":                unknown(),
-		"timeouts":            unknown(),
+		"force_destroy":                                              resource.NewBoolProperty(true),
+		"object_lock_enabled":                                        resource.NewBoolProperty(false),
+		resource.PropertyKey("acl"):                                  unknown(),
+		resource.PropertyKey("arn"):                                  unknown(),
+		resource.PropertyKey("bucket"):                               unknown(),
+		resource.PropertyKey("bucket_domain_name"):                   unknown(),
+		resource.PropertyKey("bucket_prefix"):                        unknown(),
+		resource.PropertyKey("bucket_regional_domain_name"):          unknown(),
+		resource.PropertyKey("cors_rule"):                            unknown(),
+		resource.PropertyKey("grant"):                                unknown(),
+		resource.PropertyKey("hosted_zone_id"):                       unknown(),
+		resource.PropertyKey("id"):                                   unknown(),
+		resource.PropertyKey("lifecycle_rule"):                       unknown(),
+		resource.PropertyKey("logging"):                              unknown(),
+		resource.PropertyKey("object_lock_configuration"):            unknown(),
+		resource.PropertyKey("policy"):                               unknown(),
+		resource.PropertyKey("region"):                               unknown(),
+		resource.PropertyKey("replication_configuration"):            unknown(),
+		resource.PropertyKey("request_payer"):                        unknown(),
+		resource.PropertyKey("server_side_encryption_configuration"): unknown(),
+		resource.PropertyKey("tags_all"):                             unknown(),
+		resource.PropertyKey("versioning"):                           unknown(),
+		resource.PropertyKey("website"):                              unknown(),
+		resource.PropertyKey("website_domain"):                       unknown(),
+		resource.PropertyKey("website_endpoint"):                     unknown(),
+		resource.PropertyKey("acceleration_status"):                  unknown(),
+		resource.PropertyKey("tags"):                                 resource.NewNullProperty(),
+		resource.PropertyKey("timeouts"):                             resource.NewNullProperty(),
 	}), resource.NewObjectProperty(r.PlannedValues()))
 }
 

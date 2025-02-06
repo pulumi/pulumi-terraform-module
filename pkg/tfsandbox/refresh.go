@@ -12,7 +12,11 @@ func (t *Tofu) Refresh(ctx context.Context) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newState(st), nil
+	s, err := newState(st)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func (t *Tofu) refresh(ctx context.Context) (*tfjson.State, error) {
