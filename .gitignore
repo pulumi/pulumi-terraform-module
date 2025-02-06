@@ -26,3 +26,10 @@ go.work.sum
 
 bin
 .envrc
+
+tests/testdata/**/package-lock.json
+tests/testdata/**/build/lib
+tests/testdata/**/*.egg-info
+
+# TODO[pulumi/pulumi-terraform-module-provider#79] unwanted file generated
+schema-terraform-module-provider.json

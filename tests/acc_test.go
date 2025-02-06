@@ -16,6 +16,52 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	example := filepath.Join("testdata", "aws-vpc")
+
+	dest := func(folder string) string {
+		d, err := filepath.Abs(filepath.Join(example, folder))
+		require.NoError(t, err)
+		err = os.RemoveAll(d)
+		require.NoError(t, err)
+		return d
+	}
+
+	// --generate-only=true means skip installing deps
+	generateOnly := true
+
+	t.Run("typescript", func(t *testing.T) {
+		pulumiConvert(t, localProviderBinPath, example, dest("node"), "typescript", generateOnly)
+	})
+
+	t.Run("python", func(t *testing.T) {
+		d := dest("python")
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#76] auto-installing global Python deps makes this fail")
+		pulumiConvert(t, localProviderBinPath, example, d, "python", generateOnly)
+	})
+
+	t.Run("dotnet", func(t *testing.T) {
+		d := dest("dotnet")
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#77] the generated project is missing the SDK and is not buildable")
+		pulumiConvert(t, localProviderBinPath, example, d, "dotnet", generateOnly)
+	})
+
+	t.Run("go", func(t *testing.T) {
+		d := dest("go")
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#78] pulumi convert fails when generating a Go SDK")
+		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
+	})
+
+	t.Run("java", func(t *testing.T) {
+		d := dest("java")
+		// Note that pulumi convert prints instructions how to make the result compile.
+		// They are not yet entirely accurate, and we do not yet attemt to compile the result.
+		pulumiConvert(t, localProviderBinPath, example, d, "java", generateOnly)
+	})
+}
+
 func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 	testDir := t.TempDir()
@@ -24,7 +70,8 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		pulumiConvert(t, localProviderBinPath,
 			filepath.Join("testdata", "aws-vpc"),
 			testDir,
-			"typescript")
+			"typescript",
+			false) // --generate-only=false means do not skip installing deps
 	})
 
 	pt := pulumitest.NewPulumiTest(t, testDir,
@@ -100,12 +147,19 @@ func dirExists(dir string) bool {
 	return !os.IsNotExist(err)
 }
 
-func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string) {
-	cmd := exec.Command("pulumi", "convert",
+func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string, generateOnly bool) {
+	convertArgs := []string{
+		"convert",
 		"--strict",
 		"--from", "pcl",
 		"--language", language,
-		"--out", targetDir)
+		"--out", targetDir,
+	}
+	if generateOnly {
+		convertArgs = append(convertArgs, "--generate-only")
+	}
+	t.Logf("pulumi %s", strings.Join(convertArgs, " "))
+	cmd := exec.Command("pulumi", convertArgs...)
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
