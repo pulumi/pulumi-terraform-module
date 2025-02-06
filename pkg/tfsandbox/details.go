@@ -36,7 +36,7 @@ func (r *Resource) Name() string             { return r.sr.Name }
 func (r *Resource) Index() interface{}       { return r.sr.Index }
 
 type Resources[T ResourceStateOrPlan] struct {
-	resources StateResources
+	resources stateResources
 	newT      func(Resource) T
 }
 
@@ -109,7 +109,6 @@ func (p *ResourcePlan) ChangeKind() ChangeKind {
 }
 
 func (p *ResourcePlan) PlannedValues() resource.PropertyMap {
-	// TODO this drops unknowns, need to engage `tfjson.Change.AfterUnknown`
 	return p.props
 }
 
@@ -144,7 +143,7 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	for _, ch := range rawPlan.ResourceChanges {
 		changeByAddress[ResourceAddress(ch.Address)] = ch
 	}
-	resources, err := NewStateResources(rawPlan.PlannedValues.RootModule, changeByAddress)
+	resources, err := newStateResources(rawPlan.PlannedValues.RootModule, changeByAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +173,7 @@ func (s *State) RawState() []byte {
 }
 
 func newState(rawState *tfjson.State) (*State, error) {
-	resources, err := NewStateResources(rawState.Values.RootModule, map[ResourceAddress]*tfjson.ResourceChange{})
+	resources, err := newStateResources(rawState.Values.RootModule, map[ResourceAddress]*tfjson.ResourceChange{})
 	if err != nil {
 		return nil, err
 	}

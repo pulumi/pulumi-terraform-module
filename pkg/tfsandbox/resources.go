@@ -11,10 +11,10 @@ import (
 type ResourceAddress string
 
 // StateResource is a map of the resource address to the resource
-type StateResources map[ResourceAddress]Resource
+type stateResources map[ResourceAddress]Resource
 
-func NewStateResources(module *tfjson.StateModule, resourceChanges map[ResourceAddress]*tfjson.ResourceChange) (StateResources, error) {
-	resources := make(StateResources)
+func newStateResources(module *tfjson.StateModule, resourceChanges map[ResourceAddress]*tfjson.ResourceChange) (stateResources, error) {
+	resources := make(stateResources)
 	if err := resources.extractResourcesFromStateModule(module, resourceChanges); err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func NewStateResources(module *tfjson.StateModule, resourceChanges map[ResourceA
 // The `AttributeValues` of each resource contains the final values of the resource properties
 // If we are in a plan, then `AttributeValues` might not contain the information we need on unknown
 // values so we need to augment with the `ResourceChange` data.
-func (sr StateResources) extractResourcesFromStateModule(module *tfjson.StateModule, resourceChanges map[ResourceAddress]*tfjson.ResourceChange) error {
+func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateModule, resourceChanges map[ResourceAddress]*tfjson.ResourceChange) error {
 	if module.ChildModules != nil {
 		for _, childModule := range module.ChildModules {
 			if err := sr.extractResourcesFromStateModule(childModule, resourceChanges); err != nil {
@@ -50,7 +50,7 @@ func (sr StateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 
 func extractPropertyMap(stateResource *tfjson.StateResource, resourceChange *tfjson.ResourceChange) resource.PropertyMap {
 	resourceConfig := resource.PropertyMap{}
-	// TODO respect stateResource.SensitiveValues
+	// TODO: [pulumi/pulumi-terraform-module-provider#45] respect stateResource.SensitiveValues
 	for attrKey, attrValue := range stateResource.AttributeValues {
 		key := resource.PropertyKey(attrKey)
 		resourceConfig[key] = resource.NewPropertyValue(attrValue)
@@ -64,7 +64,7 @@ func extractPropertyMap(stateResource *tfjson.StateResource, resourceChange *tfj
 				// The docs for `AfterUnknown` say that is is a _deep_ object of booleans, but from what I've
 				// seen it has always been a map[string]bool. If there is an object where a nested attribute is unknown
 				// it will mark the entire object as unknown (TestProcessPlan has an example).
-				// TODO: handle nested unknowns if that is possible
+				// TODO: [pulumi/pulumi-terraform-module-provider#88] handle nested unknowns
 				if isUnknown, ok := attrValue.(bool); ok && isUnknown {
 					resourceConfig[resource.PropertyKey(attrKey)] = resource.MakeComputed(resource.NewStringProperty(""))
 				}
