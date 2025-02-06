@@ -1,11 +1,28 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package modprovider
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractModuleContentWorks(t *testing.T) {
@@ -115,4 +132,37 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "output %s type is incorrect", name)
 	}
 
+}
+
+func TestResolveModuleSources(t *testing.T) {
+	t.Run("local path-based module source", func(t *testing.T) {
+		ctx := context.Background()
+		src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
+		p, err := filepath.Abs(src)
+		require.NoError(t, err)
+		d, err := resolveModuleSources(ctx, TFModuleSource(p), "")
+		require.NoError(t, err)
+
+		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
+		require.NoError(t, err)
+
+		t.Logf("varaibles.tf: %s", bytes)
+
+		assert.Contains(t, string(bytes), "maxlen")
+	})
+
+	// This test will hit the network to download a well-known module from a registry.
+	t.Run("remote module source", func(t *testing.T) {
+		ctx := context.Background()
+		s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
+		v := TFModuleVersion("4.5.0")
+		d, err := resolveModuleSources(ctx, s, v)
+		require.NoError(t, err)
+
+		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
+		require.NoError(t, err)
+
+		t.Logf("varaibles.tf: %s", bytes)
+		assert.Contains(t, string(bytes), "putin_khuylo")
+	})
 }
