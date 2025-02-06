@@ -1,24 +1,35 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package modprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	tfaddr "github.com/opentofu/registry-address"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/getmodules"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
-	"github.com/spf13/afero"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/hashicorp/terraform-svchost/disco"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -232,84 +243,105 @@ func InferModuleSchema(
 
 func extractModuleContent(
 	ctx context.Context,
-	packageRemoteSource TFModuleSource,
+	source TFModuleSource,
 	version TFModuleVersion,
 ) (*configs.Module, error) {
-	fetcher := getmodules.NewPackageFetcher()
-	tempPath, err := os.MkdirTemp("", "pulumi-tf-modules")
+	modDir, err := resolveModuleSources(ctx, source, version)
 	if err != nil {
-		return nil, fmt.Errorf("error while creating a temp directory for module %s", packageRemoteSource)
-	}
-
-	defer os.RemoveAll(tempPath)
-	installationPath := filepath.Join(tempPath, "src")
-	src, err := tfaddr.ParseModuleSource(string(packageRemoteSource))
-	if err != nil {
-		return nil, fmt.Errorf("error while parsing module source %s: %w", packageRemoteSource, err)
-	}
-
-	moduleSource := addrs.ModuleSourceRegistry{
-		Package: src.Package,
-		Subdir:  src.Subdir,
-	}
-
-	services := disco.NewWithCredentialsSource(nil)
-	reg := registry.NewClient(services, nil)
-	regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(moduleSource.Package)
-	versionsResponse, err := reg.ModuleVersions(ctx, regsrcAddr)
-	if err != nil {
-		return nil, fmt.Errorf("error while fetching module versions for %s: %w", packageRemoteSource, err)
-	}
-
-	if len(versionsResponse.Modules) == 0 {
-		return nil, fmt.Errorf("module %s not found on the registry", packageRemoteSource)
-	}
-
-	moduleVersionFound := false
-	for _, moduleVersion := range versionsResponse.Modules[0].Versions {
-		// TODO[pulumi/pulumi-terraform-module-provider#50] TFModuleVersion may have ranges
-		if moduleVersion.Version == string(version) {
-			moduleVersionFound = true
-			break
-		}
-	}
-
-	if !moduleVersionFound {
-		return nil, fmt.Errorf("module %s version %s not found on the registry", packageRemoteSource, version)
-	}
-
-	realModuleAddress, err := reg.ModuleLocation(ctx, regsrcAddr, string(version))
-	if err != nil {
-		return nil, fmt.Errorf("error while fetching module location for %s version %s: %w", packageRemoteSource, version, err)
-	}
-
-	packageMain, packageSubdir := getmodules.SplitPackageSubdir(string(packageRemoteSource))
-
-	if err != nil {
-		return nil, fmt.Errorf("error while parsing module source %s: %w", packageMain, err)
-	}
-
-	err = fetcher.FetchPackage(ctx, installationPath, realModuleAddress)
-	if err != nil {
-		return nil, fmt.Errorf("error while fetching module: %w", err)
-	}
-
-	modDir, err := getmodules.ExpandSubdirGlobs(installationPath, packageSubdir)
-	if err != nil {
-		return nil, fmt.Errorf("error while expanding subdirectory globs in %s: %w", installationPath, err)
+		return nil, err
 	}
 
 	fs := afero.NewBasePathFs(afero.NewOsFs(), modDir)
 	parser := configs.NewParser(fs)
 	module, diagnostics := parser.LoadConfigDir("/", configs.StaticModuleCall{})
 	if diagnostics.HasErrors() {
-		return nil, fmt.Errorf("error while loading module %s: %w", packageMain, diagnostics)
+		return nil, fmt.Errorf("error while loading module %s: %w", source, diagnostics)
 	}
 
 	if module == nil {
-		return nil, fmt.Errorf("module %s could not be loaded, installation dir %s not found",
-			packageMain, installationPath)
+		return nil, fmt.Errorf("module %s could not be loaded", source)
 	}
 
 	return module, nil
+}
+
+type modulesJson struct {
+	Modules []modulesJsonEntry `json:"Modules"`
+}
+
+type modulesJsonEntry struct {
+	Key    string `json:"Key"`
+	Source string `json:"Source"`
+	Dir    string `json:"Dir"`
+}
+
+func readModulesJson(filePath string) (*modulesJson, error) {
+	bytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read modules.json file: %w", err)
+	}
+	var m modulesJson
+	err = json.Unmarshal(bytes, &m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal modules.json file: %w", err)
+	}
+	return &m, nil
+}
+
+func findResolvedModuleDir(mj *modulesJson, key string) (string, error) {
+	contract.Assertf(mj != nil, "mj cannot be nil")
+	matchCount := 0
+	var hit string
+	for _, mod := range mj.Modules {
+		if mod.Key == key {
+			matchCount++
+			hit = mod.Dir
+		}
+	}
+	switch matchCount {
+	case 0:
+		return "", fmt.Errorf("no module resolution for %q in modules.json", key)
+	case 1:
+		return hit, nil
+	default:
+		return "", fmt.Errorf("ambiguous resolution for %q in modules.json", key)
+	}
+}
+
+func resolveModuleSources(
+	ctx context.Context,
+	source tfsandbox.TFModuleSource,
+	version tfsandbox.TFModuleVersion, //optional
+) (string, error) {
+	tf, err := tfsandbox.NewTofu(ctx)
+	if err != nil {
+		return "", fmt.Errorf("tofu sandbox construction failure: %w", err)
+	}
+
+	key := "mymod"
+
+	inputs := resource.PropertyMap{}
+	err = tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs)
+	if err != nil {
+		return "", fmt.Errorf("tofu file creation failed: %w", err)
+	}
+
+	// init will resolve module sources and create .terraform/modules folder
+	if err := tf.Init(ctx); err != nil {
+		return "", fmt.Errorf("tofu init failure: %w", err)
+	}
+
+	mjPath := filepath.Join(tf.WorkingDir(), ".terraform", "modules", "modules.json")
+
+	mj, err := readModulesJson(mjPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read modules resolution JSON: %w", err)
+	}
+
+	dir, err := findResolvedModuleDir(mj, key)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(tf.WorkingDir(), dir), nil
 }
