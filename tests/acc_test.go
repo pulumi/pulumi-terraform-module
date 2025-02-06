@@ -16,6 +16,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,6 +72,33 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		deploy := pt.ExportStack(t)
 		t.Logf("STATE: %s", string(deploy.Deployment))
+
+		var deployment apitype.DeploymentV3
+		err := json.Unmarshal(deploy.Deployment, &deployment)
+		require.NoError(t, err)
+
+		var randInt apitype.ResourceV3
+		randIntFound := 0
+		for _, r := range deployment.Resources {
+			if r.Type == "randmod:tf:random_integer" {
+				randInt = r
+				randIntFound++
+			}
+		}
+
+		require.Equal(t, 1, randIntFound)
+
+		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::priority")).Equal(t, randInt.URN)
+		autogold.Expect(resource.ID("priority")).Equal(t, randInt.ID)
+		autogold.Expect(map[string]interface{}{
+			"__address": "module.mymodule.random_integer.priority",
+			"id":        "5",
+			"max":       "10",
+			"min":       "1",
+			"result":    "5",
+			"seed":      "the-most-random-seed",
+		}).Equal(t, randInt.Inputs)
+		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
 }
 
