@@ -2,9 +2,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as terraformAwsModules from "@pulumi/terraform-aws-modules";
 
 
-const lambda = new terraformAwsModules.Lambda("test-lambda", {
-    function_name: "testLambda",
-    source_path: "no/fucking/clue"
+
+const testlambda = new terraformAwsModules.Lambda("test-lambda", {
+    function_name: "guinstestlambda",
+    source_path: ("./src/app.ts"),
 })
 
-export const lambdaId =  lambda.lambda_function_arn
+export const lambdaId =  testlambda.lambda_function_arn

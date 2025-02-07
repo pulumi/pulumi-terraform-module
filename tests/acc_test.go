@@ -223,6 +223,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 
 	awsLambdaModProg := filepath.Join("testdata", "programs", "ts", "awslambdamod")
 	localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+	opttest.WorkspaceOptions()
 	awsLambdaTest := pulumitest.NewPulumiTest(t, awsLambdaModProg, localPath)
 
 	// Add the package to the test
