@@ -229,6 +229,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 	})
 	// Test preview
 	t.Run("pulumi preview", func(t *testing.T) {
+		skipLocalRunsWithoutCreds(t)
 		var preview bytes.Buffer
 		previewResult := awsLambdaTest.Preview(t,
 			optpreview.Diff(),
@@ -238,6 +239,19 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 		autogold.Expect(map[apitype.OpType]int{
 			apitype.OpType("create"): 10,
 		}).Equal(t, previewResult.ChangeSummary)
+	})
+	// Test up
+	t.Run("pulumi up", func(t *testing.T) {
+		skipLocalRunsWithoutCreds(t)
+
+		upResult := awsLambdaTest.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		autogold.Expect(&map[string]int{
+			"create": 10,
+		}).Equal(t, upResult.Summary.ResourceChanges)
 	})
 }
 

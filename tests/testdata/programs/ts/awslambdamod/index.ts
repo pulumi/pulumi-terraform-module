@@ -5,7 +5,7 @@ import * as path from "path";
 const testlambda = new terraformAwsModules.Lambda("test-lambda", {
     function_name: "guinstestlambda",
     source_path: path.join(process.env["PWD"], "/src/app.ts"),
-    runtime:  "nodejs14.x",
+    runtime:  "nodejs16.x",
     handler: "app.handler",
 })
 
