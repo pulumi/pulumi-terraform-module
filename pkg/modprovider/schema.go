@@ -18,39 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-// TODO[pulumi/pulumi-terraform-module-provider#89] the heuristics here are not well-founded.
-//
-// packageNameAndMainResourceName returns the name of the package to be generated
-// and the name of the only resource the package will have
-// for example terraform-aws-modules/vpc/aws -> terraform-aws-modules, Vpc
-// where terraform-aws-modules is the package name and Vpc is the resource
-func packageNameAndMainResourceName(packageSource TFModuleSource) (packageName, componentTypeName, error) {
-	// TODO[pulumi/pulumi-terraform-module-provider#50] account every kind of TFModuleSource
-	parts := strings.Split(string(packageSource), "/")
-	// package-name/module-name/target
-	if len(parts) == 3 {
-		return packageName(parts[0]), componentTypeName(strings.Title(parts[1])), nil
-	}
-
-	// <registry-source>/package-name/module-name/target
-	if len(parts) == 4 {
-		return packageName(parts[2]), componentTypeName(strings.Title(parts[3])), nil
-	}
-
-	// assume this is a local path here and use basename to name the module
-	if filepath.Base(string(packageSource)) != "" {
-		return packageName(filepath.Base(string(packageSource))), "Module", nil
-	}
-
-	return "", "", fmt.Errorf("unable to infer package and resource name from '%s'", packageSource)
-}
 
 // TODO[pulumi/pulumi-terraform-module-provider#50] this can get more complicated if versionSpec is a range and not a
 // precise version.

@@ -197,14 +197,9 @@ func (s *testResourceMonitorServer) RegisterResource(
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
 
-	tfModuleSource := s.params.TFModuleSource
-	packageName, resourceName, err := packageNameAndMainResourceName(tfModuleSource)
-	if err != nil {
-		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w", tfModuleSource, err)
-	}
-
+	packageName := s.params.PackageName
 	switch req.Type {
-	case fmt.Sprintf("%s:index:%s", packageName, resourceName):
+	case fmt.Sprintf("%s:index:Module", packageName):
 		return &pulumirpc.RegisterResourceResponse{}, nil
 	case fmt.Sprintf("%s:index:ModuleState", packageName):
 		// Assume we are creating; issue Check() and Create()
