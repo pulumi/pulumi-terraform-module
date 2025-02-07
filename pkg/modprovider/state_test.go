@@ -33,6 +33,7 @@ func TestCreateModuleSavesModuleState(t *testing.T) {
 		params: &ParameterizeArgs{
 			TFModuleSource:  "terraform-aws-modules/vpc/aws",
 			TFModuleVersion: "5.16.0",
+			PackageName:     "vpc",
 		},
 	}
 	checkModuleStateIsSaved(t, s)
@@ -48,6 +49,7 @@ func TestUpdateModuleSavesModuleState(t *testing.T) {
 		params: &ParameterizeArgs{
 			TFModuleSource:  "terraform-aws-modules/vpc/aws",
 			TFModuleVersion: "5.16.0",
+			PackageName:     "vpc",
 		},
 		oldModuleState: &pulumirpc.RegisterResourceResponse{
 			Urn:    "",
@@ -75,6 +77,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 				Args: []string{
 					string(s.params.TFModuleSource),
 					string(s.params.TFModuleVersion),
+					string(s.params.PackageName),
 				},
 			},
 		},
@@ -90,7 +93,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 		Config:          map[string]string{},
 		DryRun:          false, // pulumi up, not pulumi preivew
 		MonitorEndpoint: resmonPath,
-		Type:            fmt.Sprintf("terraform-aws-modules:index:Vpc"),
+		Type:            fmt.Sprintf("vpc:index:Module"),
 		Name:            "myModuleInstance",
 	})
 	require.NoErrorf(t, err, "Construct failed")
