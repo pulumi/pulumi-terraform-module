@@ -5,7 +5,7 @@
 	},
 	"dependencies": {
 		"@pulumi/pulumi": "^3.0.0",
-		"@pulumi/terraform-aws-modules": "file:sdks/terraform-aws-modules",
+		"@pulumi/vpc": "file:sdks/vpc",
 		"typescript": "^4.0.0"
 	}
 }

@@ -5,15 +5,15 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { ModuleArgs } from "./module";
+export type Module = import("./module").Module;
+export const Module: typeof import("./module").Module = null as any;
+utilities.lazyLoad(exports, ["Module"], () => require("./module"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
-
-export { VpcArgs } from "./vpc";
-export type Vpc = import("./vpc").Vpc;
-export const Vpc: typeof import("./vpc").Vpc = null as any;
-utilities.lazyLoad(exports, ["Vpc"], () => require("./vpc"));
 
 
 // Export sub-modules:
@@ -27,18 +27,18 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "terraform-aws-modules:index:Vpc":
-                return new Vpc(name, <any>undefined, { urn })
+            case "vpc:index:Module":
+                return new Module(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
     },
 };
-pulumi.runtime.registerResourceModule("terraform-aws-modules", "index", _module)
-pulumi.runtime.registerResourcePackage("terraform-aws-modules", {
+pulumi.runtime.registerResourceModule("vpc", "index", _module)
+pulumi.runtime.registerResourcePackage("vpc", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
-        if (type !== "pulumi:providers:terraform-aws-modules") {
+        if (type !== "pulumi:providers:vpc") {
             throw new Error(`unknown provider type ${type}`);
         }
         return new Provider(name, <any>undefined, { urn });

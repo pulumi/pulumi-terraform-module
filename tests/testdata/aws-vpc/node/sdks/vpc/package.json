@@ -1,5 +1,5 @@
 {
-    "name": "@pulumi/terraform-aws-modules",
+    "name": "@pulumi/vpc",
     "version": "5.18.1",
     "main": "bin/index.js",
     "scripts": {
@@ -19,9 +19,9 @@
         "name": "terraform-module-provider",
         "version": "0.0.1",
         "parameterization": {
-            "name": "terraform-aws-modules",
+            "name": "vpc",
             "version": "5.18.1",
-            "value": "ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIKfQ=="
+            "value": "ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIsCiAgInBhY2thZ2VOYW1lIjogInZwYyIKfQ=="
         }
     }
 }

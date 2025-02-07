@@ -66,12 +66,8 @@ func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 // The code will need to run input/output schema inference for these sources to compute an appropriate PackageSpec.
 func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
 	pkgVer := inferPackageVersion(pargs.TFModuleVersion)
-	packageName, resourceName, err := packageNameAndMainResourceName(pargs.TFModuleSource)
-	if err != nil {
-		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w",
-			pargs.TFModuleSource, err)
-	}
-
+	packageName := pargs.PackageName
+	resourceName := "Module"
 	inferredModule, err := InferModuleSchema(ctx, packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring module schema for %s@%s: %w",

@@ -6,19 +6,19 @@ import * as inputs from "./types/input";
 import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
-export class Vpc extends pulumi.ComponentResource {
+export class Module extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'terraform-aws-modules:index:Vpc';
+    public static readonly __pulumiType = 'vpc:index:Module';
 
     /**
-     * Returns true if the given object is an instance of Vpc.  This is designed to work even
+     * Returns true if the given object is an instance of Module.  This is designed to work even
      * when multiple copies of the Pulumi SDK have been loaded into the same process.
      */
-    public static isInstance(obj: any): obj is Vpc {
+    public static isInstance(obj: any): obj is Module {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Vpc.__pulumiType;
+        return obj['__pulumiType'] === Module.__pulumiType;
     }
 
     /**
@@ -495,13 +495,13 @@ export class Vpc extends pulumi.ComponentResource {
     public /*out*/ readonly vpc_secondary_cidr_blocks!: pulumi.Output<string[] | undefined>;
 
     /**
-     * Create a Vpc resource with the given unique name, arguments, and options.
+     * Create a Module resource with the given unique name, arguments, and options.
      *
      * @param name The _unique_ name of the resource.
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: VpcArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: ModuleArgs, opts?: pulumi.ComponentResourceOptions) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
@@ -963,14 +963,14 @@ export class Vpc extends pulumi.ComponentResource {
             resourceInputs["vpc_secondary_cidr_blocks"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(Vpc.__pulumiType, name, resourceInputs, opts, true /*remote*/, utilities.getPackage());
+        super(Module.__pulumiType, name, resourceInputs, opts, true /*remote*/, utilities.getPackage());
     }
 }
 
 /**
- * The set of arguments for constructing a Vpc resource.
+ * The set of arguments for constructing a Module resource.
  */
-export interface VpcArgs {
+export interface ModuleArgs {
     /**
      * The Autonomous System Number (ASN) for the Amazon side of the gateway. By default the virtual private gateway is created with the current default Amazon ASN
      */

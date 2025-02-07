@@ -108,9 +108,9 @@ export async function getPackage() : Promise<string | undefined> {
 		if (_packageRef === undefined) {
 			const monitor = runtime.getMonitor();
 			const params = new resproto.Parameterization();
-			params.setName("terraform-aws-modules");
+			params.setName("vpc");
 			params.setVersion("5.18.1");
-			params.setValue(Uint8Array.from(atob("ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIKfQ=="), c => c.charCodeAt(0)));
+			params.setValue(Uint8Array.from(atob("ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIsCiAgInBhY2thZ2VOYW1lIjogInZwYyIKfQ=="), c => c.charCodeAt(0)));
 
 			const req = new resproto.RegisterPackageRequest();
 			req.setName("terraform-module-provider");

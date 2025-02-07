@@ -17,7 +17,10 @@ package modprovider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -61,14 +64,8 @@ func (s *server) Parameterize(
 	}
 	s.params = &pargs
 
-	packageName, compTypName, err := packageNameAndMainResourceName(pargs.TFModuleSource)
-	if err != nil {
-		return nil, fmt.Errorf("error while inferring package and resource name for %s: %w",
-			pargs.TFModuleSource, err)
-	}
-
-	s.componentTypeName = compTypName
-	s.packageName = packageName
+	s.componentTypeName = "Module"
+	s.packageName = pargs.PackageName
 	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
 
 	return &pulumirpc.ParameterizeResponse{
@@ -77,20 +74,71 @@ func (s *server) Parameterize(
 	}, nil
 }
 
+func dirExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+	return false
+}
+
+// parseParameterizeRequest parses the parameterize request into a ParameterizeArgs struct.
+// the args in the request are from the CLI command:
+//
+//	pulumi package add terraform-module-provider [args]
+//
+// the accepted formats here are either:
+//
+//		<module-source> <version> <package-name>
+//	 	<module-source> <package-name>
+//		<local-module-source> <package-name>
 func parseParameterizeRequest(request *pulumirpc.ParameterizeRequest) (ParameterizeArgs, error) {
 	switch {
 	case request.GetArgs() != nil:
 		args := request.GetArgs()
-		if len(args.Args) != 2 && len(args.Args) != 1 {
-			return ParameterizeArgs{}, fmt.Errorf("expected 1 to 2 args, got %d", len(args.Args))
+		switch len(args.Args) {
+		case 2:
+			// module source is provided but second arg could either be version or package name
+			// if the module source is local (starts with dot) then the second arg is package name
+			// otherwise it invalid because package name is required
+			if dirExists(args.Args[0]) {
+				return ParameterizeArgs{
+					TFModuleSource:  TFModuleSource(args.Args[0]),
+					TFModuleVersion: "",
+					PackageName:     packageName(args.Args[1]),
+				}, nil
+			}
+
+			if !isValidVersion(args.Args[1]) {
+				// if the second arg is not a version then it must be package name
+				// but the source is remote so we need to resolve the version ourselves
+				latest, err := latestModuleVersion(args.Args[0])
+				if err != nil {
+					return ParameterizeArgs{}, err
+				}
+
+				return ParameterizeArgs{
+					TFModuleSource:  TFModuleSource(args.Args[0]),
+					TFModuleVersion: TFModuleVersion(latest.String()),
+					PackageName:     packageName(args.Args[1]),
+				}, nil
+			}
+
+			return ParameterizeArgs{}, fmt.Errorf("package name argument is required")
+		case 3:
+			// module source, version and package name are provided
+			return ParameterizeArgs{
+				TFModuleSource:  TFModuleSource(args.Args[0]),
+				TFModuleVersion: TFModuleVersion(args.Args[1]),
+				PackageName:     packageName(args.Args[2]),
+			}, nil
+		default:
+			return ParameterizeArgs{}, fmt.Errorf("expected 2 or 3 arguments, got %d", len(args.Args))
 		}
-		result := ParameterizeArgs{
-			TFModuleSource: TFModuleSource(args.Args[0]),
-		}
-		if len(args.Args) == 2 {
-			result.TFModuleVersion = TFModuleVersion(args.Args[1])
-		}
-		return result, nil
+
 	case request.GetValue() != nil:
 		value := request.GetValue()
 		var args ParameterizeArgs

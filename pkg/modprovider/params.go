@@ -27,4 +27,5 @@ type (
 type ParameterizeArgs struct {
 	TFModuleSource  TFModuleSource  `json:"module"`
 	TFModuleVersion TFModuleVersion `json:"version,omitempty"`
+	PackageName     packageName     `json:"packageName,omitempty"`
 }
