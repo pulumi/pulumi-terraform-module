@@ -18,7 +18,7 @@ public class App {
     }
 
     public static void stack(Context ctx) {
-        var defaultVpc = new Module("vpc", ModuleArgs.builder()
+        var defaultVpc = new Module("defaultVpc", ModuleArgs.builder()
             .cidr("10.0.0.0/16")
             .build());
 
