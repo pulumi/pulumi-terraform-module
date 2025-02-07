@@ -35,26 +35,28 @@ func TestParseParameterizeRequest(t *testing.T) {
 		args, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-					Args: []string{"hashicorp/consul/aws"},
+					Args: []string{"hashicorp/consul/aws", "consul"},
 				},
 			},
 		})
 		assert.NoError(t, err)
+		// we do not assert on the version because latest is resolved when version isn't specified
 		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
-		assert.Equal(t, TFModuleVersion(""), args.TFModuleVersion)
+		assert.Equal(t, packageName("consul"), args.PackageName)
 	})
 
 	t.Run("parses args with module source and version spec", func(t *testing.T) {
 		args, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-					Args: []string{"hashicorp/consul/aws", "0.0.5"},
+					Args: []string{"hashicorp/consul/aws", "0.0.5", "consul"},
 				},
 			},
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
 		assert.Equal(t, TFModuleVersion("0.0.5"), args.TFModuleVersion)
+		assert.Equal(t, packageName("consul"), args.PackageName)
 	})
 
 	t.Run("fails when no args are given", func(t *testing.T) {
@@ -74,13 +76,14 @@ func TestParseParameterizeRequest(t *testing.T) {
 				Value: &pulumirpc.ParameterizeRequest_ParametersValue{
 					Name:    Name(),
 					Version: Version(),
-					Value:   []byte(`{"module":"hashicorp/consul/aws"}`),
+					Value:   []byte(`{"module":"hashicorp/consul/aws", "packageName": "consul"}`),
 				},
 			},
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
 		assert.Equal(t, TFModuleVersion(""), args.TFModuleVersion)
+		assert.Equal(t, packageName("consul"), args.PackageName)
 	})
 
 	t.Run("parses value with module source and version spec", func(t *testing.T) {
