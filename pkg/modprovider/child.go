@@ -75,32 +75,12 @@ func childResourceTypeToken(pkgName packageName, tfType TFResourceType) tokens.T
 
 // Compute a unique-enough name for a resource to seed the Name part in the URN.
 //
-// TODO how do we represent nested module invocations? Are these names sufficiently unique?
+// Reuses TF resource addresses currently.
+//
+// Pulumi resources must be unique by URN, so the name has to be sufficiently unique that there are
+// no two resources with the same parent, type and name.
 func childResourceName(resource Resource) string {
-	baseName := resource.Name()
-	switch ix := resource.Index().(type) {
-	case nil:
-		return baseName
-	case int:
-		if ix != 0 {
-			return fmt.Sprintf("%s%d", baseName, ix)
-		}
-		return baseName
-	case float64:
-		ixi := int(ix)
-		if ixi != 0 {
-			return fmt.Sprintf("%s%d", baseName, ixi)
-		}
-		return baseName
-	case string:
-		if ix != "" {
-			return fmt.Sprintf("%s-%s", baseName, ix)
-		}
-		return baseName
-	default:
-		contract.Failf("Index must be an int or a string, got #%T", ix)
-		return ""
-	}
+	return string(resource.Address())
 }
 
 // The ID to return for a child resource during Create.
