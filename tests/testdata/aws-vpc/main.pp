@@ -8,10 +8,10 @@ package "vpc" {
     }
 }
 
-resource "vpc" "vpc:index:Module" {
+resource "defaultVpc" "vpc:index:Module" {
     cidr = "10.0.0.0/16"
 }
 
 output "vpcId" {
-    value = vpc.vpc_id
+    value = defaultVpc.vpc_id
 }

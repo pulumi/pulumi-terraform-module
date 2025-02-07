@@ -18,10 +18,10 @@ public class App {
     }
 
     public static void stack(Context ctx) {
-        var vpc = new Module("vpc", ModuleArgs.builder()
+        var defaultVpc = new Module("vpc", ModuleArgs.builder()
             .cidr("10.0.0.0/16")
             .build());
 
-        ctx.export("vpcId", vpc.vpc_id());
+        ctx.export("vpcId", defaultVpc.vpc_id());
     }
 }
