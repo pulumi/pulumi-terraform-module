@@ -218,6 +218,33 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 }
 
+func TestAwsLambdaModuleIntegration(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	awsLambdaModProg := filepath.Join("testdata", "programs", "ts", "awslambdamod")
+	localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+	awsLambdaTest := pulumitest.NewPulumiTest(t, awsLambdaModProg, localPath)
+
+	// Add the package to the test
+	t.Run("pulumi package add", func(t *testing.T) {
+		pulumiPackageAdd(t, awsLambdaTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1")
+	})
+
+	t.Run("pulumi preview", func(t *testing.T) {
+		var preview bytes.Buffer
+		previewResult := awsLambdaTest.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(os.Stderr),
+			optpreview.ProgressStreams(&preview),
+		)
+		autogold.Expect(map[apitype.OpType]int{
+			apitype.OpType("create"): 4,
+		}).Equal(t, previewResult.ChangeSummary)
+
+	})
+
+}
+
 func getRoot(t *testing.T) string {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
