@@ -199,7 +199,7 @@ func (s *testResourceMonitorServer) RegisterResource(
 
 	packageName := s.params.PackageName
 	switch req.Type {
-	case fmt.Sprintf("%s:index:Module", packageName):
+	case fmt.Sprintf("%s:index:%s", packageName, defaultComponentTypeName):
 		return &pulumirpc.RegisterResourceResponse{}, nil
 	case fmt.Sprintf("%s:index:ModuleState", packageName):
 		// Assume we are creating; issue Check() and Create()

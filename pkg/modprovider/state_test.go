@@ -93,7 +93,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 		Config:          map[string]string{},
 		DryRun:          false, // pulumi up, not pulumi preivew
 		MonitorEndpoint: resmonPath,
-		Type:            fmt.Sprintf("vpc:index:Module"),
+		Type:            fmt.Sprintf("vpc:index:%s", defaultComponentTypeName),
 		Name:            "myModuleInstance",
 	})
 	require.NoErrorf(t, err, "Construct failed")

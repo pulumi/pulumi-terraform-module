@@ -64,7 +64,7 @@ func (s *server) Parameterize(
 	}
 	s.params = &pargs
 
-	s.componentTypeName = "Module"
+	s.componentTypeName = defaultComponentTypeName
 	s.packageName = pargs.PackageName
 	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
 
