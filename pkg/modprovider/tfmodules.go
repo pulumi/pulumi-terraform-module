@@ -22,10 +22,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/hashicorp/terraform-svchost/disco"
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -189,6 +194,53 @@ func isVariableReference(expr hcl.Expression) (string, bool) {
 	}
 
 	return "", false
+}
+
+func isValidVersion(inputVersion string) bool {
+	_, err := version.NewVersion(inputVersion)
+	return err == nil
+}
+
+func latestModuleVersion(moduleSource string) (*version.Version, error) {
+	var source addrs.ModuleSourceRegistry
+	parsedSource, err := addrs.ParseModuleSource(moduleSource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse module source %s: %w", moduleSource, err)
+	}
+	switch parsed := parsedSource.(type) {
+	case addrs.ModuleSourceRegistry:
+		source = parsed
+	default:
+		return nil, fmt.Errorf("module source for %s is not from a remote registry", moduleSource)
+	}
+
+	services := disco.NewWithCredentialsSource(nil)
+	reg := registry.NewClient(services, nil)
+	regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(source.Package)
+	resp, err := reg.ModuleVersions(context.TODO(), regsrcAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve available versions for %s: %s", source, err)
+	}
+	modMeta := resp.Modules[0]
+	var latestVersion *version.Version
+	for _, mv := range modMeta.Versions {
+		v, err := version.NewVersion(mv.Version)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse version %q for %s: %s", mv.Version, source, err)
+		}
+		if v.Prerelease() != "" {
+			continue
+		}
+		if latestVersion == nil || v.GreaterThan(latestVersion) {
+			latestVersion = v
+		}
+	}
+
+	if latestVersion == nil {
+		return nil, fmt.Errorf("failed to find latest version for module %s", source)
+	}
+
+	return latestVersion, nil
 }
 
 func InferModuleSchema(

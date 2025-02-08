@@ -3,8 +3,8 @@ package generated_program;
 import com.pulumi.Context;
 import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
-import com.pulumi.terraformawsmodules.Vpc;
-import com.pulumi.terraformawsmodules.VpcArgs;
+import com.pulumi.vpc.Module;
+import com.pulumi.vpc.ModuleArgs;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -18,10 +18,10 @@ public class App {
     }
 
     public static void stack(Context ctx) {
-        var vpc = new Vpc("vpc", VpcArgs.builder()
+        var defaultVpc = new Module("defaultVpc", ModuleArgs.builder()
             .cidr("10.0.0.0/16")
             .build());
 
-        ctx.export("vpcId", vpc.vpc_id());
+        ctx.export("vpcId", defaultVpc.vpc_id());
     }
 }

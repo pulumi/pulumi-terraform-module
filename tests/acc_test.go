@@ -38,9 +38,10 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
+	packageName := "randmod"
 	t.Run("pulumi package add", func(t *testing.T) {
-		// pulumi package add <provider-path> <randmod-path>
-		pulumiPackageAdd(t, pt, localProviderBinPath, randMod)
+		// pulumi package add <provider-path> <randmod-path> <package-name>
+		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
 	})
 
 	t.Run("pulumi preview", func(t *testing.T) {
