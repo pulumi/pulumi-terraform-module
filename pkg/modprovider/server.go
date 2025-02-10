@@ -58,7 +58,7 @@ func (s *server) Parameterize(
 	ctx context.Context,
 	req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	pargs, err := parseParameterizeRequest(req)
+	pargs, err := parseParameterizeRequest(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("%s failed to parse parameters: %w", Name(), err)
 	}
@@ -95,7 +95,10 @@ func dirExists(path string) bool {
 //		<module-source> <version> <package-name>
 //	 	<module-source> <package-name>
 //		<local-module-source> <package-name>
-func parseParameterizeRequest(request *pulumirpc.ParameterizeRequest) (ParameterizeArgs, error) {
+func parseParameterizeRequest(
+	ctx context.Context,
+	request *pulumirpc.ParameterizeRequest,
+) (ParameterizeArgs, error) {
 	switch {
 	case request.GetArgs() != nil:
 		args := request.GetArgs()
@@ -115,7 +118,7 @@ func parseParameterizeRequest(request *pulumirpc.ParameterizeRequest) (Parameter
 			if !isValidVersion(args.Args[1]) {
 				// if the second arg is not a version then it must be package name
 				// but the source is remote so we need to resolve the version ourselves
-				latest, err := latestModuleVersion(args.Args[0])
+				latest, err := latestModuleVersion(ctx, args.Args[0])
 				if err != nil {
 					return ParameterizeArgs{}, err
 				}

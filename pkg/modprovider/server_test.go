@@ -31,8 +31,10 @@ import (
 )
 
 func TestParseParameterizeRequest(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("parses args with module source only", func(t *testing.T) {
-		args, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
+		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 					Args: []string{"hashicorp/consul/aws", "consul"},
@@ -46,7 +48,7 @@ func TestParseParameterizeRequest(t *testing.T) {
 	})
 
 	t.Run("parses args with module source and version spec", func(t *testing.T) {
-		args, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
+		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 					Args: []string{"hashicorp/consul/aws", "0.0.5", "consul"},
@@ -60,7 +62,7 @@ func TestParseParameterizeRequest(t *testing.T) {
 	})
 
 	t.Run("fails when no args are given", func(t *testing.T) {
-		_, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
+		_, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 					Args: []string{},
@@ -71,7 +73,7 @@ func TestParseParameterizeRequest(t *testing.T) {
 	})
 
 	t.Run("parses value with module source only", func(t *testing.T) {
-		args, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
+		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Value{
 				Value: &pulumirpc.ParameterizeRequest_ParametersValue{
 					Name:    Name(),
@@ -87,7 +89,7 @@ func TestParseParameterizeRequest(t *testing.T) {
 	})
 
 	t.Run("parses value with module source and version spec", func(t *testing.T) {
-		args, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
+		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Value{
 				Value: &pulumirpc.ParameterizeRequest_ParametersValue{
 					Name:    Name(),
@@ -102,7 +104,7 @@ func TestParseParameterizeRequest(t *testing.T) {
 	})
 
 	t.Run("fails when value does not specify the module", func(t *testing.T) {
-		_, err := parseParameterizeRequest(&pulumirpc.ParameterizeRequest{
+		_, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Value{
 				Value: &pulumirpc.ParameterizeRequest_ParametersValue{
 					Name:    Name(),
