@@ -183,23 +183,35 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			optup.ProgressStreams(os.Stdout),
 		)
 
-		// TODO: this is not quite correct, since the children are not included in the summary
-		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{"create": 3})
+		expectedResourceCount := 7
+
+		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{
+			"create": expectedResourceCount,
+		})
 
 		stack := pt.ExportStack(t)
 		t.Logf("deployment: %s", stack.Deployment)
 
-		stackJSON, err := stack.Deployment.MarshalJSON()
+		var deployment apitype.DeploymentV3
+		err := json.Unmarshal(stack.Deployment, &deployment)
 		require.NoError(t, err)
 
-		deployment := map[string]any{}
-		require.NoError(t, json.Unmarshal(stackJSON, &deployment))
+		var moduleState apitype.ResourceV3
+		moduleStateFound := 0
+		for _, r := range deployment.Resources {
+			if strings.Contains(string(r.Type), "ModuleState") {
+				moduleState = r
+				moduleStateFound++
+			}
+		}
 
-		resources := deployment["resources"].([]any)
-		require.Equal(t, len(resources), 4)
-		stateResource := resources[3].(map[string]any)
-		stateResourceOutputs := stateResource["outputs"].(map[string]any)
-		tfState := stateResourceOutputs["state"].(string)
+		require.Equal(t, 1, moduleStateFound)
+
+		tfStateRaw, gotTfState := moduleState.Outputs["state"]
+		require.True(t, gotTfState)
+
+		tfState, isStr := tfStateRaw.(string)
+		require.True(t, isStr)
 
 		require.Less(t, 10, len(tfState))
 		require.Contains(t, tfState, "vpc_id")
