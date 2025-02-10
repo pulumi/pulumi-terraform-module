@@ -38,6 +38,7 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 		hostClient:         hostClient,
 		stateStore:         moduleStateHandler,
 		moduleStateHandler: moduleStateHandler,
+		childHandler:       newChildHandler(),
 	}
 	return srv, nil
 }
@@ -216,8 +217,24 @@ func (rps *server) Construct(
 		ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
 		switch typ {
 		case string(ctok):
+			// TODO[pulumi/pulumi-terraform-module-provider#92] remove promises
+			stateChan := make(chan State)
+			planChan := make(chan Plan)
+
+			go func() {
+				state := <-stateChan
+				rps.childHandler.SetState(state)
+			}()
+
+			go func() {
+				plan := <-planChan
+				rps.childHandler.SetPlan(plan)
+			}()
+
 			component, err := NewModuleComponentResource(ctx,
 				rps.stateStore,
+				planChan,
+				stateChan,
 				rps.packageName,
 				rps.packageVersion,
 				rps.componentTypeName,

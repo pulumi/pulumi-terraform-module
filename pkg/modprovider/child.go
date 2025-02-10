@@ -49,9 +49,9 @@ func newChildResource(
 	contract.Assertf(ctx != nil, "ctx must not be nil")
 	contract.Assertf(sop != nil, "sop must not be nil")
 	var resource childResource
-	inputs := childResourceInputs(sop.GetResource().Address(), sop.Values())
-	t := childResourceTypeToken(pkgName, sop.GetResource().Type())
-	name := childResourceName(sop.GetResource())
+	inputs := childResourceInputs(sop.Address(), sop.Values())
+	t := childResourceTypeToken(pkgName, sop.Type())
+	name := childResourceName(sop)
 	// TODO[pulumi/pulumi-terraform-module-protovider#56] Use RegisterPackageResource
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, inputs)
 	err := ctx.RegisterResource(string(t), name, inputsMap, &resource, opts...)
@@ -75,32 +75,12 @@ func childResourceTypeToken(pkgName packageName, tfType TFResourceType) tokens.T
 
 // Compute a unique-enough name for a resource to seed the Name part in the URN.
 //
-// TODO how do we represent nested module invocations? Are these names sufficiently unique?
+// Reuses TF resource addresses currently.
+//
+// Pulumi resources must be unique by URN, so the name has to be sufficiently unique that there are
+// no two resources with the same parent, type and name.
 func childResourceName(resource Resource) string {
-	baseName := resource.Name()
-	switch ix := resource.Index().(type) {
-	case nil:
-		return baseName
-	case int:
-		if ix != 0 {
-			return fmt.Sprintf("%s%d", baseName, ix)
-		}
-		return baseName
-	case float64:
-		ixi := int(ix)
-		if ixi != 0 {
-			return fmt.Sprintf("%s%d", baseName, ixi)
-		}
-		return baseName
-	case string:
-		if ix != "" {
-			return fmt.Sprintf("%s-%s", baseName, ix)
-		}
-		return baseName
-	default:
-		contract.Failf("Index must be an int or a string, got #%T", ix)
-		return ""
-	}
+	return string(resource.Address())
 }
 
 // The ID to return for a child resource during Create.
@@ -125,21 +105,24 @@ func childResourceInputs(addr ResourceAddress, inputs resource.PropertyMap) reso
 
 // The implementation of the ChildResource life cycle.
 type childHandler struct {
-	plan  Plan[ResourcePlan]
-	state State[ResourceState]
+	planPromise  *promise[Plan]
+	statePromise *promise[State]
 }
 
 // The caller should call [SetPlan] and [SetState] when this information is available.
 func newChildHandler() *childHandler {
-	return &childHandler{}
+	return &childHandler{
+		planPromise:  newPromise[Plan](),
+		statePromise: newPromise[State](),
+	}
 }
 
-func (h *childHandler) SetPlan(plan Plan[ResourcePlan]) {
-	h.plan = plan
+func (h *childHandler) SetPlan(plan Plan) {
+	h.planPromise.fulfill(plan)
 }
 
-func (h *childHandler) SetState(state State[ResourceState]) {
-	h.state = state
+func (h *childHandler) SetState(state State) {
+	h.statePromise.fulfill(state)
 }
 
 func (h *childHandler) Check(
@@ -164,10 +147,13 @@ func (h *childHandler) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+	plan := h.planPromise.await()
 	addr := h.mustParseAddress(req.GetNews())
-	contract.Assertf(h.plan != nil, "plan has not been computed yet")
-	rplan, ok := h.plan.FindResource(addr)
+	contract.Assertf(plan != nil, "plan cannot be nil")
+	stateOrPlan, ok := plan.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find plan for %q", addr)
+	rplan, ok := stateOrPlan.(ResourcePlan)
+	contract.Assertf(ok, "failed to cast plan for %q", addr)
 	resp := &pulumirpc.DiffResponse{}
 	switch rplan.ChangeKind() {
 	case tfsandbox.NoOp:
@@ -215,10 +201,13 @@ func (h *childHandler) Create(
 		}, nil
 	}
 
+	state := h.statePromise.await()
 	addr := h.mustParseAddress(req.GetProperties())
-	contract.Assertf(h.state != nil, "state has not been acquired yet")
-	rstate, ok := h.state.FindResource(addr)
+	contract.Assertf(state != nil, "state cannot be nil")
+	stateOrPlan, ok := state.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find state for %q", addr)
+	rstate, ok := stateOrPlan.(ResourceState)
+	contract.Assertf(ok, "failed to cast state for %q", addr)
 
 	return &pulumirpc.CreateResponse{
 		Id:         childResourceID(rstate),
@@ -233,20 +222,26 @@ func (h *childHandler) Update(
 	addr := h.mustParseAddress(req.GetNews())
 
 	if req.Preview {
-		contract.Assertf(h.plan != nil, "plan has not been computed yet")
+		plan := h.planPromise.await()
+		contract.Assertf(plan != nil, "plan has not been computed yet")
 
-		rplan, ok := h.plan.FindResource(addr)
+		stateOrPlan, ok := plan.FindResourceStateOrPlan(addr)
 		contract.Assertf(ok, "failed to find plan for %q", addr)
+		rplan, ok := stateOrPlan.(ResourcePlan)
+		contract.Assertf(ok, "failed to cast plan for %q", addr)
 
 		return &pulumirpc.UpdateResponse{
 			Properties: h.outputsStruct(rplan.PlannedValues()),
 		}, nil
 	}
 
-	contract.Assertf(h.state != nil, "state has not been acquired yet")
+	state := h.statePromise.await()
+	contract.Assertf(state != nil, "state has not been acquired yet")
 
-	rstate, ok := h.state.FindResource(addr)
+	stateOrPlan, ok := state.FindResourceStateOrPlan(addr)
 	contract.Assertf(ok, "failed to find state for %q", addr)
+	rstate, ok := stateOrPlan.(ResourceState)
+	contract.Assertf(ok, "failed to cast state for %q", addr)
 
 	return &pulumirpc.UpdateResponse{
 		Properties: h.outputsStruct(rstate.AttributeValues()),

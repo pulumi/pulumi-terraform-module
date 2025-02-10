@@ -17,6 +17,7 @@ package modprovider
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -25,42 +26,46 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateModuleSavesModuleState(t *testing.T) {
-	s := &testResourceMonitorServer{
-		t:     t,
-		proj:  "myproj",
-		stack: "mystack",
-		params: &ParameterizeArgs{
-			TFModuleSource:  "terraform-aws-modules/vpc/aws",
-			TFModuleVersion: "5.16.0",
-			PackageName:     "vpc",
-		},
+func TestSavingModuleState(t *testing.T) {
+	t.Parallel()
+
+	p, err := filepath.Abs(filepath.Join("testdata", "modules", "simple"))
+	require.NoError(t, err)
+
+	params := &ParameterizeArgs{
+		TFModuleSource: TFModuleSource(p),
+		PackageName:    "simple",
 	}
-	checkModuleStateIsSaved(t, s)
+
+	var realisticState []byte
+
+	t.Run("create", func(t *testing.T) {
+		s := &testResourceMonitorServer{
+			t:      t,
+			proj:   "myproj",
+			stack:  "mystack",
+			params: params,
+		}
+		realisticState = checkModuleStateIsSaved(t, s)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		s := &testResourceMonitorServer{
+			t:      t,
+			proj:   "myproj",
+			stack:  "mystack",
+			params: params,
+			oldModuleState: &pulumirpc.RegisterResourceResponse{
+				Urn:    "",
+				Id:     moduleStateResourceId,
+				Object: (&moduleState{rawState: realisticState}).Marshal(),
+			},
+		}
+		checkModuleStateIsSaved(t, s)
+	})
 }
 
-func TestUpdateModuleSavesModuleState(t *testing.T) {
-	st := moduleState{rawState: []byte(`rawState`)}
-
-	s := &testResourceMonitorServer{
-		t:     t,
-		proj:  "myproj",
-		stack: "mystack",
-		params: &ParameterizeArgs{
-			TFModuleSource:  "terraform-aws-modules/vpc/aws",
-			TFModuleVersion: "5.16.0",
-			PackageName:     "vpc",
-		},
-		oldModuleState: &pulumirpc.RegisterResourceResponse{
-			Urn:    "",
-			Id:     moduleStateResourceId,
-			Object: st.Marshal(),
-		},
-	}
-	checkModuleStateIsSaved(t, s)
-}
-
-func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
+func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte {
 	ctx := context.Background()
 	resmonPath := startResourceMonitorServer(t, s)
 	hostClient, err := provider.NewHostClient(resmonPath)
@@ -93,7 +98,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 		Config:          map[string]string{},
 		DryRun:          false, // pulumi up, not pulumi preivew
 		MonitorEndpoint: resmonPath,
-		Type:            fmt.Sprintf("vpc:index:%s", defaultComponentTypeName),
+		Type:            fmt.Sprintf("simple:index:%s", defaultComponentTypeName),
 		Name:            "myModuleInstance",
 	})
 	require.NoErrorf(t, err, "Construct failed")
@@ -101,6 +106,8 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) {
 	// Verify that ModuleState resource is allocated with some state.
 	mstate := s.FindResourceByName(moduleStateResourceName)
 	props := mstate.Object.AsMap()
-	_, gotState := props["state"]
+	state, gotState := props["state"]
+	t.Logf("state: %s", state)
 	assert.Truef(t, gotState, "Expected %q to register a state argument", moduleStateResourceName)
+	return []byte(state.(string))
 }
