@@ -34,17 +34,20 @@ import (
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	moduleStateHandler := newModuleStateHandler(hostClient)
+	planStore := planStore{}
 	srv := &server{
+		planStore:          &planStore,
 		hostClient:         hostClient,
 		stateStore:         moduleStateHandler,
 		moduleStateHandler: moduleStateHandler,
-		childHandler:       newChildHandler(),
+		childHandler:       newChildHandler(&planStore),
 	}
 	return srv, nil
 }
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
+	planStore          *planStore
 	params             *ParameterizeArgs
 	hostClient         *provider.HostClient
 	stateStore         moduleStateStore
@@ -220,24 +223,9 @@ func (rps *server) Construct(
 		ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
 		switch typ {
 		case string(ctok):
-			// TODO[pulumi/pulumi-terraform-module-provider#92] remove promises
-			stateChan := make(chan State)
-			planChan := make(chan Plan)
-
-			go func() {
-				state := <-stateChan
-				rps.childHandler.SetState(state)
-			}()
-
-			go func() {
-				plan := <-planChan
-				rps.childHandler.SetPlan(plan)
-			}()
-
 			component, err := NewModuleComponentResource(ctx,
 				rps.stateStore,
-				planChan,
-				stateChan,
+				rps.planStore,
 				rps.packageName,
 				rps.packageVersion,
 				rps.componentTypeName,

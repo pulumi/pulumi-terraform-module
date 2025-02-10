@@ -92,6 +92,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		autogold.Expect(resource.ID("module.mymodule.random_integer.priority")).Equal(t, randInt.ID)
 		autogold.Expect(map[string]interface{}{
 			"__address": "module.mymodule.random_integer.priority",
+			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "5",
 			"max":       "10",
 			"min":       "1",

@@ -15,19 +15,32 @@
 package modprovider
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
 type ModuleComponentResource struct {
 	pulumi.ResourceState
+}
+
+func (component *ModuleComponentResource) MustURN(ctx context.Context) urn.URN {
+	urnResult, err := internals.UnsafeAwaitOutput(ctx, component.URN())
+	contract.AssertNoErrorf(err, "Failed to await Component URN")
+
+	purn, ok := urnResult.Value.(pulumi.URN)
+	contract.Assertf(ok, "Expected URN to be of correct type, got: %#T", urnResult.Value)
+
+	return urn.URN(string(purn))
 }
 
 func componentTypeToken(packageName packageName, compTypeName componentTypeName) tokens.Type {
@@ -37,8 +50,7 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 func NewModuleComponentResource(
 	ctx *pulumi.Context,
 	stateStore moduleStateStore,
-	planChan chan<- Plan,
-	stateChan chan<- State,
+	planStore *planStore,
 	pkgName packageName,
 	pkgVer packageVersion,
 	compTypeName componentTypeName,
@@ -54,6 +66,8 @@ func NewModuleComponentResource(
 	if err != nil {
 		return nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
 	}
+
+	urn := component.MustURN(ctx.Context())
 
 	go func() {
 		_, err := newModuleStateResource(ctx,
@@ -102,11 +116,11 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Plan failed: %w", err)
 		}
 
-		planChan <- plan
+		planStore.SetPlan(urn, plan)
 
 		var errs []error
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			_, err := newChildResource(ctx, pkgName, rp,
+			_, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
 				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
@@ -124,7 +138,7 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Apply failed: %w", err)
 		}
 
-		stateChan <- tfState
+		planStore.SetState(urn, tfState)
 
 		rawState, ok, err := tf.PullState(ctx.Context())
 		if err != nil {
@@ -137,7 +151,7 @@ func NewModuleComponentResource(
 
 		var errs []error
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			_, err := newChildResource(ctx, pkgName, rp,
+			_, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
 				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
