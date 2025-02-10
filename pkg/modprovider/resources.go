@@ -20,13 +20,6 @@ type Resource interface {
 
 	// The resource name, example: "foo" for aws_instance.foo.
 	Name() string
-
-	// The instance key for any resources that have been created using
-	// "count" or "for_each". If neither of these apply the key will be
-	// empty.
-	//
-	// This value can be either an integer (int) or a string.
-	Index() interface{}
 }
 
 var _ Resource = (*tfsandbox.Resource)(nil)

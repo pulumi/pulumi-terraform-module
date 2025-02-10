@@ -31,7 +31,7 @@ type Resource struct {
 func (r *Resource) Address() ResourceAddress { return ResourceAddress(r.sr.Address) }
 func (r *Resource) Type() TFResourceType     { return TFResourceType(r.sr.Type) }
 func (r *Resource) Name() string             { return r.sr.Name }
-func (r *Resource) Index() interface{}       { return r.sr.Index }
+func (r *Resource) index() interface{}       { return r.sr.Index }
 
 type Resources[T ResourceStateOrPlan] struct {
 	resources stateResources
@@ -90,7 +90,6 @@ type ResourcePlan struct {
 
 func (s *ResourcePlan) GetResource() *Resource       { return &s.Resource }
 func (s *ResourcePlan) Values() resource.PropertyMap { return s.props }
-func (s *ResourcePlan) isResourceStateOrPlan()       {}
 
 var _ ResourceStateOrPlan = (*ResourcePlan)(nil)
 
@@ -125,10 +124,10 @@ func (p *ResourcePlan) PlannedValues() resource.PropertyMap {
 }
 
 type ResourceStateOrPlan interface {
-	GetResource() *Resource
+	Address() ResourceAddress
+	Type() TFResourceType
+	Name() string
 	Values() resource.PropertyMap
-
-	isResourceStateOrPlan()
 }
 
 type ResourceState struct {
@@ -141,7 +140,6 @@ func (s *ResourceState) AttributeValues() resource.PropertyMap {
 	return s.props
 }
 
-func (s *ResourceState) isResourceStateOrPlan()       {}
 func (s *ResourceState) GetResource() *Resource       { return &s.Resource }
 func (s *ResourceState) Values() resource.PropertyMap { return s.AttributeValues() }
 
