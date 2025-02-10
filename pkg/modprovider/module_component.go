@@ -68,6 +68,7 @@ func NewModuleComponentResource(
 	}
 
 	urn := component.MustURN(ctx.Context())
+	defer func() { planStore.Forget(urn) }()
 
 	go func() {
 		_, err := newModuleStateResource(ctx,
@@ -119,17 +120,25 @@ func NewModuleComponentResource(
 		planStore.SetPlan(urn, plan)
 
 		var errs []error
+		var childResources []*childResource
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			_, err := newChildResource(ctx, urn, pkgName, rp,
+			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
 				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
 				// RegisterPackageResource ideally
 				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
 		})
 		if err := errors.Join(errs...); err != nil {
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
+
+		for _, cr := range childResources {
+			cr.Await(ctx.Context())
 		}
 	} else {
 		// DryRun() = false corresponds to running pulumi up
@@ -150,17 +159,25 @@ func NewModuleComponentResource(
 		state.rawState = rawState
 
 		var errs []error
+		var childResources []*childResource
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			_, err := newChildResource(ctx, urn, pkgName, rp,
+			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
 				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
 				// RegisterPackageResource ideally
 				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
 		})
 		if err := errors.Join(errs...); err != nil {
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
+
+		for _, cr := range childResources {
+			cr.Await(ctx.Context())
 		}
 	}
 

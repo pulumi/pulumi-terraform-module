@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -40,6 +41,12 @@ const (
 // This custom resource represents a TF resource to the Pulumi engine.
 type childResource struct {
 	pulumi.CustomResourceState
+}
+
+// Wait until it is done provisioning.
+func (cr *childResource) Await(ctx context.Context) {
+	_, err := internals.UnsafeAwaitOutput(ctx, cr.URN())
+	contract.AssertNoErrorf(err, "URN should not fail")
 }
 
 func newChildResource(

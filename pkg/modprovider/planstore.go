@@ -35,6 +35,18 @@ type planStore struct {
 	states map[urn.URN]State
 }
 
+// Avoid memory leaks and clean the state when done.
+func (s *planStore) Forget(modUrn urn.URN) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.plans != nil {
+		delete(s.plans, modUrn)
+	}
+	if s.states != nil {
+		delete(s.states, modUrn)
+	}
+}
+
 func (s *planStore) SetPlan(modUrn urn.URN, plan Plan) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
