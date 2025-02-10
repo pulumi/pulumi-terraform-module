@@ -37,7 +37,7 @@ func (r *Resource) Index() interface{}       { return r.sr.Index }
 
 type Resources[T ResourceStateOrPlan] struct {
 	resources stateResources
-	newT      func(Resource) T
+	newT      func(tfjson.StateResource) T
 }
 
 func (rs *Resources[T]) VisitResources(visit func(T)) {
@@ -143,17 +143,20 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	for _, ch := range rawPlan.ResourceChanges {
 		changeByAddress[ResourceAddress(ch.Address)] = ch
 	}
-	resources, err := newStateResources(rawPlan.PlannedValues.RootModule, changeByAddress)
+	resources, err := newStateResources(rawPlan.PlannedValues.RootModule)
 	if err != nil {
 		return nil, err
 	}
 	return &Plan{
 		Resources: Resources[*ResourcePlan]{
 			resources: resources,
-			newT: func(resource Resource) *ResourcePlan {
-				chg := changeByAddress[ResourceAddress(resource.sr.Address)]
+			newT: func(resource tfjson.StateResource) *ResourcePlan {
+				chg := changeByAddress[ResourceAddress(resource.Address)]
 				return &ResourcePlan{
-					Resource:       resource,
+					Resource: Resource{
+						sr:    resource,
+						props: extractPropertyMapFromPlan(resource, chg),
+					},
 					resourceChange: chg,
 				}
 			},
@@ -173,16 +176,19 @@ func (s *State) RawState() []byte {
 }
 
 func newState(rawState *tfjson.State) (*State, error) {
-	resources, err := newStateResources(rawState.Values.RootModule, map[ResourceAddress]*tfjson.ResourceChange{})
+	resources, err := newStateResources(rawState.Values.RootModule)
 	if err != nil {
 		return nil, err
 	}
 	return &State{
 		Resources: Resources[*ResourceState]{
 			resources: resources,
-			newT: func(resource Resource) *ResourceState {
+			newT: func(resource tfjson.StateResource) *ResourceState {
 				return &ResourceState{
-					Resource: resource,
+					Resource: Resource{
+						sr:    resource,
+						props: extractPropertyMapFromState(resource),
+					},
 				}
 			},
 		},

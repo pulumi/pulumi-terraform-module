@@ -22,9 +22,9 @@ func TestProcessPlan(t *testing.T) {
 		plan, err := newPlan(tfState)
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
-		for _, r := range plan.resources {
-			resourceProps[string(r.Address())] = r.props
-		}
+		plan.Resources.VisitResources(func(rp *ResourcePlan) {
+			resourceProps[string(rp.sr.Address)] = rp.props
+		})
 		autogold.Expect(map[string]resource.PropertyMap{
 			"module.s3_bucket.aws_s3_bucket.this[0]": {
 				resource.PropertyKey("acceleration_status"): resource.PropertyValue{V: resource.Computed{
@@ -99,9 +99,9 @@ func TestProcessPlan(t *testing.T) {
 
 		plan, err := newPlan(tfState)
 		assert.NoError(t, err)
-		for _, r := range plan.resources {
+		plan.VisitResources(func(rp *ResourcePlan) {
 			// This is the only resource that has a diff in this plan file
-			if r.Type() == "aws_s3_bucket_server_side_encryption_configuration" {
+			if rp.Type() == "aws_s3_bucket_server_side_encryption_configuration" {
 				autogold.Expect(resource.PropertyMap{
 					resource.PropertyKey("bucket"): resource.PropertyValue{
 						V: "terraform-20250131154056635300000001",
@@ -111,9 +111,9 @@ func TestProcessPlan(t *testing.T) {
 					resource.PropertyKey("rule"): resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{
 						V: "",
 					}}},
-				}).Equal(t, r.props)
+				}).Equal(t, rp.props)
 			}
-		}
+		})
 	})
 
 	t.Run("update plan no diff", func(t *testing.T) {
@@ -126,9 +126,9 @@ func TestProcessPlan(t *testing.T) {
 		plan, err := newPlan(tfState)
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
-		for _, r := range plan.resources {
-			resourceProps[string(r.Address())] = r.props
-		}
+		plan.Resources.VisitResources(func(rp *ResourcePlan) {
+			resourceProps[string(rp.sr.Address)] = rp.props
+		})
 		autogold.Expect(map[string]resource.PropertyMap{
 			"module.s3_bucket.aws_s3_bucket.this[0]": {
 				resource.PropertyKey("acceleration_status"):         resource.PropertyValue{V: ""},

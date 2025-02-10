@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlan(t *testing.T) {
+func TestCreatePlan(t *testing.T) {
 	planData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "plans", "create_plan.json"))
 	require.NoError(t, err)
 	var tfPlan *tfjson.Plan
@@ -38,16 +38,17 @@ func TestPlan(t *testing.T) {
 
 	nResources := 0
 	p.VisitResources(func(rp *ResourcePlan) {
+		t.Logf("Resource: %s", rp.Address())
 		nResources++
 	})
 	assert.Equal(t, nResources, 5)
 
-	r := MustFindResource(p.Resources, "module.s3_bucket.aws_s3_bucket.this[0]")
-	assert.Equal(t, ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"), r.Address())
-	assert.Equal(t, "this", r.Name())
-	assert.Equal(t, float64(0), r.Index())
-	assert.Equal(t, TFResourceType("aws_s3_bucket"), r.Type())
-	assert.Equal(t, Create, r.ChangeKind())
+	rBucket := MustFindResource(p.Resources, "module.s3_bucket.aws_s3_bucket.this[0]")
+	assert.Equal(t, ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"), rBucket.Address())
+	assert.Equal(t, "this", rBucket.Name())
+	assert.Equal(t, float64(0), rBucket.Index())
+	assert.Equal(t, TFResourceType("aws_s3_bucket"), rBucket.Type())
+	assert.Equal(t, Create, rBucket.ChangeKind())
 
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
 		"force_destroy":                                              resource.NewBoolProperty(true),
@@ -78,7 +79,21 @@ func TestPlan(t *testing.T) {
 		resource.PropertyKey("acceleration_status"):                  unknown(),
 		resource.PropertyKey("tags"):                                 resource.NewNullProperty(),
 		resource.PropertyKey("timeouts"):                             resource.NewNullProperty(),
-	}), resource.NewObjectProperty(r.PlannedValues()))
+	}), resource.NewObjectProperty(rBucket.PlannedValues()))
+
+	rBucketVersioning := MustFindResource(p.Resources, "module.s3_bucket.aws_s3_bucket_versioning.this[0]")
+	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
+		resource.PropertyKey("bucket"):                unknown(),
+		resource.PropertyKey("expected_bucket_owner"): resource.NewNullProperty(),
+		resource.PropertyKey("mfa"):                   resource.NewNullProperty(),
+		resource.PropertyKey("id"):                    unknown(),
+		resource.PropertyKey("versioning_configuration"): resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewObjectProperty(resource.PropertyMap{
+				resource.PropertyKey("status"):     resource.MakeSecret(resource.NewStringProperty("Enabled")),
+				resource.PropertyKey("mfa_delete"): unknown(),
+			}),
+		}),
+	}), resource.NewObjectProperty(rBucketVersioning.PlannedValues()))
 }
 
 func unknown() resource.PropertyValue {
