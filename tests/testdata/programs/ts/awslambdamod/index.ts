@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as terraformAwsModules from "@pulumi/terraform-aws-modules";
+import * as lambda from "@pulumi/lambda";
 import * as path from "path";
 
-const testlambda = new terraformAwsModules.Lambda("test-lambda", {
+const testlambda = new lambda.Module("test-lambda", {
     function_name: "guinstestlambda",
     source_path: path.join(process.env["PWD"], "/src/app.ts"),
     runtime:  "nodejs16.x",

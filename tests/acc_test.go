@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -225,7 +226,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 	awsLambdaTest := pulumitest.NewPulumiTest(t, testProgramLocation, localPath)
 	// Add the package to the test
 	t.Run("pulumi package add", func(t *testing.T) {
-		pulumiPackageAdd(t, awsLambdaTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1")
+		pulumiPackageAdd(t, awsLambdaTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
 	})
 	// Test preview
 	t.Run("pulumi preview", func(t *testing.T) {
