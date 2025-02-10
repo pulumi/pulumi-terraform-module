@@ -17,6 +17,7 @@ package modprovider
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -28,32 +29,32 @@ import (
 func TestSavingModuleState(t *testing.T) {
 	t.Parallel()
 
+	p, err := filepath.Abs(filepath.Join("testdata", "modules", "simple"))
+	require.NoError(t, err)
+
+	params := &ParameterizeArgs{
+		TFModuleSource: TFModuleSource(p),
+		PackageName:    "simple",
+	}
+
 	var realisticState []byte
 
 	t.Run("create", func(t *testing.T) {
 		s := &testResourceMonitorServer{
-			t:     t,
-			proj:  "myproj",
-			stack: "mystack",
-			params: &ParameterizeArgs{
-				TFModuleSource:  "terraform-aws-modules/vpc/aws",
-				TFModuleVersion: "5.16.0",
-				PackageName:     "vpc",
-			},
+			t:      t,
+			proj:   "myproj",
+			stack:  "mystack",
+			params: params,
 		}
 		realisticState = checkModuleStateIsSaved(t, s)
 	})
 
 	t.Run("update", func(t *testing.T) {
 		s := &testResourceMonitorServer{
-			t:     t,
-			proj:  "myproj",
-			stack: "mystack",
-			params: &ParameterizeArgs{
-				TFModuleSource:  "terraform-aws-modules/vpc/aws",
-				TFModuleVersion: "5.16.0",
-				PackageName:     "vpc",
-			},
+			t:      t,
+			proj:   "myproj",
+			stack:  "mystack",
+			params: params,
 			oldModuleState: &pulumirpc.RegisterResourceResponse{
 				Urn:    "",
 				Id:     moduleStateResourceId,
@@ -97,7 +98,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte 
 		Config:          map[string]string{},
 		DryRun:          false, // pulumi up, not pulumi preivew
 		MonitorEndpoint: resmonPath,
-		Type:            fmt.Sprintf("vpc:index:%s", defaultComponentTypeName),
+		Type:            fmt.Sprintf("simple:index:%s", defaultComponentTypeName),
 		Name:            "myModuleInstance",
 	})
 	require.NoErrorf(t, err, "Construct failed")
