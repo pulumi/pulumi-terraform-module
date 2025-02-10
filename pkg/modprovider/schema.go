@@ -27,8 +27,7 @@ import (
 // precise version.
 func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 	if versionSpec == "" {
-		// still have to return something for local modules
-		return packageVersion("0.0.1")
+		return defaultPackageVersion
 	}
 	return packageVersion(versionSpec)
 }

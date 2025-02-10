@@ -18,13 +18,21 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-// Pulumi name for the package obtained after the generic provider is specialized to a specific Terraform module via the
-// a Paramaterize call, such as "terraform-aws-modules".
+// Pulumi name for the package obtained after the generic provider is specialized to a specific
+// Terraform module via the a Paramaterize call, such as "terraform-aws-modules".
 type packageName string
 
-// Pulumi name for the package obtained after the generic provider is specialized to a specific Terraform module via the
-// a Paramaterize call, such as "5.18.1". TODO figure out if this is empty in some scenarios.
+// Pulumi version for the package.
+//
+// Similar to [packageName] this describes the package after parameters have been applied.
+//
+// Cannot be empty. Instead of proceeding without a version, provider may presume to use the
+// [defaultPackageVersion] instead.
 type packageVersion string
+
+const (
+	defaultPackageVersion packageVersion = "0.0.1"
+)
 
 // The type name for the Component Resource representing a given Terraform module.
 //

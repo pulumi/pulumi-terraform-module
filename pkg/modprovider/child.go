@@ -130,8 +130,7 @@ func (h *childHandler) Check(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{
-		Inputs:   req.News,
-		Failures: nil, // TODO maybe package some TF errors here?
+		Inputs: req.News,
 	}, nil
 }
 
@@ -160,13 +159,13 @@ func (h *childHandler) Diff(
 		resp.Changes = pulumirpc.DiffResponse_DIFF_NONE
 	case tfsandbox.Update:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
-		// TODO do we need to populate resp.Diffs?
+		// TODO[pulumi/pulumi-terraform-module-provider#100] populate resp.Diffs
 	case tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
 		if rplan.ChangeKind() == tfsandbox.ReplaceDestroyBeforeCreate {
 			resp.DeleteBeforeReplace = true
 		}
-		// TODO need to populate replaces with actual replace paths.
+		// TODO[pulumi/pulumi-terraform-module-provider#100] populate replaces
 		resp.Replaces = []string{"todo"}
 	case tfsandbox.Create, tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
 		contract.Failf("Unexpected ChangeKind in Diff: %v", rplan.ChangeKind())
@@ -175,7 +174,7 @@ func (h *childHandler) Diff(
 		contract.Failf("Unknown ChangeKind in Diff: %v", rplan.ChangeKind())
 		return nil, nil
 	}
-	// TODO is there an advantage in populating resp.DetailedDiff? Perhaps for changes in set elements.
+	// TODO[pulumi/pulumi-terraform-module-provider#100] populate DetailedDiff
 	return resp, nil
 }
 

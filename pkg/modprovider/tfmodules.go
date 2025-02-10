@@ -201,7 +201,7 @@ func isValidVersion(inputVersion string) bool {
 	return err == nil
 }
 
-func latestModuleVersion(moduleSource string) (*version.Version, error) {
+func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Version, error) {
 	var source addrs.ModuleSourceRegistry
 	parsedSource, err := addrs.ParseModuleSource(moduleSource)
 	if err != nil {
@@ -217,7 +217,7 @@ func latestModuleVersion(moduleSource string) (*version.Version, error) {
 	services := disco.NewWithCredentialsSource(nil)
 	reg := registry.NewClient(services, nil)
 	regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(source.Package)
-	resp, err := reg.ModuleVersions(context.TODO(), regsrcAddr)
+	resp, err := reg.ModuleVersions(ctx, regsrcAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve available versions for %s: %s", source, err)
 	}
