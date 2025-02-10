@@ -81,11 +81,16 @@ func TestProcessPlan(t *testing.T) {
 				resource.PropertyKey("restrict_public_buckets"): resource.PropertyValue{V: true},
 			},
 			"module.s3_bucket.aws_s3_bucket_versioning.this[0]": {
-				resource.PropertyKey("bucket"):                   resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
-				resource.PropertyKey("expected_bucket_owner"):    resource.PropertyValue{},
-				resource.PropertyKey("id"):                       resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
-				resource.PropertyKey("mfa"):                      resource.PropertyValue{},
-				resource.PropertyKey("versioning_configuration"): resource.PropertyValue{V: []resource.PropertyValue{{V: resource.PropertyMap{resource.PropertyKey("status"): resource.PropertyValue{V: "Enabled"}}}}},
+				resource.PropertyKey("bucket"):                resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+				resource.PropertyKey("expected_bucket_owner"): resource.PropertyValue{},
+				resource.PropertyKey("id"):                    resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+				resource.PropertyKey("mfa"):                   resource.PropertyValue{},
+				resource.PropertyKey("versioning_configuration"): resource.PropertyValue{V: []resource.PropertyValue{{V: resource.PropertyMap{
+					resource.PropertyKey("mfa_delete"): resource.PropertyValue{V: resource.Computed{
+						Element: resource.PropertyValue{V: ""},
+					}},
+					resource.PropertyKey("status"): resource.PropertyValue{V: &resource.Secret{Element: resource.PropertyValue{V: "Enabled"}}},
+				}}}},
 			},
 		}).Equal(t, resourceProps)
 	})
