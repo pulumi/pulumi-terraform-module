@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,6 +16,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,11 +46,10 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		var preview bytes.Buffer
 		previewResult := pt.Preview(t,
 			optpreview.Diff(),
 			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(&preview),
+			optpreview.ProgressStreams(os.Stdout),
 		)
 		autogold.Expect(map[apitype.OpType]int{
 			apitype.OpType("create"): 4,
@@ -63,12 +63,42 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		)
 
 		autogold.Expect(&map[string]int{
-			"create": 3,
+			"create": 4,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
 		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
 		require.Contains(t, upResult.StdOut+upResult.StdErr,
 			"warning: Undefined value (randomPriority) will not show as a stack output.")
+
+		deploy := pt.ExportStack(t)
+		t.Logf("STATE: %s", string(deploy.Deployment))
+
+		var deployment apitype.DeploymentV3
+		err := json.Unmarshal(deploy.Deployment, &deployment)
+		require.NoError(t, err)
+
+		var randInt apitype.ResourceV3
+		randIntFound := 0
+		for _, r := range deployment.Resources {
+			if r.Type == "randmod:tf:random_integer" {
+				randInt = r
+				randIntFound++
+			}
+		}
+
+		require.Equal(t, 1, randIntFound)
+
+		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.mymodule.random_integer.priority")).Equal(t, randInt.URN)
+		autogold.Expect(resource.ID("module.mymodule.random_integer.priority")).Equal(t, randInt.ID)
+		autogold.Expect(map[string]interface{}{
+			"__address": "module.mymodule.random_integer.priority",
+			"id":        "5",
+			"max":       "10",
+			"min":       "1",
+			"result":    "5",
+			"seed":      "the-most-random-seed",
+		}).Equal(t, randInt.Inputs)
+		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
 }
 
@@ -153,23 +183,35 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			optup.ProgressStreams(os.Stdout),
 		)
 
-		// TODO: this is not quite correct, since the children are not included in the summary
-		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{"create": 3})
+		expectedResourceCount := 7
+
+		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{
+			"create": expectedResourceCount,
+		})
 
 		stack := pt.ExportStack(t)
 		t.Logf("deployment: %s", stack.Deployment)
 
-		stackJSON, err := stack.Deployment.MarshalJSON()
+		var deployment apitype.DeploymentV3
+		err := json.Unmarshal(stack.Deployment, &deployment)
 		require.NoError(t, err)
 
-		deployment := map[string]any{}
-		require.NoError(t, json.Unmarshal(stackJSON, &deployment))
+		var moduleState apitype.ResourceV3
+		moduleStateFound := 0
+		for _, r := range deployment.Resources {
+			if strings.Contains(string(r.Type), "ModuleState") {
+				moduleState = r
+				moduleStateFound++
+			}
+		}
 
-		resources := deployment["resources"].([]any)
-		require.Equal(t, len(resources), 4)
-		stateResource := resources[3].(map[string]any)
-		stateResourceOutputs := stateResource["outputs"].(map[string]any)
-		tfState := stateResourceOutputs["state"].(string)
+		require.Equal(t, 1, moduleStateFound)
+
+		tfStateRaw, gotTfState := moduleState.Outputs["state"]
+		require.True(t, gotTfState)
+
+		tfState, isStr := tfStateRaw.(string)
+		require.True(t, isStr)
 
 		require.Less(t, 10, len(tfState))
 		require.Contains(t, tfState, "vpc_id")

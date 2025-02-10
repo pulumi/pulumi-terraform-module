@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -260,9 +261,13 @@ func (s *testResourceMonitorServer) RegisterResource(
 		s.resources = append(s.resources, &response)
 		return &response, nil
 	default:
-		err := fmt.Errorf("Unexpected RegisterResource call: %q", req.Type)
-		s.t.Error(err)
-		return nil, err
+		s.t.Logf("Responding with dummy values to RegisterResource %q", req.Type)
+		urn := string(urn.New(s.stack, s.proj, "", tokens.Type(req.Type), req.Name))
+		return &pulumirpc.RegisterResourceResponse{
+			Id:     "new-id",
+			Urn:    urn,
+			Object: &structpb.Struct{},
+		}, nil
 	}
 }
 

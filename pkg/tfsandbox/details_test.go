@@ -45,7 +45,7 @@ func TestPlan(t *testing.T) {
 	r := MustFindResource(p.Resources, "module.s3_bucket.aws_s3_bucket.this[0]")
 	assert.Equal(t, ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"), r.Address())
 	assert.Equal(t, "this", r.Name())
-	assert.Equal(t, float64(0), r.Index())
+	assert.Equal(t, float64(0), r.index())
 	assert.Equal(t, TFResourceType("aws_s3_bucket"), r.Type())
 	assert.Equal(t, Create, r.ChangeKind())
 

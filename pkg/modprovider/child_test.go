@@ -136,25 +136,26 @@ func (s *testResourceState) Type() TFResourceType                  { return s.ty
 func (s *testResourceState) Name() string                          { return s.name }
 func (s *testResourceState) Index() interface{}                    { return s.index }
 func (s *testResourceState) AttributeValues() resource.PropertyMap { return s.attrs }
+func (s *testResourceState) Values() resource.PropertyMap          { return s.attrs }
 
-var _ ResourceState = (*testResourceState)(nil)
+var _ ResourceStateOrPlan = (*testResourceState)(nil)
 
 type testState struct {
-	res ResourceState
+	res *testResourceState
 }
 
 func (ts *testState) VisitResources(visitor func(ResourceState)) {
 	visitor(ts.res)
 }
 
-func (ts *testState) FindResource(addr ResourceAddress) (ResourceState, bool) {
+func (ts *testState) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
 	if addr == ts.res.Address() {
 		return ts.res, true
 	}
 	return nil, false
 }
 
-var _ State[ResourceState] = (*testState)(nil)
+var _ State = (*testState)(nil)
 
 func testPackageName() packageName {
 	return packageName("terraform-aws-module")

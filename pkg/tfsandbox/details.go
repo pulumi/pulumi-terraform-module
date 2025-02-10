@@ -15,8 +15,6 @@
 package tfsandbox
 
 import (
-	"encoding/json"
-
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -33,7 +31,7 @@ type Resource struct {
 func (r *Resource) Address() ResourceAddress { return ResourceAddress(r.sr.Address) }
 func (r *Resource) Type() TFResourceType     { return TFResourceType(r.sr.Type) }
 func (r *Resource) Name() string             { return r.sr.Name }
-func (r *Resource) Index() interface{}       { return r.sr.Index }
+func (r *Resource) index() interface{}       { return r.sr.Index }
 
 type Resources[T ResourceStateOrPlan] struct {
 	resources stateResources
@@ -44,6 +42,20 @@ func (rs *Resources[T]) VisitResources(visit func(T)) {
 	for _, res := range rs.resources {
 		visit(rs.newT(res))
 	}
+}
+
+func (rs *Resources[T]) VisitResourcesStateOrPlans(visit func(ResourceStateOrPlan)) {
+	rs.VisitResources(func(t T) {
+		visit(t)
+	})
+}
+
+func (rs *Resources[T]) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
+	v, ok := rs.FindResource(addr)
+	if !ok {
+		return nil, false
+	}
+	return v, true
 }
 
 func (rs *Resources[T]) FindResource(addr ResourceAddress) (T, bool) {
@@ -78,7 +90,6 @@ type ResourcePlan struct {
 
 func (s *ResourcePlan) GetResource() *Resource       { return &s.Resource }
 func (s *ResourcePlan) Values() resource.PropertyMap { return s.props }
-func (s *ResourcePlan) isResourceStateOrPlan()       {}
 
 var _ ResourceStateOrPlan = (*ResourcePlan)(nil)
 
@@ -113,10 +124,10 @@ func (p *ResourcePlan) PlannedValues() resource.PropertyMap {
 }
 
 type ResourceStateOrPlan interface {
-	GetResource() *Resource
+	Address() ResourceAddress
+	Type() TFResourceType
+	Name() string
 	Values() resource.PropertyMap
-
-	isResourceStateOrPlan()
 }
 
 type ResourceState struct {
@@ -129,7 +140,6 @@ func (s *ResourceState) AttributeValues() resource.PropertyMap {
 	return s.props
 }
 
-func (s *ResourceState) isResourceStateOrPlan()       {}
 func (s *ResourceState) GetResource() *Resource       { return &s.Resource }
 func (s *ResourceState) Values() resource.PropertyMap { return s.AttributeValues() }
 
@@ -164,12 +174,6 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 type State struct {
 	Resources[*ResourceState]
 	rawState *tfjson.State
-}
-
-func (s *State) RawState() []byte {
-	rawState, err := json.Marshal(s.rawState)
-	contract.AssertNoErrorf(err, "failed to marshal raw state")
-	return rawState
 }
 
 func newState(rawState *tfjson.State) (*State, error) {
