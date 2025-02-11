@@ -88,10 +88,10 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		require.Equal(t, 1, randIntFound)
 
-		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.mymodule.random_integer.priority")).Equal(t, randInt.URN)
-		autogold.Expect(resource.ID("module.mymodule.random_integer.priority")).Equal(t, randInt.ID)
+		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
+		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
 		autogold.Expect(map[string]interface{}{
-			"__address": "module.mymodule.random_integer.priority",
+			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "5",
 			"max":       "10",
