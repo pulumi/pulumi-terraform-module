@@ -72,6 +72,8 @@ func NewModuleComponentResource(
 
 	go func() {
 		_, err := newModuleStateResource(ctx,
+			// Needs to be prefixed by parent to avoid "duplicate URN".
+			fmt.Sprintf("%-state", name),
 			pkgName,
 			urn,
 			pulumi.Parent(&component),

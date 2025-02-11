@@ -32,9 +32,8 @@ import (
 )
 
 const (
-	moduleStateTypeName     = "ModuleState"
-	moduleStateResourceName = "moduleState"
-	moduleStateResourceId   = "moduleStateResource"
+	moduleStateTypeName   = "ModuleState"
+	moduleStateResourceId = "moduleStateResource"
 )
 
 // Represents state stored in Pulumi for a TF module.
@@ -93,6 +92,7 @@ func moduleStateTypeToken(pkgName packageName) tokens.Type {
 
 func newModuleStateResource(
 	ctx *pulumi.Context,
+	name string,
 	pkgName packageName,
 	modUrn resource.URN,
 	opts ...pulumi.ResourceOption,
@@ -105,7 +105,6 @@ func newModuleStateResource(
 	})
 
 	// TODO[pulumi/pulumi-terraform-module-protovider#56] use RegisterPackageResource
-	name := moduleStateResourceName
 	err := ctx.RegisterResource(string(tok), name, inputsMap, &res, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)
