@@ -16,6 +16,28 @@ var (
 	TerraformDataResourceName = "unknown_proxy"
 )
 
+// decode decodes a PropertyValue, recursively replacing any unknown values
+// with the unknown proxy
+func decode(pv resource.PropertyValue) (interface{}, bool) {
+	value := pv
+	if pv.IsObject() {
+		mapValue := pv.ObjectValue().MapRepl(nil, decode)
+		value = resource.NewObjectProperty(resource.NewPropertyMapFromMap(mapValue))
+	}
+	if pv.IsArray() {
+		arr := []resource.PropertyValue{}
+		for _, e := range pv.ArrayValue() {
+			arr = append(arr, resource.NewPropertyValue(e.MapRepl(nil, decode)))
+		}
+		value = resource.NewArrayProperty(arr)
+	}
+	if value.IsComputed() || (value.IsOutput() && !value.OutputValue().Known) {
+		// reference to our unknown proxy resource
+		return resource.NewStringProperty("${terraform_data.unknown_proxy.output}"), true
+	}
+	return value, true
+}
+
 // Writes a pulumi.tf.json file in the workingDir that instructs Terraform to call a given module instance.
 // Unknown inputs (e.g. output values) are handled by using a "terraform_data" resource as a proxy
 // terraform_data resources implement the resource lifecycle, but do not perform any actions and do not
@@ -53,13 +75,7 @@ func CreateTFFile(
 	// NOTE: this should only happen at plan time. At apply time all computed values
 	// should be resolved
 	if containsUnknowns {
-		inputsMap := inputs.MapRepl(nil, func(pv resource.PropertyValue) (interface{}, bool) {
-			if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
-				// reference to our unknown proxy resource
-				return resource.NewStringProperty("${terraform_data.unknown_proxy.output}"), true
-			}
-			return pv, true
-		})
+		inputsMap := inputs.MapRepl(nil, decode)
 		inputs = resource.NewPropertyMapFromMap(inputsMap)
 		tfFile["resource"] = map[string]interface{}{
 			TerraformDataResourceType: map[string]interface{}{
@@ -70,11 +86,17 @@ func CreateTFFile(
 		}
 	}
 
-	if inputs.ContainsUnknowns() {
-		return fmt.Errorf("something went wrong, unknown values found in module inputs")
+	var values map[string]any
+	res, err := resourcex.Unmarshal(&values, inputs, resourcex.UnmarshalOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal inputs: %w", err)
 	}
 
-	values := resourcex.Decode(inputs)
+	// TODO: [pulumi/pulumi-terraform-module-provider#103]
+	if res.ContainsSecrets || res.ContainsUnknowns {
+		return fmt.Errorf("something went wrong, secret or unknown values found in module inputs")
+	}
+	// values := resourcex.Decode(inputs)
 	for k, v := range values {
 		// TODO: I'm only converting the top layer properties for now
 		// It doesn't look like modules have info on nested properties, typically
