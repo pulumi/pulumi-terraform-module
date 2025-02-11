@@ -73,6 +73,7 @@ func NewModuleComponentResource(
 	go func() {
 		_, err := newModuleStateResource(ctx,
 			pkgName,
+			urn,
 			pulumi.Parent(&component),
 
 			// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
@@ -83,11 +84,11 @@ func NewModuleComponentResource(
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
 	}()
 
-	state := stateStore.AwaitOldState()
+	state := stateStore.AwaitOldState(urn)
 	defer func() {
 		// Save any modifications to state that may have been done in the course of pulumi up. This is expected
 		// to be called even if the state is not modified.
-		stateStore.SetNewState(state)
+		stateStore.SetNewState(urn, state)
 	}()
 
 	tf, err := tfsandbox.NewTofu(ctx.Context())
