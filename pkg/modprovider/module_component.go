@@ -68,7 +68,15 @@ func NewModuleComponentResource(
 	}
 
 	urn := component.MustURN(ctx.Context())
-	defer func() { planStore.Forget(urn) }()
+
+	defer func() {
+		// TODO[pulumi/pulumi-terraform-module-provider#108] avoid deadlock
+		//
+		// This is only safe to run after all the children are done processing.
+		// Perhaps when fixing 108 this method will stop blocking to wait on that,
+		// in that case this cleanup has to move accordingly.
+		planStore.Forget(urn)
+	}()
 
 	go func() {
 		_, err := newModuleStateResource(ctx,
@@ -146,6 +154,7 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 
+		// TODO[pulumi/pulumi-terraform-module-provider#108] avoid deadlock
 		for _, cr := range childResources {
 			cr.Await(ctx.Context())
 		}
@@ -185,6 +194,7 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 
+		// TODO[pulumi/pulumi-terraform-module-provider#108] avoid deadlock
 		for _, cr := range childResources {
 			cr.Await(ctx.Context())
 		}
