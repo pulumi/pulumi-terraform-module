@@ -104,10 +104,10 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte 
 	require.NoErrorf(t, err, "Construct failed")
 
 	// Verify that ModuleState resource is allocated with some state.
-	mstate := s.FindResourceByName(moduleStateResourceName)
+	mstate := s.FindResourceByType(moduleStateTypeName)
 	props := mstate.Object.AsMap()
 	state, gotState := props["state"]
 	t.Logf("state: %s", state)
-	assert.Truef(t, gotState, "Expected %q to register a state argument", moduleStateResourceName)
+	assert.Truef(t, gotState, "Expected %q to register a state argument", moduleStateTypeName)
 	return []byte(state.(string))
 }

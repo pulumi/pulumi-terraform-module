@@ -97,6 +97,7 @@ func newModuleStateResource(
 	modUrn resource.URN,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
+	contract.Assertf(modUrn != "", "modUrn cannot be empty")
 	var res moduleStateResource
 	tok := moduleStateTypeToken(pkgName)
 
@@ -205,6 +206,7 @@ func (h *moduleStateHandler) Delete(
 }
 
 func (*moduleStateHandler) mustParseModURN(pb *structpb.Struct) urn.URN {
+	contract.Assertf(pb != nil, "pb cannot be nil")
 	f2, ok := pb.Fields[moduleURNPropName]
 	contract.Assertf(ok, "expected %q property to be defined", moduleURNPropName)
 	v2 := f2.GetStringValue()
