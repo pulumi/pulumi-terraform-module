@@ -34,6 +34,9 @@ type ModuleComponentResource struct {
 }
 
 func (component *ModuleComponentResource) MustURN(ctx context.Context) urn.URN {
+	// This is called Unsafe to discourage program authors from calling this, but in fact it
+	// should be reasonable to expect that an URN will get allocated and to block until it in
+	// fact is allocated.
 	urnResult, err := internals.UnsafeAwaitOutput(ctx, component.URN())
 	contract.AssertNoErrorf(err, "Failed to await Component URN")
 

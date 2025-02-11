@@ -45,6 +45,10 @@ type childResource struct {
 
 // Wait until it is done provisioning.
 func (cr *childResource) Await(ctx context.Context) {
+	// This API is called UnsafeAwaitOutput to discourage use in programs. Providers should be
+	// able to assume that the URN will always be allocated.
+	//
+	// TODO[pulumi/pulumi-terraform-module-provider#108] this may lock up in Duplicate-URN case
 	_, err := internals.UnsafeAwaitOutput(ctx, cr.URN())
 	contract.AssertNoErrorf(err, "URN should not fail")
 }
