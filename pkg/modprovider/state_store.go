@@ -47,6 +47,7 @@ func (s *stateStore) Await(modUrn urn.URN) moduleState {
 // This will panic if called twice with the same modUrn.
 func (s *stateStore) Put(modUrn urn.URN, state moduleState) {
 	e := s.getOrCreateEntry(modUrn)
+	e.moduleState = state
 	e.waitGroup.Done()
 }
 
