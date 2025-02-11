@@ -98,7 +98,13 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	err = tfsandbox.CreateTFFile("mymodule", tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
+	// Important: the name of the module instance in TF must be at least unique enough to
+	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the
+	// Pulumi name directly. The name chosen here will proliferate into ResourceAddress of every
+	// child resource as well, which will get further reused for Pulumi URNs.
+	tfName := name
+
+	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}

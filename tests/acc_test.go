@@ -132,9 +132,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 			optpreview.ErrorProgressStreams(os.Stderr),
 			optpreview.ProgressStreams(os.Stdout),
 		)
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 4,
-		}).Equal(t, previewResult.ChangeSummary)
+		autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 7}).Equal(t, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
@@ -143,9 +141,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 			optup.ProgressStreams(os.Stdout),
 		)
 
-		autogold.Expect(&map[string]int{
-			"create": 4,
-		}).Equal(t, upResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"create": 7}).Equal(t, upResult.Summary.ResourceChanges)
 	})
 }
 
