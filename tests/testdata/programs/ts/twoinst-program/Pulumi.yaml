@@ -1,0 +1,5 @@
+name: ts-twoinst-program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

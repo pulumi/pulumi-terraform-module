@@ -103,6 +103,52 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	})
 }
 
+// Sanity check that we can provision two instances of the same module side-by-side, in particular
+// this makes sure that URN selection is unique enough to avoid the "dulicate URN" problem.
+func Test_TwoInstances_TypeScript(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Reuse randmod test module for this test.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	require.NoError(t, err)
+
+	// Program written to support the test.
+	twoinstProgram := filepath.Join("testdata", "programs", "ts", "twoinst-program")
+
+	moduleProvider := "terraform-module-provider"
+	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
+	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
+	pt.CopyToTempDir(t)
+
+	packageName := "randmod"
+	t.Run("pulumi package add", func(t *testing.T) {
+		// pulumi package add <provider-path> <randmod-path> <package-name>
+		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
+	})
+
+	t.Run("pulumi preview", func(t *testing.T) {
+		previewResult := pt.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(os.Stderr),
+			optpreview.ProgressStreams(os.Stdout),
+		)
+		autogold.Expect(map[apitype.OpType]int{
+			apitype.OpType("create"): 4,
+		}).Equal(t, previewResult.ChangeSummary)
+	})
+
+	t.Run("pulumi up", func(t *testing.T) {
+		upResult := pt.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		autogold.Expect(&map[string]int{
+			"create": 4,
+		}).Equal(t, upResult.Summary.ResourceChanges)
+	})
+}
+
 func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 

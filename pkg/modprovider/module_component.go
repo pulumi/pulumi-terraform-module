@@ -137,9 +137,9 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 
-		for _, cr := range childResources {
-			cr.Await(ctx.Context())
-		}
+		// for _, cr := range childResources {
+		// 	cr.Await(ctx.Context())
+		// }
 	} else {
 		// DryRun() = false corresponds to running pulumi up
 		tfState, err := tf.Apply(ctx.Context())
@@ -176,7 +176,8 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 
-		for _, cr := range childResources {
+		for i, cr := range childResources {
+			fmt.Printf("AWAITING RESOURCE %d\n", i)
 			cr.Await(ctx.Context())
 		}
 	}
