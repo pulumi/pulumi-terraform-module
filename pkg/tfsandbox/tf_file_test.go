@@ -44,6 +44,11 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue:    resource.NewStringProperty("hello"),
 		},
 		{
+			name:           "unknown",
+			tfVariableType: "string",
+			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
+		},
+		{
 			name:           "string secret",
 			tfVariableType: "string",
 			inputsValue: resource.NewSecretProperty(&resource.Secret{
@@ -132,20 +137,6 @@ func TestCreateTFFile(t *testing.T) {
 			assertValidateSuccess(t, tofu)
 		})
 	}
-
-	t.Run("Fails on unknowns", func(t *testing.T) {
-		tofu, err := NewTofu(context.Background())
-		assert.NoError(t, err)
-		t.Cleanup(func() {
-			os.RemoveAll(tofu.WorkingDir())
-		})
-		writeTfVarFile(t, tofu.WorkingDir(), "string")
-		err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
-			"tfVar": resource.MakeComputed(resource.NewStringProperty("")),
-		})
-		assert.ErrorContains(t, err, "unknown values are not yet supported")
-	})
-
 }
 
 // validate will fail if any of the module inputs don't match

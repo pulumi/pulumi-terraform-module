@@ -11,7 +11,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+var (
+	TerraformDataResourceType = "terraform_data"
+	TerraformDataResourceName = "unknown_proxy"
+)
+
 // Writes a pulumi.tf.json file in the workingDir that instructs Terraform to call a given module instance.
+// Unknown inputs (e.g. output values) are handled by using a "terraform_data" resource as a proxy
+// terraform_data resources implement the resource lifecycle, but do not perform any actions and do not
+// require you to configure a provider. see https://developer.hashicorp.com/terraform/language/resources/terraform-data
 func CreateTFFile(
 	name string, // name of the module instance
 	source TFModuleSource,
@@ -27,18 +35,43 @@ func CreateTFFile(
 		moduleProps["version"] = version
 	}
 
-	containsUnknowns := false
-	resourcex.Walk(resource.NewObjectProperty(inputs), func(pv resource.PropertyValue, ws resourcex.WalkState) {
-		if ws.Entering {
-			if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
-				containsUnknowns = true
-			}
-		}
-	})
+	// Terraform JSON format
+	// see https://developer.hashicorp.com/terraform/language/syntax/json
+	tfFile := map[string]interface{}{
+		// NOTE: other available sections
+		// "terraform": map[string]interface{}{},
+		// "provider":  map[string]interface{}{},
+		// "locals":    map[string]interface{}{},
+		// TODO: [pulumi/pulumi-terraform-module-provider#90] propagate module outputs
+		// "output":    map[string]interface{}{},
+		// "variable":  map[string]interface{}{},
+	}
 
 	// TODO: [pulumi/pulumi-terraform-module#28] Support unknown values
+	containsUnknowns := inputs.ContainsUnknowns()
+
+	// NOTE: this should only happen at plan time. At apply time all computed values
+	// should be resolved
 	if containsUnknowns {
-		return fmt.Errorf("unknown values are not yet supported")
+		inputsMap := inputs.MapRepl(nil, func(pv resource.PropertyValue) (interface{}, bool) {
+			if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
+				// reference to our unknown proxy resource
+				return resource.NewStringProperty("${terraform_data.unknown_proxy.output}"), true
+			}
+			return pv, true
+		})
+		inputs = resource.NewPropertyMapFromMap(inputsMap)
+		tfFile["resource"] = map[string]interface{}{
+			TerraformDataResourceType: map[string]interface{}{
+				TerraformDataResourceName: map[string]interface{}{
+					"input": "unknown",
+				},
+			},
+		}
+	}
+
+	if inputs.ContainsUnknowns() {
+		return fmt.Errorf("something went wrong, unknown values found in module inputs")
 	}
 
 	values := resourcex.Decode(inputs)
@@ -56,16 +89,8 @@ func CreateTFFile(
 		moduleProps[tfKey] = v
 	}
 
-	tfFile := map[string]interface{}{
-		// TODO: other available sections
-		// "terraform": map[string]interface{}{},
-		// "provider":  map[string]interface{}{},
-		// "locals":    map[string]interface{}{},
-		// "output":    map[string]interface{}{},
-		// "variable":  map[string]interface{}{},
-		"module": map[string]interface{}{
-			name: moduleProps,
-		},
+	tfFile["module"] = map[string]interface{}{
+		name: moduleProps,
 	}
 
 	contents, err := json.MarshalIndent(tfFile, "", "  ")
