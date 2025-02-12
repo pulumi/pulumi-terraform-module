@@ -93,7 +93,6 @@ jobs:
     needs:
       - prerequisites
       - build_provider
-      - build_sdk
     permissions:
       contents: read
       id-token: write
