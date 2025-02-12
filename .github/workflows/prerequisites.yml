@@ -55,6 +55,7 @@ jobs:
         major-version: 0
         set-env: 'PROVIDER_VERSION'
     - name: Cache examples generation
+      if: env.PULUMI_BUILD_SCHEMA != 'disabled'
       uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4
       with:
         path: |
@@ -100,3 +101,5 @@ jobs:
 
     - name: Upload artifacts
       uses: ./.github/actions/upload-prerequisites
+      with:
+        schema: ${{ env.PULUMI_BUILD_SCHEMA }}
