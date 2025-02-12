@@ -17,10 +17,12 @@ package modprovider
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 )
 
 func TestPlanStore_Plans(t *testing.T) {

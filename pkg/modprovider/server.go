@@ -22,6 +22,8 @@ import (
 	"io/fs"
 	"os"
 
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -29,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {

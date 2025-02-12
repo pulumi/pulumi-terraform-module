@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -19,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -190,7 +191,7 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	t.Run("java", func(t *testing.T) {
 		d := dest("java")
 		// Note that pulumi convert prints instructions how to make the result compile.
-		// They are not yet entirely accurate, and we do not yet attemt to compile the result.
+		// They are not yet entirely accurate, and we do not yet attempt to compile the result.
 		pulumiConvert(t, localProviderBinPath, example, d, "java", generateOnly)
 	})
 }

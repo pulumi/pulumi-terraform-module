@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func writeTfVarFile(t *testing.T, workingDir string, varType string) {

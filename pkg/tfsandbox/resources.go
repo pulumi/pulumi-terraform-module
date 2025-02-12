@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	tfjson "github.com/hashicorp/terraform-json"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
