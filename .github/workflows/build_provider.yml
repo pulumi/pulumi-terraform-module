@@ -9,11 +9,6 @@ on:
         required: true
         type: string
         description: Version of the provider to build
-      schema:
-        required: false
-        type: string
-        description: Set to 'disabled' to avoid downloading schema
-        default: enabled
 
 jobs:
   build_provider:
@@ -55,9 +50,9 @@ jobs:
       - name: Restore prerequisites
         uses: ./.github/actions/download-prerequisites
         with:
-          schema: ${{ inputs.schema }}
+          schema: ${{ env.PULUMI_BUILD_SCHEMA }}
       - name: Restore makefile progress
-        if: inputs.schema != 'disabled'
+        if: env.PULUMI_BUILD_SCHEMA != 'disabled'
         # This mirrors the targets completed in the prerequisites job
         run: make --touch provider schema
       - name: Build provider
