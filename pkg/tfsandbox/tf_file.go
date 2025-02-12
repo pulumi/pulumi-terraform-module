@@ -96,7 +96,6 @@ func CreateTFFile(
 	if res.ContainsSecrets || res.ContainsUnknowns {
 		return fmt.Errorf("something went wrong, secret or unknown values found in module inputs")
 	}
-	// values := resourcex.Decode(inputs)
 	for k, v := range values {
 		// TODO: I'm only converting the top layer properties for now
 		// It doesn't look like modules have info on nested properties, typically
