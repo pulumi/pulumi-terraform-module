@@ -20,7 +20,6 @@ env:
   PUBLISH_REPO_USERNAME: ${{ secrets.OSSRH_USERNAME }}
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
   PULUMI_API: https://api.pulumi-staging.io
-  PULUMI_BUILD_SCHEMA: disabled
   PULUMI_GO_DEP_ROOT: ${{ github.workspace }}/..
   PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
   PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
@@ -56,15 +55,7 @@ jobs:
     with:
       version: ${{ needs.prerequisites.outputs.version }}
 
-  build_sdk:
-    if: github.event_name == 'repository_dispatch' ||
-      github.event.pull_request.head.repo.full_name == github.repository
-    name: build_sdk
-    needs: prerequisites
-    uses: ./.github/workflows/build_sdk.yml
-    secrets: inherit
-    with:
-      version: ${{ needs.prerequisites.outputs.version }}
+  
 
   comment-notification:
     if: github.event_name == 'repository_dispatch'
