@@ -314,43 +314,29 @@ func TestS3BucketModuleIntegration(t *testing.T) {
 		localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
 		s3BucketTest := pulumitest.NewPulumiTest(t, s3BucketModProg, localPath)
 
-		// Get a random prefix for our test name
+		// Get a prefix for our test name
+		s3BucketTest.SetConfig(t, "prefix", getTestResourcePrefix(t.Name(), s3BucketTest.WorkingDir()))
 
-		//s3BucketTest.SetConfig("prefix", "random-")
-		t.Log(s3BucketTest.WorkingDir())
-		t.Log("ABOVE ME")
-		t.Log(t.Name())
-
-		testDir := s3BucketTest.WorkingDir()
-		pathParts := strings.Split(testDir, "/")
-		t.Log(pathParts)
-		testFolder := pathParts[len(pathParts)-3]
-		t.Log(testFolder)
-		testNameNoSlashes := strings.ReplaceAll(t.Name(), "/", "")
-		testPrefix, ok := strings.CutPrefix(testFolder, testNameNoSlashes)
-		t.Log(testPrefix, ok)
-		testPrefix = testPrefix[:5]
-
-		s3BucketTest.SetConfig(t, "prefix", testPrefix)
-
-		// Use the backend url as test name prefix
-
+		// Genereate package
 		pulumiPackageAdd(t, s3BucketTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
 
-		//Preview
+		// Preview
 		previewResult := s3BucketTest.Preview(t)
-		t.Log(previewResult.StdOut)
-		t.Log(previewResult.StdErr)
+		autogold.Expect(map[apitype.OpType]int{
+			apitype.OpType("create"): 5,
+		}).Equal(t, previewResult.ChangeSummary)
 
 		// Up
 		upResult := s3BucketTest.Up(t)
-		t.Log(upResult.StdOut)
-		t.Log(upResult.StdErr)
+		autogold.Expect(&map[string]int{
+			"create": 8,
+		}).Equal(t, upResult.Summary.ResourceChanges)
 
 		// Delete
 		destroyResult := s3BucketTest.Destroy(t)
-		t.Log(destroyResult.StdOut)
-		t.Log(destroyResult.StdErr)
+		autogold.Expect(&map[string]int{
+			"delete": 8,
+		}).Equal(t, destroyResult.Summary.ResourceChanges)
 
 	})
 
@@ -455,4 +441,21 @@ func pulumiPackageAdd(
 	}
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
+}
+
+// getTestResourcePrefix is a helper function that retrieves a numeric prefix for randomizing test resources' names.
+// We extract the random string at the end ot the test's working directory name.
+// /var/folders/87/6b426tw97kl6vb55pl6nbzym0000gn/T/TestS3BucketModuleIntegratione2e1753191907/001/s3bucketmod
+
+func getTestResourcePrefix(testName, testDir string) string {
+	pathParts := strings.Split(testDir, "/")
+	testFolder := pathParts[len(pathParts)-3]
+	testNameNoSlashes := strings.ReplaceAll(testName, "/", "")
+	testPrefix, ok := strings.CutPrefix(testFolder, testNameNoSlashes)
+	if !ok {
+		// We don't use the correct folder name.
+		testPrefix = ""
+	}
+	testPrefix = testPrefix[5:]
+	return testPrefix
 }
