@@ -54,34 +54,8 @@ jobs:
       run: make prepare_local_workspace
     - name: Download bin
       uses: ./.github/actions/download-provider
-    - name: Download nodejs SDK
-      uses: ./.github/actions/download-sdk
-      with:
-        language: nodejs
-    - name: Download python SDK
-      uses: ./.github/actions/download-sdk
-      with:
-        language: python
-    - name: Download dotnet SDK
-      uses: ./.github/actions/download-sdk
-      with:
-        language: dotnet
-    - name: Download go SDK
-      uses: ./.github/actions/download-sdk
-      with:
-        language: go
-    - name: Download java SDK
-      uses: ./.github/actions/download-sdk
-      with:
-        language: java
     - name: Update path
       run: echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
-    - name: Install Python deps
-      run: |-
-        pip3 install virtualenv==20.0.23
-        pip3 install pipenv
-    - name: Install prebuilt SDKs
-      run: make install_sdks
     - name: Generate test shards
       run: |-
         cd tests
