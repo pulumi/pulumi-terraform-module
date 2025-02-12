@@ -26,8 +26,7 @@ jobs:
     - name: Checkout Repo
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
-        # Persist credentials so that internal repos work, not just public repos.
-        persist-credentials: true
+        persist-credentials: false
     - name: Comment PR
       uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
       with:
