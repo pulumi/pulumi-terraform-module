@@ -314,6 +314,27 @@ func TestS3BucketModuleIntegration(t *testing.T) {
 		localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
 		s3BucketTest := pulumitest.NewPulumiTest(t, s3BucketModProg, localPath)
 
+		// Get a random prefix for our test name
+
+		//s3BucketTest.SetConfig("prefix", "random-")
+		t.Log(s3BucketTest.WorkingDir())
+		t.Log("ABOVE ME")
+		t.Log(t.Name())
+
+		testDir := s3BucketTest.WorkingDir()
+		pathParts := strings.Split(testDir, "/")
+		t.Log(pathParts)
+		testFolder := pathParts[len(pathParts)-3]
+		t.Log(testFolder)
+		testNameNoSlashes := strings.ReplaceAll(t.Name(), "/", "")
+		testPrefix, ok := strings.CutPrefix(testFolder, testNameNoSlashes)
+		t.Log(testPrefix, ok)
+		testPrefix = testPrefix[:5]
+
+		s3BucketTest.SetConfig(t, "prefix", testPrefix)
+
+		// Use the backend url as test name prefix
+
 		pulumiPackageAdd(t, s3BucketTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
 
 		//Preview
