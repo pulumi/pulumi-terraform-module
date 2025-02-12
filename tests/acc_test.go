@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -258,6 +259,44 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 		require.Less(t, 10, len(tfState))
 		require.Contains(t, tfState, "vpc_id")
+	})
+}
+
+func TestAwsLambdaModuleIntegration(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	testProgramLocation := filepath.Join("testdata", "programs", "ts", "awslambdamod")
+	localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+	awsLambdaTest := pulumitest.NewPulumiTest(t, testProgramLocation, localPath)
+	// Add the package to the test
+	t.Run("pulumi package add", func(t *testing.T) {
+		pulumiPackageAdd(t, awsLambdaTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
+	})
+	// Test preview
+	t.Run("pulumi preview", func(t *testing.T) {
+		skipLocalRunsWithoutCreds(t)
+		var preview bytes.Buffer
+		previewResult := awsLambdaTest.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(os.Stderr),
+			optpreview.ProgressStreams(&preview),
+		)
+		autogold.Expect(map[apitype.OpType]int{
+			apitype.OpType("create"): 10,
+		}).Equal(t, previewResult.ChangeSummary)
+	})
+	// Test up
+	t.Run("pulumi up", func(t *testing.T) {
+		t.Skip("Skipping this test until Destroy works")
+		skipLocalRunsWithoutCreds(t)
+
+		upResult := awsLambdaTest.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		autogold.Expect(&map[string]int{
+			"create": 10,
+		}).Equal(t, upResult.Summary.ResourceChanges)
 	})
 }
 
