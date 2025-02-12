@@ -26,16 +26,18 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-svchost/disco"
+	"github.com/spf13/afero"
+	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry"
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/spf13/afero"
-	"github.com/zclconf/go-cty/cty"
 )
 
 type InferredModuleSchema struct {

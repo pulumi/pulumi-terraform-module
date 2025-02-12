@@ -18,8 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -28,8 +29,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 )
 
 const (

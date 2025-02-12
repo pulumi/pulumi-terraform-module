@@ -20,10 +20,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestSavingModuleState(t *testing.T) {
@@ -96,7 +97,7 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte 
 		Project:         s.proj.String(),
 		Stack:           s.stack.String(),
 		Config:          map[string]string{},
-		DryRun:          false, // pulumi up, not pulumi preivew
+		DryRun:          false, // pulumi up, not pulumi preview
 		MonitorEndpoint: resmonPath,
 		Type:            fmt.Sprintf("simple:index:%s", defaultComponentTypeName),
 		Name:            "myModuleInstance",
