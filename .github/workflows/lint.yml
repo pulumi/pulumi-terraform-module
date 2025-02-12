@@ -51,4 +51,4 @@ jobs:
       uses: golangci/golangci-lint-action@051d91933864810ecd5e2ea2cfd98f6a5bca5347 # v6
       with:
         version: v1.60
-        working-directory: provider
+        working-directory: .
