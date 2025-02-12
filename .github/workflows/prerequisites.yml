@@ -28,6 +28,7 @@ env:
   PUBLISH_REPO_USERNAME: ${{ secrets.OSSRH_USERNAME }}
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
   PULUMI_API: https://api.pulumi-staging.io
+  PULUMI_BUILD_SCHEMA: disabled
   PULUMI_GO_DEP_ROOT: ${{ github.workspace }}/..
   PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
   PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
@@ -66,6 +67,7 @@ jobs:
     - name: Prepare local workspace before restoring previously built files
       run: make prepare_local_workspace
     - name: Generate schema
+      if: env.PULUMI_BUILD_SCHEMA != 'disabled'
       run: make schema
     - name: Build provider binary
       run: make provider
@@ -75,7 +77,7 @@ jobs:
       uses: codecov/codecov-action@13ce06bfc6bbe3ecf90edbbf1bc32fe5978ca1d3 # v5.3.1
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    - if: inputs.is_pr
+    - if: inputs.is_pr && (env.PULUMI_BUILD_SCHEMA != 'disabled')
       name: Check Schema is Valid
       run: |
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
@@ -84,7 +86,7 @@ jobs:
           schema-tools compare -r github://api.github.com/pulumi -p terraform-module -o "${{ inputs.default_branch }}" -n --local-path=provider/cmd/pulumi-resource-terraform-module/schema.json;
           echo "$EOF";
         } >> "$GITHUB_ENV"
-    - if: inputs.is_pr && inputs.is_automated == false && github.actor != 'dependabot[bot]'
+    - if: inputs.is_pr && (env.PULUMI_BUILD_SCHEMA != 'disabled') && inputs.is_automated == false && github.actor != 'dependabot[bot]'
       name: Comment on PR with Details of Schema Check
       uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
       with:
