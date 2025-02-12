@@ -36,3 +36,6 @@ schema-terraform-module-provider.json
 
 .idea/
 
+.make
+.pulumi
+coverage.txt
