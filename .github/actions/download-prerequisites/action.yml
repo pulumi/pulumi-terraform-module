@@ -1,6 +1,12 @@
 name: Download the code generator binary
 description: Downloads the code generator binary to `bin/`.
 
+inputs:
+  schema:
+    required: false
+    description: Set to 'disabled' to avoid downloading schema
+    default: enabled
+
 runs:
   using: "composite"
   steps:
@@ -20,6 +26,7 @@ runs:
 
     - name: Download schema-embed.json
       uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      if: inputs.schema != 'disabled'
       with:
         # Use a pattern to avoid failing if the artifact doesn't exist
         pattern: schema-embed.*
