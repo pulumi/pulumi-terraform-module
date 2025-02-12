@@ -1,7 +1,7 @@
 package tfsandbox
 
 import (
-	"maps"
+	"slices"
 
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -44,6 +44,64 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 	return nil
 }
 
+// mapReplv maps the values of a resource property based on a filter
+// The filter is an object that contains the keys of the attributes that might need to be updated
+//
+// There are cases where the filter contains a nested object, but the PropertyValue does not.
+// In those cases we should update the PropertyValue to contain the nested object _only if_ the
+// filter marks a nested value as true
+//
+// NOTE: This has array handling for completeness, but I don't think Terraform ever has detailed
+// information on arrays. It seems to be the case that if any element in the array is sensitive or unknown
+// then the entire array is marked as such. This makes sense because I don't think it is possible to guarantee the order
+// of the elements in the array (i.e. the unknown value could return 1 item or 10).
+func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resource.PropertyValue) resource.PropertyValue) (resource.PropertyValue, bool) {
+	switch f := filter.(type) {
+	case bool:
+		if f {
+			return replv(old), true
+		}
+		return old, false
+	case map[string]interface{}:
+		objValue := resource.PropertyMap{}
+		if old.IsObject() {
+			objValue = old.ObjectValue()
+		}
+		var containsFilter bool
+		for key, filterVal := range f {
+			// if ok == false it means that there are no nested values in the PropertyValue that need to be updated
+			if mapped, ok := mapReplv(filterVal, objValue[resource.PropertyKey(key)], replv); ok {
+				containsFilter = true
+				objValue[resource.PropertyKey(key)] = mapped
+			}
+		}
+		return resource.NewObjectProperty(objValue), containsFilter
+	case []interface{}:
+		arrValue := make([]resource.PropertyValue, len(f))
+		if old.IsArray() {
+			arrValue = old.ArrayValue()
+		}
+		var containsFilter bool
+		for i := range f {
+			var value resource.PropertyValue
+			if i >= len(arrValue) {
+				value = resource.NewNullProperty()
+			} else {
+				value = arrValue[i]
+			}
+			if mapped, ok := mapReplv(f[i], value, replv); ok {
+				containsFilter = true
+				arrValue[i] = mapped
+			}
+		}
+		arrValue = slices.DeleteFunc(arrValue, func(v resource.PropertyValue) bool {
+			return v.IsNull()
+		})
+		return resource.NewArrayProperty(arrValue), containsFilter
+	}
+	return old, true
+}
+
 // updateResourceValue updates the value of a resource property based on a filter (e.g. AfterSensitive, AfterUnknown)
 // For example, AfterSensitive would contain a map of attributes keys with the value of true if the attribute is sensitive
 //
@@ -58,41 +116,10 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 //	   }
 //	 }
 func updateResourceValue(old resource.PropertyValue, filter interface{}, replv func(v resource.PropertyValue) resource.PropertyValue) resource.PropertyValue {
-	if old.IsArray() {
-		arrValue := old.ArrayValue()
-		if filterSlice, ok := filter.([]interface{}); ok {
-			for i := range filterSlice {
-				if i >= len(arrValue) {
-					break
-				}
-				arrValue[i] = updateResourceValue(arrValue[i], filterSlice[i], replv)
-			}
-		}
-		old = resource.NewArrayProperty(arrValue)
-	}
-	if old.IsObject() {
-		objValue := old.ObjectValue()
-		if filterMap, ok := filter.(map[string]interface{}); ok {
-			for key := range maps.Keys(filterMap) {
-				// if the key exists in the filter, but not in the property map then we need to add it.
-				// This should only happen with AfterUnknown values because those are the only types of values
-				// that can appear in the changes, but not in the StateResource.AttributeValues
-				if _, ok := objValue[resource.PropertyKey(key)]; !ok {
-					objValue[resource.PropertyKey(key)] = resource.NewNullProperty()
-				}
-			}
-			for filterKey := range filterMap {
-				if value, ok := objValue[resource.PropertyKey(filterKey)]; ok {
-					objValue[resource.PropertyKey(filterKey)] = updateResourceValue(value, filterMap[filterKey], replv)
-				}
-			}
-		}
-		old = resource.NewObjectProperty(objValue)
+	if val, ok := mapReplv(filter, old, replv); ok {
+		return val
 	}
 
-	if shouldFilter, ok := filter.(bool); ok && shouldFilter {
-		return replv(old)
-	}
 	return old
 }
 
@@ -102,16 +129,11 @@ func extractPropertyMapFromPlan(stateResource tfjson.StateResource, resourceChan
 	resourcePropertyMap := extractPropertyMap(stateResource)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
 	if resourceChange != nil && resourceChange.Change.AfterSensitive != nil {
-		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterSensitive, func(v resource.PropertyValue) resource.PropertyValue {
-			return resource.MakeSecret(v)
-		})
+		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterSensitive, resource.MakeSecret)
 	}
 	if resourceChange != nil && resourceChange.Change.AfterUnknown != nil {
 		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterUnknown, func(v resource.PropertyValue) resource.PropertyValue {
-			if v.IsNull() {
-				return resource.MakeComputed(resource.NewStringProperty(""))
-			}
-			return resource.MakeComputed(v)
+			return resource.MakeComputed(resource.NewStringProperty(""))
 		})
 	}
 	return objectProperty.ObjectValue()

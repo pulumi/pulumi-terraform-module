@@ -26,6 +26,273 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_extractPropertyMapFromPlan(t *testing.T) {
+	cases := []struct {
+		name           string
+		stateResource  tfjson.StateResource
+		resourceChange *tfjson.ResourceChange
+		expected       resource.PropertyMap
+	}{
+		{
+			name: "no resource changes",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"bucketName": "my-bucket",
+				},
+			},
+			resourceChange: nil,
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"bucketName": "my-bucket",
+			}),
+		},
+		{
+			// This is one way that unknowns appear in AttributeValues (as nil)
+			name: "AfterUnknown=true - AttributeValues property is nil",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"bucketName": nil,
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"bucketName": true,
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"bucketName": resource.MakeComputed(resource.NewStringProperty("")),
+			}),
+		},
+		{
+			// This is another way that unknowns appear in AttributeValues (as missing)
+			// AfterUnknown is the source of truth
+			name: "AfterUnknown=true - AttributeValues property is missing",
+			stateResource: tfjson.StateResource{
+				Type:            "aws_s3_bucket",
+				Address:         "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"bucketName": true,
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"bucketName": resource.MakeComputed(resource.NewStringProperty("")),
+			}),
+		},
+		{
+			// Common scenario. The AttributeValue is a complex type (map/array) and the entire property
+			// is marked as unknown in AfterUnknown.
+			name: "AfterUnknown=true (top level) - AttributeValues property is complex type",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []map[string]interface{}{
+						{
+							"nestedProp2": "value",
+						},
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": true,
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": resource.MakeComputed(resource.NewStringProperty("")),
+			}),
+		},
+		{
+			// Only those nested properties that are marked as unknown in AfterUnknown should be updated
+			name: "AfterUnknown=true (nested in array) - AttributeValues nested property is nil",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []interface{}{
+						map[string]interface{}{
+							"nestedProp1": nil,
+							"nestedProp2": "value",
+						},
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": []interface{}{
+							map[string]interface{}{
+								"nestedProp1": true,
+								"nestedProp2": false,
+							},
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					map[string]interface{}{
+						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
+						"nestedProp2": resource.NewStringProperty("value"),
+					},
+				},
+			}),
+		},
+		{
+			name: "AfterUnknown=true (in array) - AttributeValues nested value is nil",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []interface{}{
+						"",
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": []interface{}{
+							true,
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					resource.MakeComputed(resource.NewStringProperty("")),
+				},
+			}),
+		},
+		{
+			name: "AfterUnknown mixed (in array) - AttributeValues mixed",
+			stateResource: tfjson.StateResource{
+				Type:            "aws_s3_bucket",
+				Address:         "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": []interface{}{
+							true,
+							map[string]interface{}{
+								"nestedProp1": true,
+							},
+							map[string]interface{}{
+								"nestedProp2": false,
+							},
+							false,
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					resource.MakeComputed(resource.NewStringProperty("")),
+					map[string]interface{}{
+						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
+					},
+				},
+			}),
+		},
+		{
+			// Not sure this appears in the wild, but covering it just in case.
+			// A nested property is completely missing in AttributeValues, but a deeply nested property is marked as unknown
+			// We should add the missing nested property structure
+			name: "AfterUnknown=true (nested in object) - AttributeValues nested property is missing",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": map[string]interface{}{
+						"nestedProp2": "value",
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": map[string]interface{}{
+							"nestedProp1": map[string]interface{}{
+								"nestedNestedProp": true,
+							},
+							"nestedProp2": false,
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": map[string]interface{}{
+					"nestedProp1": map[string]interface{}{
+						"nestedNestedProp": resource.MakeComputed(resource.NewStringProperty("")),
+					},
+					"nestedProp2": resource.NewStringProperty("value"),
+				},
+			}),
+		},
+		{
+			// Not sure this appears in the wild (doesn't seem like a valid case), but covering it just in case.
+			// A nested property is completely missing in AttributeValues, and a deeply nested property is marked as unknown=false
+			// We should not add the missing nested property structure
+			name: "AfterUnknown=false (nested in object) - AttributeValues nested property is missing",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": map[string]interface{}{
+						"nestedProp2": "value",
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": map[string]interface{}{
+							"nestedProp1": map[string]interface{}{
+								"nestedNestedProp": false,
+							},
+							"nestedProp2": false,
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": map[string]interface{}{
+					"nestedProp2": resource.NewStringProperty("value"),
+				},
+			}),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := extractPropertyMapFromPlan(tc.stateResource, tc.resourceChange)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
 func TestCreatePlan(t *testing.T) {
 	planData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "plans", "create_plan.json"))
 	require.NoError(t, err)
