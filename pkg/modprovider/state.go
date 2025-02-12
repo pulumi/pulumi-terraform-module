@@ -209,18 +209,13 @@ func (h *moduleStateHandler) Delete(
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	h.hc.Log(ctx, diag.Warning, "", fmt.Sprint("Unmarshaling stuff from GetProperties? I think that's right", req.GetProperties()))
-	oldState.Unmarshal(req.GetProperties()) //TODO: check if this is OldOutput
+	oldState.Unmarshal(req.GetProperties())
 
-	// TODO: make TF destroy work
 	tf, err := tfsandbox.NewTofu(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	// Important: the name of the module instance in TF must be at least unique enough to
-	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the
-	// Pulumi name directly. The name chosen here will proliferate into ResourceAddress of every
-	// child resource as well, which will get further reused for Pulumi URNs.
 	tfName := req.GetName()
 
 	err = tfsandbox.CreateTFFile(tfName, rps.params.TFModuleSource, rps.params.TFModuleVersion, tf.WorkingDir(), resource.PropertyMap{})
@@ -242,17 +237,6 @@ func (h *moduleStateHandler) Delete(
 	if err != nil {
 		return nil, fmt.Errorf("Apply failed: %w", err)
 	}
-
-	//planStore.SetState(urn, tfState) // TODO: figure out how or if to set state
-
-	//rawState, ok, err := tf.PullState(ctx) //TODO: do we need this?
-	//if err != nil {
-	//	return nil, fmt.Errorf("PullState failed: %w", err)
-	//}
-	//if !ok {
-	//	return nil, errors.New("PullState did not find state")
-	//}
-	//state.rawState = rawState
 
 	h.hc.Log(ctx, diag.Warning, "", fmt.Sprint("Deleting stuff"))
 	// Send back empty pb if no error.
