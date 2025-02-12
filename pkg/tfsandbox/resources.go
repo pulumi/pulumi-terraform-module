@@ -145,9 +145,7 @@ func extractPropertyMapFromState(stateResource tfjson.StateResource) resource.Pr
 	resourcePropertyMap := extractPropertyMap(stateResource)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
 	if stateResource.SensitiveValues != nil {
-		objectProperty = updateResourceValue(objectProperty, stateResource.SensitiveValues, func(v resource.PropertyValue) resource.PropertyValue {
-			return resource.MakeSecret(v)
-		})
+		objectProperty = updateResourceValue(objectProperty, stateResource.SensitiveValues, resource.MakeSecret)
 	}
 	return objectProperty.ObjectValue()
 }
