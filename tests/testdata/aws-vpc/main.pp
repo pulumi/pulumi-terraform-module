@@ -1,5 +1,5 @@
 package "vpc" {
-    baseProviderName = "terraform-module-provider"
+    baseProviderName = "terraform-module"
     baseProviderVersion = "0.0.1"
     parameterization {
         name = "vpc"

@@ -15,7 +15,7 @@
 package modprovider
 
 func Name() string {
-	return "terraform-module-provider"
+	return "terraform-module"
 }
 
 func Version() string {

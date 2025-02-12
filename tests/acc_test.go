@@ -22,6 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	provider = "terraform-module"
+)
+
 // testdata/randmod is a fully local module written for test purposes that uses resources from the
 // random provider without cloud access, making it especially suitable for testing. Generate a
 // TypeScript SDK and go through some updates to test the integration end to end.
@@ -35,8 +39,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	// Program written to support the test.
 	randModProg := filepath.Join("testdata", "programs", "ts", "randmod-program")
 
-	moduleProvider := "terraform-module-provider"
-	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
@@ -205,7 +208,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 
 	pt := pulumitest.NewPulumiTest(t, testDir,
-		opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath)),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)),
 		opttest.SkipInstall())
 	pt.CopyToTempDir(t)
 
@@ -310,15 +313,24 @@ func getRoot(t *testing.T) string {
 
 func ensureCompiledProvider(t *testing.T) string {
 	root := getRoot(t)
-	binPath := filepath.Join(root, "bin", "pulumi-resource-terraform-module-provider")
-	cmd := exec.Command("go", "build",
-		"-o", "bin/pulumi-resource-terraform-module-provider",
-		"./cmd/pulumi-resource-terraform-module-provider")
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		require.NoError(t, fmt.Errorf("failed to compile provider: %w\n%s", err, out))
+	binPath := filepath.Join(root, "bin", "pulumi-resource-"+provider)
+
+	_, ci := os.LookupEnv("CI")
+	if !ci {
+		// In development ensure the provider binary is up-to-date.
+		cmd := exec.Command("make", "provider_no_deps")
+		cmd.Dir = root
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			require.NoError(t, fmt.Errorf("failed to compile provider: %w\n%s", err, out))
+		}
 	}
+
+	_, err := os.Stat(binPath)
+	if os.IsNotExist(err) {
+		require.Failf(t, "No provider boundary found at the expected path: %q", binPath)
+	}
+
 	return binPath
 }
 

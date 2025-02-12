@@ -16,7 +16,7 @@
     },
     "pulumi": {
         "resource": true,
-        "name": "terraform-module-provider",
+        "name": "terraform-module",
         "version": "0.0.1",
         "parameterization": {
             "name": "vpc",
