@@ -18,10 +18,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"reflect"
 
+	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -31,9 +32,8 @@ import (
 )
 
 const (
-	moduleStateTypeName     = "ModuleState"
-	moduleStateResourceName = "moduleState"
-	moduleStateResourceId   = "moduleStateResource"
+	moduleStateTypeName   = "ModuleState"
+	moduleStateResourceId = "moduleStateResource"
 )
 
 // Represents state stored in Pulumi for a TF module.
@@ -73,10 +73,10 @@ func (ms *moduleState) Marshal() *structpb.Struct {
 type moduleStateStore interface {
 	// Blocks until the the old state becomes available. If this method is called early it would lock up - needs to
 	// be called after the moduleStateResource is allocated.
-	AwaitOldState() moduleState
+	AwaitOldState(modUrn urn.URN) moduleState
 
 	// Stores the new state once it is known. Panics if called twice.
-	SetNewState(moduleState)
+	SetNewState(modUrn urn.URN, state moduleState)
 }
 
 // This custom resource is deployed as a child of a component resource representing a TF module and is used to trick
@@ -86,36 +86,37 @@ type moduleStateResource struct {
 	// Could consider modeling a "state" output but omitting for now.
 }
 
-type moduleStateResourceArgs struct{}
-
-func (moduleStateResourceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*moduleStateResourceArgs)(nil)).Elem()
-}
-
 func moduleStateTypeToken(pkgName packageName) tokens.Type {
 	return tokens.Type(fmt.Sprintf("%s:index:%s", pkgName, moduleStateTypeName))
 }
 
 func newModuleStateResource(
 	ctx *pulumi.Context,
+	name string,
 	pkgName packageName,
+	modUrn resource.URN,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
-	args := &moduleStateResourceArgs{}
-	var resource moduleStateResource
+	contract.Assertf(modUrn != "", "modUrn cannot be empty")
+	var res moduleStateResource
 	tok := moduleStateTypeToken(pkgName)
+
+	inputsMap := property.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
+		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
+	})
+
 	// TODO[pulumi/pulumi-terraform-module-protovider#56] use RegisterPackageResource
-	err := ctx.RegisterResource(string(tok), moduleStateResourceName, args, &resource, opts...)
+	err := ctx.RegisterResource(string(tok), name, inputsMap, &res, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)
 	}
-	return &resource, nil
+	return &res, nil
 }
 
 // The implementation of the ModuleComponentResource life-cycle.
 type moduleStateHandler struct {
-	oldState *promise[moduleState]
-	newState *promise[moduleState]
+	oldState stateStore
+	newState stateStore
 	hc       *provider.HostClient
 }
 
@@ -123,8 +124,8 @@ var _ moduleStateStore = (*moduleStateHandler)(nil)
 
 func newModuleStateHandler(hc *provider.HostClient) *moduleStateHandler {
 	return &moduleStateHandler{
-		oldState: newPromise[moduleState](),
-		newState: newPromise[moduleState](),
+		oldState: stateStore{},
+		newState: stateStore{},
 		hc:       hc,
 	}
 }
@@ -132,13 +133,13 @@ func newModuleStateHandler(hc *provider.HostClient) *moduleStateHandler {
 // Blocks until the the old state becomes available. Receives a *ModuleStateResource handle to help make sure that the
 // resource was allocated prior to calling this method, so the engine is already processing RegisterResource and looking
 // up the state. If this method is called early it would lock up.
-func (h *moduleStateHandler) AwaitOldState() moduleState {
-	return h.oldState.await()
+func (h *moduleStateHandler) AwaitOldState(modUrn urn.URN) moduleState {
+	return h.oldState.Await(modUrn)
 }
 
 // Stores the new state once it is known. Panics if called twice.
-func (h *moduleStateHandler) SetNewState(st moduleState) {
-	h.newState.fulfill(st)
+func (h *moduleStateHandler) SetNewState(modUrn urn.URN, st moduleState) {
+	h.newState.Put(modUrn, st)
 }
 
 // Check is generic and does not do anything.
@@ -158,10 +159,11 @@ func (h *moduleStateHandler) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+	modUrn := h.mustParseModURN(req.News)
 	oldState := moduleState{}
 	oldState.Unmarshal(req.Olds)
-	h.oldState.fulfill(oldState)
-	newState := h.newState.await()
+	h.oldState.Put(modUrn, oldState)
+	newState := h.newState.Await(modUrn)
 	changes := pulumirpc.DiffResponse_DIFF_NONE
 	if !newState.Equal(oldState) {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
@@ -174,11 +176,10 @@ func (h *moduleStateHandler) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	//h.hc.Log(ctx, diag.Error, "", fmt.Sprintf("Create served by PID=%d", os.Getpid()))
 	oldState := moduleState{}
-	h.oldState.fulfill(oldState)
-	newState := h.newState.await()
-	//h.hc.Log(ctx, diag.Warning, "", fmt.Sprintf("Creating state as %q", string(newState.rawState)))
+	modUrn := h.mustParseModURN(req.Properties)
+	h.oldState.Put(modUrn, oldState)
+	newState := h.newState.Await(modUrn)
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceId,
 		Properties: newState.Marshal(),
@@ -190,8 +191,7 @@ func (h *moduleStateHandler) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	newState := h.newState.await()
-	h.hc.Log(ctx, diag.Warning, "", fmt.Sprintf("Updating state to %q", string(newState.rawState)))
+	newState := h.newState.Await(h.mustParseModURN(req.News))
 	return &pulumirpc.UpdateResponse{
 		Properties: newState.Marshal(),
 	}, nil
@@ -203,4 +203,15 @@ func (h *moduleStateHandler) Delete(
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (*moduleStateHandler) mustParseModURN(pb *structpb.Struct) urn.URN {
+	contract.Assertf(pb != nil, "pb cannot be nil")
+	f2, ok := pb.Fields[moduleURNPropName]
+	contract.Assertf(ok, "expected %q property to be defined", moduleURNPropName)
+	v2 := f2.GetStringValue()
+	contract.Assertf(v2 != "", "expected %q to have a non-empty string", moduleURNPropName)
+	urn, err := urn.Parse(v2)
+	contract.AssertNoErrorf(err, "URN should parse correctly")
+	return urn
 }

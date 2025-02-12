@@ -15,19 +15,35 @@
 package modprovider
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
 type ModuleComponentResource struct {
 	pulumi.ResourceState
+}
+
+func (component *ModuleComponentResource) MustURN(ctx context.Context) urn.URN {
+	// This is called Unsafe to discourage program authors from calling this, but in fact it
+	// should be reasonable to expect that an URN will get allocated and to block until it in
+	// fact is allocated.
+	urnResult, err := internals.UnsafeAwaitOutput(ctx, component.URN())
+	contract.AssertNoErrorf(err, "Failed to await Component URN")
+
+	purn, ok := urnResult.Value.(pulumi.URN)
+	contract.Assertf(ok, "Expected URN to be of correct type, got: %#T", urnResult.Value)
+
+	return urn.URN(string(purn))
 }
 
 func componentTypeToken(packageName packageName, compTypeName componentTypeName) tokens.Type {
@@ -37,8 +53,7 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 func NewModuleComponentResource(
 	ctx *pulumi.Context,
 	stateStore moduleStateStore,
-	planChan chan<- Plan,
-	stateChan chan<- State,
+	planStore *planStore,
 	pkgName packageName,
 	pkgVer packageVersion,
 	compTypeName componentTypeName,
@@ -55,9 +70,23 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
 	}
 
+	urn := component.MustURN(ctx.Context())
+
+	defer func() {
+		// TODO[pulumi/pulumi-terraform-module-provider#108] avoid deadlock
+		//
+		// This is only safe to run after all the children are done processing.
+		// Perhaps when fixing 108 this method will stop blocking to wait on that,
+		// in that case this cleanup has to move accordingly.
+		planStore.Forget(urn)
+	}()
+
 	go func() {
 		_, err := newModuleStateResource(ctx,
+			// Needs to be prefixed by parent to avoid "duplicate URN".
+			fmt.Sprintf("%s-state", name),
 			pkgName,
+			urn,
 			pulumi.Parent(&component),
 
 			// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
@@ -68,11 +97,11 @@ func NewModuleComponentResource(
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
 	}()
 
-	state := stateStore.AwaitOldState()
+	state := stateStore.AwaitOldState(urn)
 	defer func() {
 		// Save any modifications to state that may have been done in the course of pulumi up. This is expected
 		// to be called even if the state is not modified.
-		stateStore.SetNewState(state)
+		stateStore.SetNewState(urn, state)
 	}()
 
 	tf, err := tfsandbox.NewTofu(ctx.Context())
@@ -80,7 +109,13 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	err = tfsandbox.CreateTFFile("mymodule", tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
+	// Important: the name of the module instance in TF must be at least unique enough to
+	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the
+	// Pulumi name directly. The name chosen here will proliferate into ResourceAddress of every
+	// child resource as well, which will get further reused for Pulumi URNs.
+	tfName := name
+
+	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
@@ -102,20 +137,29 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Plan failed: %w", err)
 		}
 
-		planChan <- plan
+		planStore.SetPlan(urn, plan)
 
 		var errs []error
+		var childResources []*childResource
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			_, err := newChildResource(ctx, pkgName, rp,
+			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
 				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
 				// RegisterPackageResource ideally
 				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
 		})
 		if err := errors.Join(errs...); err != nil {
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
+
+		// TODO[pulumi/pulumi-terraform-module-provider#108] avoid deadlock
+		for _, cr := range childResources {
+			cr.Await(ctx.Context())
 		}
 	} else {
 		// DryRun() = false corresponds to running pulumi up
@@ -124,7 +168,7 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Apply failed: %w", err)
 		}
 
-		stateChan <- tfState
+		planStore.SetState(urn, tfState)
 
 		rawState, ok, err := tf.PullState(ctx.Context())
 		if err != nil {
@@ -136,17 +180,26 @@ func NewModuleComponentResource(
 		state.rawState = rawState
 
 		var errs []error
+		var childResources []*childResource
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			_, err := newChildResource(ctx, pkgName, rp,
+			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
 				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
 				// RegisterPackageResource ideally
 				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
 		})
 		if err := errors.Join(errs...); err != nil {
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
+
+		// TODO[pulumi/pulumi-terraform-module-provider#108] avoid deadlock
+		for _, cr := range childResources {
+			cr.Await(ctx.Context())
 		}
 	}
 

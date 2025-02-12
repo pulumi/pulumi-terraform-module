@@ -88,10 +88,11 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		require.Equal(t, 1, randIntFound)
 
-		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.mymodule.random_integer.priority")).Equal(t, randInt.URN)
-		autogold.Expect(resource.ID("module.mymodule.random_integer.priority")).Equal(t, randInt.ID)
+		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
+		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
 		autogold.Expect(map[string]interface{}{
-			"__address": "module.mymodule.random_integer.priority",
+			"__address": "module.myrandmod.random_integer.priority",
+			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "5",
 			"max":       "10",
 			"min":       "1",
@@ -99,6 +100,48 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"seed":      "the-most-random-seed",
 		}).Equal(t, randInt.Inputs)
 		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
+	})
+}
+
+// Sanity check that we can provision two instances of the same module side-by-side, in particular
+// this makes sure that URN selection is unique enough to avoid the "dulicate URN" problem.
+func Test_TwoInstances_TypeScript(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Reuse randmod test module for this test.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	require.NoError(t, err)
+
+	// Program written to support the test.
+	twoinstProgram := filepath.Join("testdata", "programs", "ts", "twoinst-program")
+
+	moduleProvider := "terraform-module-provider"
+	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
+	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
+	pt.CopyToTempDir(t)
+
+	packageName := "randmod"
+	t.Run("pulumi package add", func(t *testing.T) {
+		// pulumi package add <provider-path> <randmod-path> <package-name>
+		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
+	})
+
+	t.Run("pulumi preview", func(t *testing.T) {
+		previewResult := pt.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(os.Stderr),
+			optpreview.ProgressStreams(os.Stdout),
+		)
+		autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 7}).Equal(t, previewResult.ChangeSummary)
+	})
+
+	t.Run("pulumi up", func(t *testing.T) {
+		upResult := pt.Up(t,
+			optup.ErrorProgressStreams(os.Stderr),
+			optup.ProgressStreams(os.Stdout),
+		)
+
+		autogold.Expect(&map[string]int{"create": 7}).Equal(t, upResult.Summary.ResourceChanges)
 	})
 }
 

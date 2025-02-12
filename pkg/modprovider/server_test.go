@@ -172,19 +172,21 @@ type testResourceMonitorServer struct {
 	resources []*pulumirpc.RegisterResourceResponse
 }
 
-func (s *testResourceMonitorServer) FindResourceByName(name string) *pulumirpc.RegisterResourceResponse {
+func (s *testResourceMonitorServer) FindResourceByType(
+	ty tokens.TypeName,
+) *pulumirpc.RegisterResourceResponse {
 	count := 0
 	var result *pulumirpc.RegisterResourceResponse
 	for _, rr := range s.resources {
 		u, err := urn.Parse(rr.Urn)
 		require.NoError(s.t, err)
-		if u.Name() == name {
+		if u.Type().Name() == ty {
 			count++
 			result = rr
 		}
 	}
-	require.Truef(s.t, count != 0, "No resources were registered with the name %q", name)
-	require.Lessf(s.t, count, 2, "More than one resource was registered with the name %q", name)
+	require.Truef(s.t, count != 0, "No resources were registered with the type %q", ty)
+	require.Lessf(s.t, count, 2, "More than one resource was registered with the type %q", ty)
 	return result
 }
 
@@ -203,7 +205,10 @@ func (s *testResourceMonitorServer) RegisterResource(
 	packageName := s.params.PackageName
 	switch req.Type {
 	case fmt.Sprintf("%s:index:%s", packageName, defaultComponentTypeName):
-		return &pulumirpc.RegisterResourceResponse{}, nil
+		urn := string(urn.New(s.stack, s.proj, "", tokens.Type(req.Type), req.Name))
+		return &pulumirpc.RegisterResourceResponse{
+			Urn: urn,
+		}, nil
 	case fmt.Sprintf("%s:index:ModuleState", packageName):
 		// Assume we are creating; issue Check() and Create()
 		urn := string(urn.New(s.stack, s.proj, "", tokens.Type(req.Type), req.Name))
@@ -224,6 +229,7 @@ func (s *testResourceMonitorServer) RegisterResource(
 				Id:        s.oldModuleState.Id,
 				Olds:      s.oldModuleState.Object,
 				OldInputs: s.oldModuleState.Object, // ignoring inputs/outputs distinction in test
+				News:      checkResp.Inputs,
 				Type:      req.Type,
 				Name:      req.Name,
 			})

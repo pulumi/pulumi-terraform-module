@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestNewChildResource(t *testing.T) {
 
 func TestChildResourceCheck(t *testing.T) {
 	ctx := context.Background()
-	h := newChildHandler()
+	h := newChildHandler(&planStore{})
 
 	news, err := structpb.NewStruct(map[string]any{
 		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
@@ -59,7 +60,7 @@ func TestChildResourceCheck(t *testing.T) {
 
 func TestChildResourceCreatePreview(t *testing.T) {
 	ctx := context.Background()
-	h := newChildHandler()
+	h := newChildHandler(&planStore{})
 
 	properties, err := structpb.NewStruct(map[string]any{
 		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
@@ -81,9 +82,11 @@ func TestChildResourceCreatePreview(t *testing.T) {
 
 func TestChildResourceCreate(t *testing.T) {
 	ctx := context.Background()
-	h := newChildHandler()
+	h := newChildHandler(&planStore{})
 
-	h.SetState(&testState{&testResourceState{
+	modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
+
+	h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
 		address: "module.s3_bucket.aws_s3_bucket.this[0]",
 		name:    "this",
 		index:   float64(0),
@@ -94,6 +97,7 @@ func TestChildResourceCreate(t *testing.T) {
 
 	properties, err := structpb.NewStruct(map[string]any{
 		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+		moduleURNPropName:            modUrn,
 		"force_destroy":              true,
 	})
 	require.NoError(t, err)
