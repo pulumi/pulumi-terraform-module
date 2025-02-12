@@ -305,6 +305,36 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 	})
 }
 
+func TestS3BucketModuleIntegration(t *testing.T) {
+
+	t.Run("e2e", func(t *testing.T) {
+		localProviderBinPath := ensureCompiledProvider(t)
+
+		s3BucketModProg := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+		localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+		s3BucketTest := pulumitest.NewPulumiTest(t, s3BucketModProg, localPath)
+
+		pulumiPackageAdd(t, s3BucketTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+
+		//Preview
+		previewResult := s3BucketTest.Preview(t)
+		t.Log(previewResult.StdOut)
+		t.Log(previewResult.StdErr)
+
+		// Up
+		upResult := s3BucketTest.Up(t)
+		t.Log(upResult.StdOut)
+		t.Log(upResult.StdErr)
+
+		// Delete
+		destroyResult := s3BucketTest.Destroy(t)
+		t.Log(destroyResult.StdOut)
+		t.Log(destroyResult.StdErr)
+
+	})
+
+}
+
 func getRoot(t *testing.T) string {
 	wd, err := os.Getwd()
 	require.NoError(t, err)

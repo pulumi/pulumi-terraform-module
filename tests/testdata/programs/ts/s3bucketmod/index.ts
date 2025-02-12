@@ -1,11 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as terraformAwsModules from "@pulumi/terraform-aws-modules";
+import * as bucket from "@pulumi/bucket";
 
 
 
-const testbucket = new terraformAwsModules.S3_Bucket("test-bucket", {
-    function_name: "guinstestbucket",
-
+const testbucket = new bucket.Module("test-bucket", {
+    bucket: "guinstestbucket",
 })
 
-export const bucketARN =  testbucket.
+export const bucketARN =  testbucket.s3_bucket_arn
