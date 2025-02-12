@@ -33,6 +33,7 @@ jobs:
     needs: prerequisites
     secrets: inherit
     with:
+      schema: ${{ env.PULUMI_BUILD_SCHEMA }}
       version: ${{ needs.prerequisites.outputs.version }}
 
   build_sdk:

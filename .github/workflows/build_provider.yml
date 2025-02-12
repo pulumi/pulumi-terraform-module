@@ -9,6 +9,11 @@ on:
         required: true
         type: string
         description: Version of the provider to build
+      schema:
+        required: false
+        type: string
+        description: Set to 'disabled' to avoid downloading schema
+        default: enabled
 
 jobs:
   build_provider:
@@ -49,10 +54,12 @@ jobs:
         run: make prepare_local_workspace
       - name: Restore prerequisites
         uses: ./.github/actions/download-prerequisites
+        with:
+          schema: ${{ inputs.schema }}
       - name: Restore makefile progress
+        if: inputs.schema != 'disabled'
         # This mirrors the targets completed in the prerequisites job
         run: make --touch provider schema
-
       - name: Build provider
         run: make "provider-${{ matrix.platform.os }}-${{ matrix.platform.arch }}"
         env:
