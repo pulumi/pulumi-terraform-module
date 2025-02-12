@@ -4,3 +4,4 @@ noSchema: true
 major-version: 0
 test-folder: tests
 shards: 2
+aws: true

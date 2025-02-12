@@ -56,6 +56,15 @@ jobs:
       uses: ./.github/actions/download-provider
     - name: Update path
       run: echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@4fc4975a852c8cd99761e2de1f4ba73402e44dd9 # v4.0.3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-region: ${{ env.AWS_REGION }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        role-duration-seconds: 7200
+        role-session-name: terraform-module@githubActions
+        role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
     - name: Generate test shards
       run: |-
         cd tests
