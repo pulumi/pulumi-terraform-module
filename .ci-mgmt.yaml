@@ -1,6 +1,5 @@
 provider: terraform-module
 template: parameterized-go
+noSchema: true
 major-version: 0
 test-folder: tests
-env:
-  PULUMI_BUILD_SCHEMA: disabled
