@@ -1,0 +1,4 @@
+provider: terraform-module
+template: parameterized-go
+major-version: 0
+test-folder: tests
