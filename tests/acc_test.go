@@ -338,13 +338,16 @@ func TestIntegration(t *testing.T) {
 	for _, tc := range testcases {
 		tc := tc
 		localProviderBinPath := ensureCompiledProvider(t)
+		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
 			localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-			// Get a prefix for our test name
-			integrationTest.SetConfig(t, "prefix", getTestResourcePrefix(t.Name(), integrationTest.WorkingDir()))
+			prefix := getTestResourcePrefix(tc.name, integrationTest.WorkingDir())
+
+			// Get a prefix for resource names
+			integrationTest.SetConfig(t, "prefix", prefix)
 
 			// Generate package
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
@@ -467,19 +470,24 @@ func pulumiPackageAdd(
 	require.Equal(t, 0, exitCode)
 }
 
-// getTestResourcePrefix is a helper function that retrieves a numeric prefix for randomizing test resources' names.
-// We extract the random string at the end ot the test's working directory name.
+// getTestResourcePrefix is a helper function that retrieves a numeric prefix for ensuring uniqueness of
+// test resources' names between runs.
+// We extract the end of the test's program's temp directory name.
+// Example:
+//
 // /var/folders/87/6b426tw97kl6vb55pl6nbzym0000gn/T/TestS3BucketModuleIntegratione2e1753191907/001/s3bucketmod
-func getTestResourcePrefix(testName, testDir string) string {
+// => returns "191907".
+//
+// If the working directory is not the default temp dir and looks different, we return an empty prefix.
 
-	pathParts := strings.Split(testDir, "/")
-	testFolder := pathParts[len(pathParts)-3] // this is a hella assumption
-	testNameNoSlashes := strings.ReplaceAll(testName, "/", "")
-	testPrefix, ok := strings.CutPrefix(testFolder, testNameNoSlashes)
+func getTestResourcePrefix(programName, workingDir string) string {
+	var prefix string
+	programDir, ok := strings.CutSuffix(workingDir, "/001/"+programName)
 	if !ok {
-		// OUr test folder doesn't match
-		testPrefix = ""
+		// In the case this happens, return an empty prefix. The test will still run but resources will not be uniquely named.
+		return prefix
 	}
-	testPrefix = testPrefix[5:]
-	return testPrefix
+	// Use the six final characters of the test dir name.
+	prefix = programDir[len(programDir)-6:]
+	return ""
 }

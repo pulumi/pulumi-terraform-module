@@ -24,7 +24,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -208,7 +207,6 @@ func (h *moduleStateHandler) Delete(
 	rps *server,
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
-	h.hc.Log(ctx, diag.Warning, "", fmt.Sprint("Unmarshaling stuff from GetProperties? I think that's right", req.GetProperties()))
 	oldState.Unmarshal(req.GetProperties())
 
 	tf, err := tfsandbox.NewTofu(ctx)
@@ -238,7 +236,6 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("Apply failed: %w", err)
 	}
 
-	h.hc.Log(ctx, diag.Warning, "", fmt.Sprint("Deleting stuff"))
 	// Send back empty pb if no error.
 	return &emptypb.Empty{}, nil
 }
