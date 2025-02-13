@@ -101,7 +101,7 @@ jobs:
     name: Clean up release labels
     # Only run for non-prerelease, if the publish_go_sdk job was successful or skipped
     if: inputs.isPrerelease == false
-    needs: create_docs_build
+    needs: publish
     
     runs-on: ubuntu-latest
     steps:
