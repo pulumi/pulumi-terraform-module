@@ -6,7 +6,7 @@
 package funcs
 
 import (
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang/marks"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang/marks"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )

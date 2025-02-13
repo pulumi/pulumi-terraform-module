@@ -11,7 +11,7 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
 )
 
 // AssertPlanValid checks checks whether a planned new state returned by a

@@ -11,9 +11,9 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/gocty"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang"
 )
 
 // MetaReferences inspects the configuration to find the references contained

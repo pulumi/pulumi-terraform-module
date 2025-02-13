@@ -15,7 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // A consistent detail message for all "not a valid identifier" diagnostics.

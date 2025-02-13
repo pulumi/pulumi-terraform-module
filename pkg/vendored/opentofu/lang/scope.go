@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty/function"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/experiments"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/experiments"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 type ParseRef func(traversal hcl.Traversal) (*addrs.Reference, tfdiags.Diagnostics)

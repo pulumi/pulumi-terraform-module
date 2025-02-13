@@ -18,7 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/modprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/modprovider"
 )
 
 func main() {

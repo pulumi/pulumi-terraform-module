@@ -18,11 +18,11 @@ import (
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/instances"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang/blocktoattr"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/instances"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang/blocktoattr"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // ExpandBlock expands any "dynamic" blocks present in the given body. The

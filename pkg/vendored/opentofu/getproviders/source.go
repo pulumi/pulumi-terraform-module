@@ -9,7 +9,7 @@ package getproviders
 import (
 	"context"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // A Source can query a particular source for information about providers

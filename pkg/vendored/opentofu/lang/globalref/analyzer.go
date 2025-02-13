@@ -8,9 +8,9 @@ package globalref
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/providers"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/providers"
 )
 
 // Analyzer is the main component of this package, serving as a container for

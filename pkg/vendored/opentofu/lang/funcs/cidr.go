@@ -10,7 +10,7 @@ import (
 	"math/big"
 
 	"github.com/apparentlymart/go-cidr/cidr"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/ipaddr"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/ipaddr"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/gocty"

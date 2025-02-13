@@ -93,7 +93,7 @@ func dirExists(path string) bool {
 // parseParameterizeRequest parses the parameterize request into a ParameterizeArgs struct.
 // the args in the request are from the CLI command:
 //
-//	pulumi package add terraform-module-provider [args]
+//	pulumi package add terraform-module [args]
 //
 // the accepted formats here are either:
 //

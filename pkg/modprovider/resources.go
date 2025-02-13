@@ -3,7 +3,7 @@ package modprovider
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 type (

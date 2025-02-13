@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/dynblock"
 	"github.com/hashicorp/hcl/v2/hcldec"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
 )
 
 // ExpandedVariables finds all of the global variables referenced in the

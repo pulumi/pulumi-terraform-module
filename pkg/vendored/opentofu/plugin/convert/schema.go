@@ -11,9 +11,9 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/providers"
-	proto "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/tfplugin5"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/providers"
+	proto "github.com/pulumi/pulumi-terraform-module/pkg/vendored/tfplugin5"
 )
 
 // ConfigSchemaToProto takes a *configschema.Block and converts it to a

@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // MoveEndpoint is to AbsMoveable and ConfigMoveable what Target is to

@@ -5,7 +5,7 @@
 
 package configs
 
-import "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+import "github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 
 // Container provides an interface for scoped resources.
 //

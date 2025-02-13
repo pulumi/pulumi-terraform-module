@@ -6,7 +6,7 @@
 package instances
 
 import (
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // Set is a set of instances, intended mainly for the return value of

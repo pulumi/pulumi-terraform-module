@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/providers"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/tfplugin6"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/providers"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/tfplugin6"
 	"github.com/zclconf/go-cty/cty"
 )
 

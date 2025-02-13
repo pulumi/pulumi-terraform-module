@@ -8,8 +8,8 @@ package globalref
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang"
 )
 
 // ReferencesFromOutputValue returns all of the direct references from the

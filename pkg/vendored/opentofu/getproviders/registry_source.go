@@ -13,7 +13,7 @@ import (
 	svchost "github.com/hashicorp/terraform-svchost"
 	disco "github.com/hashicorp/terraform-svchost/disco"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // RegistrySource is a Source that knows how to find and install providers from

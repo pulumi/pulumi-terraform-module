@@ -30,8 +30,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 const (
@@ -50,7 +50,7 @@ func (cr *childResource) Await(ctx context.Context) {
 	// This API is called UnsafeAwaitOutput to discourage use in programs. Providers should be
 	// able to assume that the URN will always be allocated.
 	//
-	// TODO[pulumi/pulumi-terraform-module-provider#108] this may lock up in Duplicate-URN case
+	// TODO[pulumi/pulumi-terraform-module#108] this may lock up in Duplicate-URN case
 	_, err := internals.UnsafeAwaitOutput(ctx, cr.URN())
 	contract.AssertNoErrorf(err, "URN should not fail")
 }
@@ -170,13 +170,13 @@ func (h *childHandler) Diff(
 		resp.Changes = pulumirpc.DiffResponse_DIFF_NONE
 	case tfsandbox.Update:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
-		// TODO[pulumi/pulumi-terraform-module-provider#100] populate resp.Diffs
+		// TODO[pulumi/pulumi-terraform-module#100] populate resp.Diffs
 	case tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
 		if rplan.ChangeKind() == tfsandbox.ReplaceDestroyBeforeCreate {
 			resp.DeleteBeforeReplace = true
 		}
-		// TODO[pulumi/pulumi-terraform-module-provider#100] populate replaces
+		// TODO[pulumi/pulumi-terraform-module#100] populate replaces
 		resp.Replaces = []string{"todo"}
 	case tfsandbox.Create, tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
 		contract.Failf("Unexpected ChangeKind in Diff: %v", rplan.ChangeKind())
@@ -185,7 +185,7 @@ func (h *childHandler) Diff(
 		contract.Failf("Unknown ChangeKind in Diff: %v", rplan.ChangeKind())
 		return nil, nil
 	}
-	// TODO[pulumi/pulumi-terraform-module-provider#100] populate DetailedDiff
+	// TODO[pulumi/pulumi-terraform-module#100] populate DetailedDiff
 	return resp, nil
 }
 

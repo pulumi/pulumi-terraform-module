@@ -10,7 +10,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/experiments"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/experiments"
 )
 
 // When developing UI for experimental features, you can temporarily disable

@@ -12,7 +12,7 @@ import (
 
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // anyKeyImpl is the InstanceKey representation indicating a wildcard, which

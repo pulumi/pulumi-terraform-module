@@ -36,7 +36,7 @@ func CreateTFFile(
 		}
 	})
 
-	// TODO: [pulumi/pulumi-terraform-module-provider#28] Support unknown values
+	// TODO: [pulumi/pulumi-terraform-module#28] Support unknown values
 	if containsUnknowns {
 		return fmt.Errorf("unknown values are not yet supported")
 	}

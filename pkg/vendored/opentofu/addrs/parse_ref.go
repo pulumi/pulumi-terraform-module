@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // Reference describes a reference to an address with source location

@@ -149,7 +149,7 @@ type Plan struct {
 }
 
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
-	// TODO[pulumi/pulumi-terraform-module-provider#61] what about PreviousAddress, can TF plan
+	// TODO[pulumi/pulumi-terraform-module#61] what about PreviousAddress, can TF plan
 	// resources changing addresses? How does this work?
 	changeByAddress := map[ResourceAddress]*tfjson.ResourceChange{}
 	for _, ch := range rawPlan.ResourceChanges {

@@ -14,9 +14,9 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/experiments"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang/funcs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/experiments"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang/funcs"
 )
 
 var impureFunctions = []string{

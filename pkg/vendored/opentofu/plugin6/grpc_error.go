@@ -11,7 +11,7 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

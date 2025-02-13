@@ -7,7 +7,7 @@ package blocktoattr
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
 	"github.com/zclconf/go-cty/cty"
 )
 

@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
 )
 
 const (

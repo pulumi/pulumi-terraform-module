@@ -33,11 +33,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/regsrc"
 )
 
 type InferredModuleSchema struct {
@@ -278,7 +278,7 @@ func InferModuleSchema(
 	}
 
 	for outputName, output := range module.Outputs {
-		// TODO[pulumi/pulumi-terraform-module-provider#70] reconsider output type inference vs config
+		// TODO[pulumi/pulumi-terraform-module#70] reconsider output type inference vs config
 		var inferredType schema.TypeSpec
 		if referencedVariableName, ok := isVariableReference(output.Expr); ok {
 			inferredType = inferredModuleSchema.Inputs[referencedVariableName].TypeSpec

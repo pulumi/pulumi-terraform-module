@@ -9,7 +9,7 @@ package providers
 import (
 	"sync"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // SchemaCache is a global cache of Schemas.

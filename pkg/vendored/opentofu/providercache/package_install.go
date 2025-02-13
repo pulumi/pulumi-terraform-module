@@ -18,10 +18,10 @@ import (
 	getter "github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-retryablehttp"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/copy"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/getproviders"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/httpclient"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/logging"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/copy"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/getproviders"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/httpclient"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/logging"
 )
 
 // We borrow the "unpack a zip file into a target directory" logic from

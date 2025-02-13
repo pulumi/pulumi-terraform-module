@@ -11,9 +11,9 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/configschema"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/providers"
-	proto "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/tfplugin6"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/providers"
+	proto "github.com/pulumi/pulumi-terraform-module/pkg/vendored/tfplugin6"
 	"github.com/zclconf/go-cty/cty"
 )
 

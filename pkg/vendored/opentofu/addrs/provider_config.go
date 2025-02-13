@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"

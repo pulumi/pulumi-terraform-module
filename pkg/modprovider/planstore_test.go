@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func TestPlanStore_Plans(t *testing.T) {

@@ -8,7 +8,7 @@ package globalref
 import (
 	"sort"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // ContributingResources analyzes all of the given references and

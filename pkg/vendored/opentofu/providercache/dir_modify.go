@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/getproviders"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/getproviders"
 )
 
 // InstallPackage takes a metadata object describing a package available for

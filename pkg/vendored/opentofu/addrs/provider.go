@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	svchost "github.com/hashicorp/terraform-svchost"
 	tfaddr "github.com/opentofu/registry-address"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // Provider encapsulates a single provider type. In the future this will be

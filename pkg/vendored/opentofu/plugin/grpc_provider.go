@@ -19,11 +19,11 @@ import (
 	"github.com/zclconf/go-cty/cty/msgpack"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/logging"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/plugin/convert"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/providers"
-	proto "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/tfplugin5"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/logging"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/plugin/convert"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/providers"
+	proto "github.com/pulumi/pulumi-terraform-module/pkg/vendored/tfplugin5"
 )
 
 var logger = logging.HCLogger()

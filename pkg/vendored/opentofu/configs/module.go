@@ -10,10 +10,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/encryption/config"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/experiments"
-	tfversion "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/version"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/encryption/config"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/experiments"
+	tfversion "github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/version"
 )
 
 // Module is a container for a set of configuration constructs that are

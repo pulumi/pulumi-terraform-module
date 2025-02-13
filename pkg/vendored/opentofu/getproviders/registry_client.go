@@ -27,9 +27,9 @@ import (
 	svcauth "github.com/hashicorp/terraform-svchost/auth"
 
 	
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/httpclient"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/logging"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/httpclient"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/logging"
 )
 
 const (

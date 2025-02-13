@@ -71,7 +71,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"create": 4,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
-		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
+		// TODO[pulumi/pulumi-terraform-module#90] implement output propagation.
 		require.Contains(t, upResult.StdOut+upResult.StdErr,
 			"warning: Undefined value (randomPriority) will not show as a stack output.")
 
@@ -121,7 +121,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	// Program written to support the test.
 	twoinstProgram := filepath.Join("testdata", "programs", "ts", "twoinst-program")
 
-	moduleProvider := "terraform-module-provider"
+	moduleProvider := "terraform-module"
 	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
 	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
 	pt.CopyToTempDir(t)
@@ -172,19 +172,19 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	})
 
 	t.Run("python", func(t *testing.T) {
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#76] auto-installing global Python deps makes this fail")
+		t.Skip("TODO[pulumi/pulumi-terraform-module#76] auto-installing global Python deps makes this fail")
 		d := dest("python")
 		pulumiConvert(t, localProviderBinPath, example, d, "python", generateOnly)
 	})
 
 	t.Run("dotnet", func(t *testing.T) {
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#77] the project is missing the SDK")
+		t.Skip("TODO[pulumi/pulumi-terraform-module#77] the project is missing the SDK")
 		d := dest("dotnet")
 		pulumiConvert(t, localProviderBinPath, example, d, "dotnet", generateOnly)
 	})
 
 	t.Run("go", func(t *testing.T) {
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#78] pulumi convert fails when generating a Go SDK")
+		t.Skip("TODO[pulumi/pulumi-terraform-module#78] pulumi convert fails when generating a Go SDK")
 		d := dest("go")
 		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
 	})
@@ -270,7 +270,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 func TestAwsLambdaModuleIntegration(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 	testProgramLocation := filepath.Join("testdata", "programs", "ts", "awslambdamod")
-	localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	awsLambdaTest := pulumitest.NewPulumiTest(t, testProgramLocation, localPath)
 	// Add the package to the test
 	t.Run("pulumi package add", func(t *testing.T) {
