@@ -82,7 +82,11 @@ func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resourc
 		arrValue := make([]resource.PropertyValue, len(f))
 		if old.IsArray() {
 			oldArray := old.ArrayValue()
-			arrValue = slices.Replace(arrValue, 0, len(oldArray)-1, oldArray...)
+			if len(oldArray) < len(arrValue) {
+				arrValue = slices.Replace(arrValue, 0, len(oldArray)-1, oldArray...)
+			} else {
+				arrValue = oldArray
+			}
 		}
 		var containsFilter bool
 		for i := range f {

@@ -249,7 +249,7 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			}),
 		},
 		{
-			name: "AfterUnknown (in array) - AttributeValues different length",
+			name: "AfterUnknown (in array) - AttributeValues shorter length",
 			stateResource: tfjson.StateResource{
 				Type:    "aws_s3_bucket",
 				Address: "aws_s3_bucket.this",
@@ -278,6 +278,31 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 					map[string]interface{}{
 						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
 					},
+				},
+			}),
+		},
+		{
+			name: "AfterUnknown (in array) - AttributeValues longer length",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []interface{}{
+						"abc",
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": []interface{}{},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					resource.NewStringProperty("abc"),
 				},
 			}),
 		},
