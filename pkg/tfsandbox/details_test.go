@@ -38,7 +38,7 @@ func TestPlan(t *testing.T) {
 	assert.NoError(t, err)
 
 	nResources := 0
-	p.VisitResources(func(rp *ResourcePlan) {
+	p.VisitResources(func(_ *ResourcePlan) {
 		nResources++
 	})
 	assert.Equal(t, nResources, 5)

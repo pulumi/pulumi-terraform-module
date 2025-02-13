@@ -89,8 +89,8 @@ type ResourcePlan struct {
 	resourceChange *tfjson.ResourceChange
 }
 
-func (s *ResourcePlan) GetResource() *Resource       { return &s.Resource }
-func (s *ResourcePlan) Values() resource.PropertyMap { return s.props }
+func (p *ResourcePlan) GetResource() *Resource       { return &p.Resource }
+func (p *ResourcePlan) Values() resource.PropertyMap { return p.props }
 
 var _ ResourceStateOrPlan = (*ResourcePlan)(nil)
 

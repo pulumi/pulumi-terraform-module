@@ -14,7 +14,10 @@ type ResourceAddress string
 // StateResource is a map of the resource address to the resource
 type stateResources map[ResourceAddress]Resource
 
-func newStateResources(module *tfjson.StateModule, resourceChanges map[ResourceAddress]*tfjson.ResourceChange) (stateResources, error) {
+func newStateResources(
+	module *tfjson.StateModule,
+	resourceChanges map[ResourceAddress]*tfjson.ResourceChange,
+) (stateResources, error) {
 	resources := make(stateResources)
 	if err := resources.extractResourcesFromStateModule(module, resourceChanges); err != nil {
 		return nil, err
@@ -30,7 +33,10 @@ func newStateResources(module *tfjson.StateModule, resourceChanges map[ResourceA
 // The `AttributeValues` of each resource contains the final values of the resource properties
 // If we are in a plan, then `AttributeValues` might not contain the information we need on unknown
 // values so we need to augment with the `ResourceChange` data.
-func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateModule, resourceChanges map[ResourceAddress]*tfjson.ResourceChange) error {
+func (sr stateResources) extractResourcesFromStateModule(
+	module *tfjson.StateModule,
+	resourceChanges map[ResourceAddress]*tfjson.ResourceChange,
+) error {
 	if module.ChildModules != nil {
 		for _, childModule := range module.ChildModules {
 			if err := sr.extractResourcesFromStateModule(childModule, resourceChanges); err != nil {
@@ -49,7 +55,10 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 	return nil
 }
 
-func extractPropertyMap(stateResource *tfjson.StateResource, resourceChange *tfjson.ResourceChange) resource.PropertyMap {
+func extractPropertyMap(
+	stateResource *tfjson.StateResource,
+	resourceChange *tfjson.ResourceChange,
+) resource.PropertyMap {
 	resourceConfig := resource.PropertyMap{}
 	// TODO: [pulumi/pulumi-terraform-module-provider#45] respect stateResource.SensitiveValues
 	for attrKey, attrValue := range stateResource.AttributeValues {

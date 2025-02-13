@@ -24,7 +24,7 @@ import (
 
 const defaultStateFile = "terraform.tfstate"
 
-func (t *Tofu) PullState(ctx context.Context) (json.RawMessage, bool, error) {
+func (t *Tofu) PullState(_ context.Context) (json.RawMessage, bool, error) {
 	// If for some reason this needs to work in contexts with a non-default state provider, or
 	// take advantage of built-in locking, then tofu state pull command can be used instead.
 	path := filepath.Join(t.WorkingDir(), defaultStateFile)
@@ -39,11 +39,11 @@ func (t *Tofu) PullState(ctx context.Context) (json.RawMessage, bool, error) {
 	}
 }
 
-func (t *Tofu) PushState(ctx context.Context, data json.RawMessage) error {
+func (t *Tofu) PushState(_ context.Context, data json.RawMessage) error {
 	// If for some reason this needs to work in contexts with a non-default state provider, or
 	// take advantage of built-in locking, then tofu state push command can be used instead.
 	path := filepath.Join(t.WorkingDir(), defaultStateFile)
-	if err := os.WriteFile(path, []byte(data), 0666); err != nil {
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 		return fmt.Errorf("failed to write the default tfstate file: %w", err)
 	}
 	return nil

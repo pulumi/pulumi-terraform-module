@@ -93,6 +93,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		require.Equal(t, 1, randIntFound)
 
+		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
 		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
 		autogold.Expect(map[string]interface{}{
@@ -171,20 +172,20 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	})
 
 	t.Run("python", func(t *testing.T) {
-		d := dest("python")
 		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#76] auto-installing global Python deps makes this fail")
+		d := dest("python")
 		pulumiConvert(t, localProviderBinPath, example, d, "python", generateOnly)
 	})
 
 	t.Run("dotnet", func(t *testing.T) {
+		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#77] the project is missing the SDK")
 		d := dest("dotnet")
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#77] the generated project is missing the SDK and is not buildable")
 		pulumiConvert(t, localProviderBinPath, example, d, "dotnet", generateOnly)
 	})
 
 	t.Run("go", func(t *testing.T) {
-		d := dest("go")
 		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#78] pulumi convert fails when generating a Go SDK")
+		d := dest("go")
 		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
 	})
 
@@ -333,11 +334,6 @@ func ensureCompiledProvider(t *testing.T) string {
 	}
 
 	return binPath
-}
-
-func dirExists(dir string) bool {
-	_, err := os.Stat(dir)
-	return !os.IsNotExist(err)
 }
 
 func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string, generateOnly bool) {
