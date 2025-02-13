@@ -344,11 +344,6 @@ func TestIntegration(t *testing.T) {
 			localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-			prefix := getTestResourcePrefix(tc.name, integrationTest.WorkingDir())
-
-			// Get a prefix for resource names
-			integrationTest.SetConfig(t, "prefix", prefix)
-
 			// Generate package
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
 
@@ -468,26 +463,4 @@ func pulumiPackageAdd(
 	}
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
-}
-
-// getTestResourcePrefix is a helper function that retrieves a numeric prefix for ensuring uniqueness of
-// test resources' names between runs.
-// We extract the end of the test's program's temp directory name.
-// Example:
-//
-// /var/folders/87/6b426tw97kl6vb55pl6nbzym0000gn/T/TestS3BucketModuleIntegratione2e1753191907/001/s3bucketmod
-// => returns "191907".
-//
-// If the working directory is not the default temp dir and looks different, we return an empty prefix.
-
-func getTestResourcePrefix(programName, workingDir string) string {
-	var prefix string
-	programDir, ok := strings.CutSuffix(workingDir, "/001/"+programName)
-	if !ok {
-		// In the case this happens, return an empty prefix. The test will still run but resources will not be uniquely named.
-		return prefix
-	}
-	// Use the six final characters of the test dir name.
-	prefix = programDir[len(programDir)-6:]
-	return ""
 }
