@@ -344,8 +344,9 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			}),
 		},
 		{
-			// Not sure this appears in the wild (doesn't seem like a valid case), but covering it just in case.
-			// A nested property is completely missing in AttributeValues, and a deeply nested property is marked as unknown=false
+			// Not sure this appears in the wild (doesn't seem like a valid case), but
+			// covering it just in case. A nested property is completely missing in
+			// AttributeValues, and a deeply nested property is marked as unknown=false
 			// We should not add the missing nested property structure
 			name: "AfterUnknown=false (nested in object) - AttributeValues nested property is missing",
 			stateResource: tfjson.StateResource{

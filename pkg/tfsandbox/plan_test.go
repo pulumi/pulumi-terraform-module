@@ -24,7 +24,7 @@ func TestProcessPlan(t *testing.T) {
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
 		plan.Resources.VisitResources(func(rp *ResourcePlan) {
-			resourceProps[string(rp.sr.Address)] = rp.props
+			resourceProps[rp.sr.Address] = rp.props
 		})
 		autogold.ExpectFile(t, resourceProps)
 	})
@@ -66,7 +66,7 @@ func TestProcessPlan(t *testing.T) {
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
 		plan.Resources.VisitResources(func(rp *ResourcePlan) {
-			resourceProps[string(rp.sr.Address)] = rp.props
+			resourceProps[rp.sr.Address] = rp.props
 		})
 		autogold.ExpectFile(t, resourceProps)
 	})

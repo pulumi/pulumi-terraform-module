@@ -57,8 +57,16 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 // information on arrays. It seems to be the case that if any element in the array is sensitive or unknown
 // then the entire array is marked as such. This makes sense because I don't think it is possible to guarantee the order
 // of the elements in the array (i.e. the unknown value could return 1 item or 10).
-func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resource.PropertyValue) resource.PropertyValue) (resource.PropertyValue, bool) {
-	contract.Assertf(!old.IsArchive() && !old.IsAsset() && !old.IsResourceReference() && !old.IsSecret(), "Archive, Asset, Secret, and Resource references are not expected here")
+func mapReplv(
+	filter interface{},
+	old resource.PropertyValue,
+	replv func(resource.PropertyValue) resource.PropertyValue,
+) (resource.PropertyValue, bool) {
+	contract.Assertf(!old.IsArchive() &&
+		!old.IsAsset() &&
+		!old.IsResourceReference() &&
+		!old.IsSecret(),
+		"Archive, Asset, Secret, and Resource references are not expected here")
 	switch f := filter.(type) {
 	case bool:
 		if f {
@@ -110,8 +118,9 @@ func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resourc
 	return old, true
 }
 
-// updateResourceValue updates the value of a resource property based on a filter (e.g. AfterSensitive, AfterUnknown)
-// For example, AfterSensitive would contain a map of attributes keys with the value of true if the attribute is sensitive
+// updateResourceValue updates the value of a resource property based on a filter (e.g.
+// AfterSensitive, AfterUnknown) For example, AfterSensitive would contain a map of attributes keys
+// with the value of true if the attribute is sensitive
 //
 // e.g.
 //
@@ -123,7 +132,11 @@ func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resourc
 //	     }
 //	   }
 //	 }
-func updateResourceValue(old resource.PropertyValue, filter interface{}, replv func(v resource.PropertyValue) resource.PropertyValue) resource.PropertyValue {
+func updateResourceValue(
+	old resource.PropertyValue,
+	filter interface{},
+	replv func(v resource.PropertyValue) resource.PropertyValue,
+) resource.PropertyValue {
 	if val, ok := mapReplv(filter, old, replv); ok {
 		return val
 	}
@@ -131,19 +144,31 @@ func updateResourceValue(old resource.PropertyValue, filter interface{}, replv f
 	return old
 }
 
-// extractPropertyMapFromPlan extracts the property map from a tfjson.StateResource that is from a plan (PlannedValues)
-// it takes care of updating the values of the resource based on the AfterSensitive and AfterUnknown values from the ResourceChange
-func extractPropertyMapFromPlan(stateResource tfjson.StateResource, resourceChange *tfjson.ResourceChange) resource.PropertyMap {
+// extractPropertyMapFromPlan extracts the property map from a tfjson.StateResource that is from a
+// plan (PlannedValues) it takes care of updating the values of the resource based on the
+// AfterSensitive and AfterUnknown values from the ResourceChange
+func extractPropertyMapFromPlan(
+	stateResource tfjson.StateResource,
+	resourceChange *tfjson.ResourceChange,
+) resource.PropertyMap {
 	resourcePropertyMap := extractPropertyMap(stateResource)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
 	if resourceChange != nil && resourceChange.Change.AfterUnknown != nil {
-		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterUnknown, func(v resource.PropertyValue) resource.PropertyValue {
-			return resource.MakeComputed(resource.NewStringProperty(""))
-		})
+		objectProperty = updateResourceValue(
+			objectProperty,
+			resourceChange.Change.AfterUnknown,
+			func(_ resource.PropertyValue) resource.PropertyValue {
+				return resource.MakeComputed(resource.NewStringProperty(""))
+			},
+		)
 	}
 
 	if resourceChange != nil && resourceChange.Change.AfterSensitive != nil {
-		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterSensitive, resource.MakeSecret)
+		objectProperty = updateResourceValue(
+			objectProperty,
+			resourceChange.Change.AfterSensitive,
+			resource.MakeSecret,
+		)
 	}
 	return objectProperty.ObjectValue()
 }
