@@ -6,7 +6,7 @@ EXPERIMENTAL support for running Terraform Modules directly in Pulumi.
 
 To get started, run this in the context of a Pulumi program:
 
-    pulumi package add <module> [<version-spec>] <pulumi-package>
+    pulumi package add terraform-module <module> [<version-spec>] <pulumi-package>
 
 For example you can run the following to add the [VPC
 module](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest) as a Pulumi
@@ -29,11 +29,11 @@ const defaultVpc = new vpc.Module("defaultVpc", {cidr: "10.0.0.0/16"});
 Local modules are supported. Any directory with `.tf` files and optionally `variables.tf` and
 `outputs.tf` is a module. It can be added to a Pulumi program with:
 
-    pulumi package add <path> <pulumi-package>
+    pulumi package add terraform-module <path> <pulumi-package>
 
 For example:
 
-    pulumi package add ./infra infra
+    pulumi package add terraform-module ./infra infra
 
 ### Overcoming "failed to get schema"
 
