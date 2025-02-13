@@ -22,9 +22,9 @@ func TestProcessPlan(t *testing.T) {
 		plan, err := newPlan(tfState)
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
-		for _, r := range plan.resources {
-			resourceProps[string(r.Address())] = r.props
-		}
+		plan.Resources.VisitResources(func(rp *ResourcePlan) {
+			resourceProps[string(rp.sr.Address)] = rp.props
+		})
 		autogold.Expect(map[string]resource.PropertyMap{
 			"module.s3_bucket.aws_s3_bucket.this[0]": {
 				resource.PropertyKey("acceleration_status"): resource.PropertyValue{V: resource.Computed{
@@ -81,11 +81,16 @@ func TestProcessPlan(t *testing.T) {
 				resource.PropertyKey("restrict_public_buckets"): resource.PropertyValue{V: true},
 			},
 			"module.s3_bucket.aws_s3_bucket_versioning.this[0]": {
-				resource.PropertyKey("bucket"):                   resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
-				resource.PropertyKey("expected_bucket_owner"):    resource.PropertyValue{},
-				resource.PropertyKey("id"):                       resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
-				resource.PropertyKey("mfa"):                      resource.PropertyValue{},
-				resource.PropertyKey("versioning_configuration"): resource.PropertyValue{V: []resource.PropertyValue{{V: resource.PropertyMap{resource.PropertyKey("status"): resource.PropertyValue{V: "Enabled"}}}}},
+				resource.PropertyKey("bucket"):                resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+				resource.PropertyKey("expected_bucket_owner"): resource.PropertyValue{},
+				resource.PropertyKey("id"):                    resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+				resource.PropertyKey("mfa"):                   resource.PropertyValue{},
+				resource.PropertyKey("versioning_configuration"): resource.PropertyValue{V: []resource.PropertyValue{{V: resource.PropertyMap{
+					resource.PropertyKey("mfa_delete"): resource.PropertyValue{V: resource.Computed{
+						Element: resource.PropertyValue{V: ""},
+					}},
+					resource.PropertyKey("status"): resource.PropertyValue{V: &resource.Secret{Element: resource.PropertyValue{V: "Enabled"}}},
+				}}}},
 			},
 		}).Equal(t, resourceProps)
 	})
@@ -99,9 +104,9 @@ func TestProcessPlan(t *testing.T) {
 
 		plan, err := newPlan(tfState)
 		assert.NoError(t, err)
-		for _, r := range plan.resources {
+		plan.VisitResources(func(rp *ResourcePlan) {
 			// This is the only resource that has a diff in this plan file
-			if r.Type() == "aws_s3_bucket_server_side_encryption_configuration" {
+			if rp.Type() == "aws_s3_bucket_server_side_encryption_configuration" {
 				autogold.Expect(resource.PropertyMap{
 					resource.PropertyKey("bucket"): resource.PropertyValue{
 						V: "terraform-20250131154056635300000001",
@@ -111,9 +116,9 @@ func TestProcessPlan(t *testing.T) {
 					resource.PropertyKey("rule"): resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{
 						V: "",
 					}}},
-				}).Equal(t, r.props)
+				}).Equal(t, rp.props)
 			}
-		}
+		})
 	})
 
 	t.Run("update plan no diff", func(t *testing.T) {
@@ -126,9 +131,9 @@ func TestProcessPlan(t *testing.T) {
 		plan, err := newPlan(tfState)
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
-		for _, r := range plan.resources {
-			resourceProps[string(r.Address())] = r.props
-		}
+		plan.Resources.VisitResources(func(rp *ResourcePlan) {
+			resourceProps[string(rp.sr.Address)] = rp.props
+		})
 		autogold.Expect(map[string]resource.PropertyMap{
 			"module.s3_bucket.aws_s3_bucket.this[0]": {
 				resource.PropertyKey("acceleration_status"):         resource.PropertyValue{V: ""},
