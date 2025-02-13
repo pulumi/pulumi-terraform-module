@@ -204,7 +204,8 @@ func (h *moduleStateHandler) Update(
 func (h *moduleStateHandler) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
-	rps *server,
+	moduleSource TFModuleSource,
+	moduleVersion TFModuleVersion,
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
@@ -216,7 +217,7 @@ func (h *moduleStateHandler) Delete(
 
 	tfName := req.GetName()
 
-	err = tfsandbox.CreateTFFile(tfName, rps.params.TFModuleSource, rps.params.TFModuleVersion, tf.WorkingDir(), resource.PropertyMap{})
+	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}

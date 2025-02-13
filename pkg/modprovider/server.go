@@ -311,7 +311,7 @@ func (s *server) Delete(
 ) (*emptypb.Empty, error) {
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Delete(ctx, req, s)
+		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Delete(ctx, req)
 	default:
