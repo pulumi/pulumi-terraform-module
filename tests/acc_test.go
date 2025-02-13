@@ -305,40 +305,64 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 	})
 }
 
-func TestS3BucketModuleIntegration(t *testing.T) {
+func TestIntegration(t *testing.T) {
 
-	t.Run("e2e", func(t *testing.T) {
+	type testCase struct {
+		name            string // Must be same as project folder in testdata/programs/ts
+		moduleName      string
+		moduleVersion   string
+		moduleNamespace string
+		previewExpect   map[apitype.OpType]int
+		upExpect        map[string]int
+		deleteExpect    map[string]int
+	}
+
+	testcases := []testCase{
+		{
+			name:            "s3bucketmod",
+			moduleName:      "terraform-aws-modules/s3-bucket/aws",
+			moduleVersion:   "4.5.0",
+			moduleNamespace: "bucket",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 5,
+			},
+			upExpect: map[string]int{
+				"create": 8,
+			},
+			deleteExpect: map[string]int{
+				"delete": 8,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
 		localProviderBinPath := ensureCompiledProvider(t)
+		t.Run(tc.name, func(t *testing.T) {
+			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
+			localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-		s3BucketModProg := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
-		localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
-		s3BucketTest := pulumitest.NewPulumiTest(t, s3BucketModProg, localPath)
+			// Get a prefix for our test name
+			integrationTest.SetConfig(t, "prefix", getTestResourcePrefix(t.Name(), integrationTest.WorkingDir()))
 
-		// Get a prefix for our test name
-		s3BucketTest.SetConfig(t, "prefix", getTestResourcePrefix(t.Name(), s3BucketTest.WorkingDir()))
+			// Generate package
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
 
-		// Genereate package
-		pulumiPackageAdd(t, s3BucketTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+			// Preview
+			previewResult := integrationTest.Preview(t)
+			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-		// Preview
-		previewResult := s3BucketTest.Preview(t)
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 5,
-		}).Equal(t, previewResult.ChangeSummary)
+			// Up
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
-		// Up
-		upResult := s3BucketTest.Up(t)
-		autogold.Expect(&map[string]int{
-			"create": 8,
-		}).Equal(t, upResult.Summary.ResourceChanges)
+			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 
-		// Delete
-		destroyResult := s3BucketTest.Destroy(t)
-		autogold.Expect(&map[string]int{
-			"delete": 8,
-		}).Equal(t, destroyResult.Summary.ResourceChanges)
-
-	})
+		})
+	}
 
 }
 
@@ -446,14 +470,14 @@ func pulumiPackageAdd(
 // getTestResourcePrefix is a helper function that retrieves a numeric prefix for randomizing test resources' names.
 // We extract the random string at the end ot the test's working directory name.
 // /var/folders/87/6b426tw97kl6vb55pl6nbzym0000gn/T/TestS3BucketModuleIntegratione2e1753191907/001/s3bucketmod
-
 func getTestResourcePrefix(testName, testDir string) string {
+
 	pathParts := strings.Split(testDir, "/")
-	testFolder := pathParts[len(pathParts)-3]
+	testFolder := pathParts[len(pathParts)-3] // this is a hella assumption
 	testNameNoSlashes := strings.ReplaceAll(testName, "/", "")
 	testPrefix, ok := strings.CutPrefix(testFolder, testNameNoSlashes)
 	if !ok {
-		// We don't use the correct folder name.
+		// OUr test folder doesn't match
 		testPrefix = ""
 	}
 	testPrefix = testPrefix[5:]
