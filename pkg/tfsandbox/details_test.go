@@ -215,6 +215,39 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			}),
 		},
 		{
+			name: "AfterUnknown (in array) - AttributeValues different length",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []interface{}{
+						"",
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": []interface{}{
+							true,
+							map[string]interface{}{
+								"nestedProp1": true,
+							},
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					resource.MakeComputed(resource.NewStringProperty("")),
+					map[string]interface{}{
+						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
+					},
+				},
+			}),
+		},
+		{
 			// Not sure this appears in the wild, but covering it just in case.
 			// A nested property is completely missing in AttributeValues, but a deeply nested property is marked as unknown
 			// We should add the missing nested property structure

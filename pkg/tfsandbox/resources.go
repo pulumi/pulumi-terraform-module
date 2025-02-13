@@ -5,6 +5,7 @@ import (
 
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ResourceAddress is the address of the resource given in the plan
@@ -56,6 +57,7 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 // then the entire array is marked as such. This makes sense because I don't think it is possible to guarantee the order
 // of the elements in the array (i.e. the unknown value could return 1 item or 10).
 func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resource.PropertyValue) resource.PropertyValue) (resource.PropertyValue, bool) {
+	contract.Assertf(!old.IsArchive() && !old.IsAsset() && !old.IsResourceReference(), "Archive, Asset, and Resource references are not expected here")
 	switch f := filter.(type) {
 	case bool:
 		if f {
@@ -79,7 +81,8 @@ func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resourc
 	case []interface{}:
 		arrValue := make([]resource.PropertyValue, len(f))
 		if old.IsArray() {
-			arrValue = old.ArrayValue()
+			oldArray := old.ArrayValue()
+			arrValue = slices.Replace(arrValue, 0, len(oldArray)-1, oldArray...)
 		}
 		var containsFilter bool
 		for i := range f {
@@ -128,13 +131,14 @@ func updateResourceValue(old resource.PropertyValue, filter interface{}, replv f
 func extractPropertyMapFromPlan(stateResource tfjson.StateResource, resourceChange *tfjson.ResourceChange) resource.PropertyMap {
 	resourcePropertyMap := extractPropertyMap(stateResource)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
-	if resourceChange != nil && resourceChange.Change.AfterSensitive != nil {
-		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterSensitive, resource.MakeSecret)
-	}
 	if resourceChange != nil && resourceChange.Change.AfterUnknown != nil {
 		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterUnknown, func(v resource.PropertyValue) resource.PropertyValue {
 			return resource.MakeComputed(resource.NewStringProperty(""))
 		})
+	}
+
+	if resourceChange != nil && resourceChange.Change.AfterSensitive != nil {
+		objectProperty = updateResourceValue(objectProperty, resourceChange.Change.AfterSensitive, resource.MakeSecret)
 	}
 	return objectProperty.ObjectValue()
 }
