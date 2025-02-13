@@ -90,7 +90,8 @@ jobs:
         prerelease: ${{ inputs.isPrerelease }}
         # We keep pre-releases as drafts so they're not visible until we manually publish them.
         draft: ${{ inputs.isPrerelease }}
-        body: ${{ steps.schema-summary.outputs.summary }}
+        body: |
+          Release v${{ inputs.version }}
         generate_release_notes: true
         files: dist/*
       env:
@@ -131,4 +132,3 @@ jobs:
       # Prelease is run often but we only have 5 concurrent macos runners, so we only test after the stable release.
       enableMacRunner: ${{ inputs.isPrerelease == false }}
       skipGoSdk: ${{ inputs.skipGoSdk }}
-      pythonVersion: ${{ needs.publish_sdk.outputs.python_version }}
