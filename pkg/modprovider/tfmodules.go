@@ -26,16 +26,18 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-svchost/disco"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
+	"github.com/spf13/afero"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/spf13/afero"
-	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/regsrc"
 )
 
 type InferredModuleSchema struct {
@@ -46,7 +48,6 @@ type InferredModuleSchema struct {
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
-var intType = schema.TypeSpec{Type: "integer"}
 var boolType = schema.TypeSpec{Type: "boolean"}
 var numberType = schema.TypeSpec{Type: "number"}
 
@@ -75,8 +76,10 @@ func formatPascalCaseTypeName(typeName string) string {
 	output := ""
 	for i, part := range strings.Split(typeName, "_") {
 		if i == 0 {
+			//nolint:staticcheck
 			output = strings.Title(part)
 		} else {
+			//nolint:staticcheck
 			output = fmt.Sprintf("%s%s", output, strings.Title(part))
 		}
 	}
@@ -275,7 +278,7 @@ func InferModuleSchema(
 	}
 
 	for outputName, output := range module.Outputs {
-		// TODO[pulumi/pulumi-terraform-module-provider#70] reconsider output type inference vs config
+		// TODO[pulumi/pulumi-terraform-module#70] reconsider output type inference vs config
 		var inferredType schema.TypeSpec
 		if referencedVariableName, ok := isVariableReference(output.Expr); ok {
 			inferredType = inferredModuleSchema.Inputs[referencedVariableName].TypeSpec
@@ -317,22 +320,22 @@ func extractModuleContent(
 	return module, nil
 }
 
-type modulesJson struct {
-	Modules []modulesJsonEntry `json:"Modules"`
+type modulesJSON struct {
+	Modules []modulesJSONEntry `json:"Modules"`
 }
 
-type modulesJsonEntry struct {
+type modulesJSONEntry struct {
 	Key    string `json:"Key"`
 	Source string `json:"Source"`
 	Dir    string `json:"Dir"`
 }
 
-func readModulesJson(filePath string) (*modulesJson, error) {
+func readModulesJSON(filePath string) (*modulesJSON, error) {
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read modules.json file: %w", err)
 	}
-	var m modulesJson
+	var m modulesJSON
 	err = json.Unmarshal(bytes, &m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal modules.json file: %w", err)
@@ -340,7 +343,7 @@ func readModulesJson(filePath string) (*modulesJson, error) {
 	return &m, nil
 }
 
-func findResolvedModuleDir(mj *modulesJson, key string) (string, error) {
+func findResolvedModuleDir(mj *modulesJSON, key string) (string, error) {
 	contract.Assertf(mj != nil, "mj cannot be nil")
 	matchCount := 0
 	var hit string
@@ -385,7 +388,7 @@ func resolveModuleSources(
 
 	mjPath := filepath.Join(tf.WorkingDir(), ".terraform", "modules", "modules.json")
 
-	mj, err := readModulesJson(mjPath)
+	mj, err := readModulesJSON(mjPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read modules resolution JSON: %w", err)
 	}

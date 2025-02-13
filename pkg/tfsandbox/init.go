@@ -6,7 +6,7 @@ import (
 )
 
 // Run terraform init to initialize a new directory
-// TODO[pulumi/pulumi-terraform-module-provider#67] speed up this slow operation.
+// TODO[pulumi/pulumi-terraform-module#67] speed up this slow operation.
 func (t *Tofu) Init(ctx context.Context) error {
 	// Run the terraform init command
 	if err := t.tf.Init(ctx); err != nil {

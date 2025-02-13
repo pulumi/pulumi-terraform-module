@@ -22,6 +22,8 @@ import (
 	"io/fs"
 	"os"
 
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -29,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -92,7 +93,7 @@ func dirExists(path string) bool {
 // parseParameterizeRequest parses the parameterize request into a ParameterizeArgs struct.
 // the args in the request are from the CLI command:
 //
-//	pulumi package add terraform-module-provider [args]
+//	pulumi package add terraform-module [args]
 //
 // the accepted formats here are either:
 //
@@ -165,7 +166,7 @@ func parseParameterizeRequest(
 
 func (s *server) GetSchema(
 	ctx context.Context,
-	req *pulumirpc.GetSchemaRequest,
+	_ *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
 	if s.params == nil {
 		return nil, fmt.Errorf("Expected Parameterize() call before a GetSchema() call to set parameters")
@@ -182,8 +183,8 @@ func (s *server) GetSchema(
 }
 
 func (*server) GetPluginInfo(
-	ctx context.Context,
-	req *emptypb.Empty,
+	_ context.Context,
+	_ *emptypb.Empty,
 ) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: "1.0.0",
@@ -191,8 +192,8 @@ func (*server) GetPluginInfo(
 }
 
 func (*server) Configure(
-	ctx context.Context,
-	req *pulumirpc.ConfigureRequest,
+	_ context.Context,
+	_ *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
@@ -202,7 +203,7 @@ func (*server) Configure(
 	}, nil
 }
 
-func (rps *server) Construct(
+func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
@@ -216,21 +217,22 @@ func (rps *server) Construct(
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
 
-	return pulumiprovider.Construct(ctx, req, rps.hostClient.EngineConn(), func(
+	return pulumiprovider.Construct(ctx, req, s.hostClient.EngineConn(), func(
 		ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+		_ pulumiprovider.ConstructInputs,
+		_ pulumi.ResourceOption,
 	) (*pulumiprovider.ConstructResult, error) {
-		ctok := componentTypeToken(rps.packageName, rps.componentTypeName)
+		ctok := componentTypeToken(s.packageName, s.componentTypeName)
 		switch typ {
 		case string(ctok):
 			component, err := NewModuleComponentResource(ctx,
-				rps.stateStore,
-				rps.planStore,
-				rps.packageName,
-				rps.packageVersion,
-				rps.componentTypeName,
-				rps.params.TFModuleSource,
-				rps.params.TFModuleVersion,
+				s.stateStore,
+				s.planStore,
+				s.packageName,
+				s.packageVersion,
+				s.componentTypeName,
+				s.params.TFModuleSource,
+				s.params.TFModuleVersion,
 				name,
 				inputProps)
 			if err != nil {
@@ -247,71 +249,71 @@ func (rps *server) Construct(
 	})
 }
 
-func (rps *server) Check(
+func (s *server) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(rps.packageName)):
-		return rps.moduleStateHandler.Check(ctx, req)
+	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+		return s.moduleStateHandler.Check(ctx, req)
 	case isChildResourceType(req.GetType()):
-		return rps.childHandler.Check(ctx, req)
+		return s.childHandler.Check(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
 	}
 }
 
-func (rps *server) Diff(
+func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(rps.packageName)):
-		return rps.moduleStateHandler.Diff(ctx, req)
+	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+		return s.moduleStateHandler.Diff(ctx, req)
 	case isChildResourceType(req.GetType()):
-		return rps.childHandler.Diff(ctx, req)
+		return s.childHandler.Diff(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
 	}
 }
 
-func (rps *server) Create(
+func (s *server) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(rps.packageName)):
-		return rps.moduleStateHandler.Create(ctx, req)
+	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+		return s.moduleStateHandler.Create(ctx, req)
 	case isChildResourceType(req.GetType()):
-		return rps.childHandler.Create(ctx, req)
+		return s.childHandler.Create(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
 	}
 }
 
-func (rps *server) Update(
+func (s *server) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(rps.packageName)):
-		return rps.moduleStateHandler.Update(ctx, req)
+	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+		return s.moduleStateHandler.Update(ctx, req)
 	case isChildResourceType(req.GetType()):
-		return rps.childHandler.Update(ctx, req)
+		return s.childHandler.Update(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Update]: type %q is not supported yet", req.GetType())
 	}
 }
 
-func (rps *server) Delete(
+func (s *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(rps.packageName)):
-		return rps.moduleStateHandler.Delete(ctx, req)
+	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+		return s.moduleStateHandler.Delete(ctx, req)
 	case isChildResourceType(req.GetType()):
-		return rps.childHandler.Delete(ctx, req)
+		return s.childHandler.Delete(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())
 	}

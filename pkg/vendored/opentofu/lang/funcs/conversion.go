@@ -8,8 +8,8 @@ package funcs
 import (
 	"strconv"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang/marks"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/lang/types"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang/marks"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/lang/types"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"

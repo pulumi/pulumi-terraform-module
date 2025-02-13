@@ -15,7 +15,7 @@
 package modprovider
 
 import (
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 type (

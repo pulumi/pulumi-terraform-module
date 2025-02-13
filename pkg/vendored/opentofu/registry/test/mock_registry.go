@@ -13,10 +13,10 @@ import (
 	svchost "github.com/hashicorp/terraform-svchost"
 	"github.com/hashicorp/terraform-svchost/auth"
 	"github.com/hashicorp/terraform-svchost/disco"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/httpclient"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/response"
-	tfversion "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/version"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/httpclient"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/regsrc"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/response"
+	tfversion "github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/version"
 )
 
 // Disco return a *disco.Disco mapping registry.opentofu.org, localhost,

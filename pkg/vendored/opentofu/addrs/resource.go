@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // Resource is an address for a resource block within configuration, which

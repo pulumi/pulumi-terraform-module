@@ -18,13 +18,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestChildResoruceTypeToken(t *testing.T) {
@@ -129,14 +130,14 @@ func TestChildResourceDelete(t *testing.T) {
 
 type testResourceState struct {
 	address ResourceAddress
-	type_   TFResourceType
+	resType TFResourceType
 	name    string
 	index   interface{}
 	attrs   resource.PropertyMap
 }
 
 func (s *testResourceState) Address() ResourceAddress              { return s.address }
-func (s *testResourceState) Type() TFResourceType                  { return s.type_ }
+func (s *testResourceState) Type() TFResourceType                  { return s.resType }
 func (s *testResourceState) Name() string                          { return s.name }
 func (s *testResourceState) Index() interface{}                    { return s.index }
 func (s *testResourceState) AttributeValues() resource.PropertyMap { return s.attrs }

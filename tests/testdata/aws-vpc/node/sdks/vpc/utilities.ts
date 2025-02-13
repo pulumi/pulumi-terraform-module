@@ -113,7 +113,7 @@ export async function getPackage() : Promise<string | undefined> {
 			params.setValue(Uint8Array.from(atob("ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIsCiAgInBhY2thZ2VOYW1lIjogInZwYyIKfQ=="), c => c.charCodeAt(0)));
 
 			const req = new resproto.RegisterPackageRequest();
-			req.setName("terraform-module-provider");
+			req.setName("terraform-module");
 			req.setVersion("0.0.1");
 			req.setDownloadUrl("");
 			req.setParameterization(params);

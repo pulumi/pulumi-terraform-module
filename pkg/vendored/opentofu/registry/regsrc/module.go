@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	svchost "github.com/hashicorp/terraform-svchost"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 var (

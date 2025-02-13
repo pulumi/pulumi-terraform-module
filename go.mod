@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi-terraform-module-provider
+module github.com/pulumi/pulumi-terraform-module
 
 go 1.23.3
 

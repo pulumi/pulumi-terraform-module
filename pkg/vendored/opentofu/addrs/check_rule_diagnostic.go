@@ -5,7 +5,7 @@
 
 package addrs
 
-import "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+import "github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 
 // DiagnosticExtraCheckRule provides an interface for diagnostic ExtraInfo to
 // retrieve an embedded CheckRule from within a tfdiags.Diagnostic.

@@ -17,10 +17,12 @@ package modprovider
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func TestPlanStore_Plans(t *testing.T) {
@@ -35,7 +37,7 @@ func TestPlanStore_Plans(t *testing.T) {
 				changeKind:      tfsandbox.NoOp,
 				resourceAddress: rAddr,
 				name:            string(rAddr),
-				type_:           "random_integer",
+				resType:         "random_integer",
 				plannedValues: resource.PropertyMap{
 					"result": resource.NewComputedProperty(resource.Computed{
 						Element: resource.NewNumberProperty(0),
@@ -61,7 +63,7 @@ func TestPlanStore_States(t *testing.T) {
 		res: &testResourceState{
 			address: rAddr,
 			name:    string(rAddr),
-			type_:   "random_integer",
+			resType: "random_integer",
 			attrs: resource.PropertyMap{
 				"result": resource.NewNumberProperty(42),
 			},
@@ -85,10 +87,10 @@ type testResourcePlan struct {
 	changeKind      ChangeKind
 	plannedValues   resource.PropertyMap
 	name            string
-	type_           TFResourceType
+	resType         TFResourceType
 }
 
-func (x *testResourcePlan) Type() TFResourceType                { return x.type_ }
+func (x *testResourcePlan) Type() TFResourceType                { return x.resType }
 func (x *testResourcePlan) Name() string                        { return x.name }
 func (x *testResourcePlan) Address() ResourceAddress            { return x.resourceAddress }
 func (x *testResourcePlan) ChangeKind() ChangeKind              { return x.changeKind }

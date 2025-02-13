@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	tfaddr "github.com/opentofu/registry-address"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/getmodules"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/getmodules"
 )
 
 // ModuleSource is the general type for all three of the possible module source

@@ -16,6 +16,7 @@ package tfsandbox
 
 import (
 	tfjson "github.com/hashicorp/terraform-json"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -88,8 +89,8 @@ type ResourcePlan struct {
 	resourceChange *tfjson.ResourceChange
 }
 
-func (s *ResourcePlan) GetResource() *Resource       { return &s.Resource }
-func (s *ResourcePlan) Values() resource.PropertyMap { return s.props }
+func (p *ResourcePlan) GetResource() *Resource       { return &p.Resource }
+func (p *ResourcePlan) Values() resource.PropertyMap { return p.props }
 
 var _ ResourceStateOrPlan = (*ResourcePlan)(nil)
 
@@ -148,7 +149,7 @@ type Plan struct {
 }
 
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
-	// TODO[pulumi/pulumi-terraform-module-provider#61] what about PreviousAddress, can TF plan
+	// TODO[pulumi/pulumi-terraform-module#61] what about PreviousAddress, can TF plan
 	// resources changing addresses? How does this work?
 	changeByAddress := map[ResourceAddress]*tfjson.ResourceChange{}
 	for _, ch := range rawPlan.ResourceChanges {

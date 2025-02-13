@@ -10,7 +10,7 @@ import (
 	// "github.com/apparentlymart/go-shquot/shquot"
 	"strings"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
 )
 
 // This file contains some package-local helpers for working with diagnostics.

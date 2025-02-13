@@ -10,7 +10,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 	"github.com/zclconf/go-cty/cty"
 )
 

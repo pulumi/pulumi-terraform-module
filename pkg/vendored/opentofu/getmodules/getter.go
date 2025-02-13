@@ -13,7 +13,7 @@ import (
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	getter "github.com/hashicorp/go-getter"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/copy"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/copy"
 )
 
 // We configure our own go-getter detector and getter sets here, because

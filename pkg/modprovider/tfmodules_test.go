@@ -20,9 +20,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 func TestExtractModuleContentWorks(t *testing.T) {
@@ -41,9 +42,10 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 	// verify a sample of the inputs with different inferred types
 	expectedSampleInputs := map[string]*schema.PropertySpec{
 		"cidr": {
-			Description: "(Optional) The IPv4 CIDR block for the VPC. CIDR can be explicitly set or it can be derived from IPAM using `ipv4_netmask_length` & `ipv4_ipam_pool_id`",
-			Secret:      false,
-			TypeSpec:    stringType,
+			Description: "(Optional) The IPv4 CIDR block for the VPC. CIDR can be" +
+				" explicitly set or it can be derived from IPAM using `ipv4_netmask_length` & `ipv4_ipam_pool_id`",
+			Secret:   false,
+			TypeSpec: stringType,
 		},
 		"create_database_subnet_route_table": {
 			Description: "Controls if separate route table for database should be created",

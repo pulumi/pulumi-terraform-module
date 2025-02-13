@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// TODO[pulumi/pulumi-terraform-module-provider#50] this can get more complicated if versionSpec is a range and not a
+// TODO[pulumi/pulumi-terraform-module#50] this can get more complicated if versionSpec is a range and not a
 // precise version.
 func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 	if versionSpec == "" {
@@ -71,7 +71,7 @@ func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*
 }
 
 // This is very important to include in the schema under Parameterization so that the generated SDK calls back into the
-// correctly parameterized pulumi-terraform-module-provider instance.
+// correctly parameterized pulumi-terraform-module instance.
 func newParameterizationSpec(pargs *ParameterizeArgs) *schema.ParameterizationSpec {
 	parameter, err := json.MarshalIndent(pargs, "", "  ")
 	contract.AssertNoErrorf(err, "MarshalIndent should not fail")

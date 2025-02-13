@@ -19,7 +19,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/property"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -27,13 +29,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
 )
 
 const (
 	moduleStateTypeName   = "ModuleState"
-	moduleStateResourceId = "moduleStateResource"
+	moduleStateResourceID = "moduleStateResource"
 )
 
 // Represents state stored in Pulumi for a TF module.
@@ -144,7 +146,7 @@ func (h *moduleStateHandler) SetNewState(modUrn urn.URN, st moduleState) {
 
 // Check is generic and does not do anything.
 func (h *moduleStateHandler) Check(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{
@@ -156,7 +158,7 @@ func (h *moduleStateHandler) Check(
 // Diff spies on old state from the engine and publishes that so the rest of the system can proceed.
 // It also waits on the new state to decide if there are changes or not.
 func (h *moduleStateHandler) Diff(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
 	modUrn := h.mustParseModURN(req.News)
@@ -173,7 +175,7 @@ func (h *moduleStateHandler) Diff(
 
 // Create exposes empty old state and returns the new state.
 func (h *moduleStateHandler) Create(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
 	oldState := moduleState{}
@@ -181,14 +183,14 @@ func (h *moduleStateHandler) Create(
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	return &pulumirpc.CreateResponse{
-		Id:         moduleStateResourceId,
+		Id:         moduleStateResourceID,
 		Properties: newState.Marshal(),
 	}, nil
 }
 
 // Update simply returns the new state.
 func (h *moduleStateHandler) Update(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
 	newState := h.newState.Await(h.mustParseModURN(req.News))
@@ -199,8 +201,8 @@ func (h *moduleStateHandler) Update(
 
 // Delete does not do anything. This could be reused to trigger deletion support in the future
 func (h *moduleStateHandler) Delete(
-	ctx context.Context,
-	req *pulumirpc.DeleteRequest,
+	_ context.Context,
+	_ *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }

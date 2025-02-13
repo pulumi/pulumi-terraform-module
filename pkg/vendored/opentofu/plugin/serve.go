@@ -8,7 +8,7 @@ package plugin
 
 import (
 	"github.com/hashicorp/go-plugin"
-	proto "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/tfplugin5"
+	proto "github.com/pulumi/pulumi-terraform-module/pkg/vendored/tfplugin5"
 )
 
 const (

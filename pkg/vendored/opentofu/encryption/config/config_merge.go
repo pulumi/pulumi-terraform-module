@@ -7,7 +7,7 @@ package config
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/configs/hcl2shim"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs/hcl2shim"
 )
 
 // MergeConfigs merges two Configs together, with the override taking precedence.

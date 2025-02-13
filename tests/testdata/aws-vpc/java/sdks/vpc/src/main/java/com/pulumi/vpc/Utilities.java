@@ -112,7 +112,7 @@ public class Utilities {
 	static {
 		packageRef = Deployment.getInstance().registerPackage(
 			// Base provider name
-			"terraform-module-provider",
+			"terraform-module",
 			// Base provider version
 			"0.0.1",
 			// Base provider download URL

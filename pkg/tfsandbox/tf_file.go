@@ -36,7 +36,7 @@ func CreateTFFile(
 		}
 	})
 
-	// TODO: [pulumi/pulumi-terraform-module-provider#28] Support unknown values
+	// TODO: [pulumi/pulumi-terraform-module#28] Support unknown values
 	if containsUnknowns {
 		return fmt.Errorf("unknown values are not yet supported")
 	}
@@ -73,7 +73,7 @@ func CreateTFFile(
 		return err
 	}
 
-	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0644); err != nil {
+	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0600); err != nil {
 		return err
 	}
 	return nil

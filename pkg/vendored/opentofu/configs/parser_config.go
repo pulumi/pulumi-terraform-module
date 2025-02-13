@@ -7,7 +7,7 @@ package configs
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/encryption/config"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/encryption/config"
 )
 
 // LoadConfigFile reads the file at the given path and parses it as a config

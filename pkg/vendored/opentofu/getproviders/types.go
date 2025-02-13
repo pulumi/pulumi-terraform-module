@@ -15,7 +15,7 @@ import (
 	"github.com/apparentlymart/go-versions/versions"
 	"github.com/apparentlymart/go-versions/versions/constraints"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
 )
 
 // Version represents a particular single version of a provider.

@@ -7,8 +7,8 @@
 package convert
 
 import (
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/tfdiags"
-	proto "github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/tfplugin6"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/tfdiags"
+	proto "github.com/pulumi/pulumi-terraform-module/pkg/vendored/tfplugin6"
 	"github.com/zclconf/go-cty/cty"
 )
 

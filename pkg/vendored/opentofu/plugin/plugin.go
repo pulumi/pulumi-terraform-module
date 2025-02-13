@@ -8,7 +8,7 @@ package plugin
 
 import (
 	"github.com/hashicorp/go-plugin"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/plugin6"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/plugin6"
 )
 
 // VersionedPlugins includes both protocol 5 and 6 because this is the function

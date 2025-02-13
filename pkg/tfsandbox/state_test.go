@@ -21,8 +21,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestState(t *testing.T) {
@@ -58,7 +59,7 @@ func TestState(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceCount := 0
-	state.Resources.VisitResources(func(rs *ResourceState) {
+	state.Resources.VisitResources(func(_ *ResourceState) {
 		resourceCount++
 	})
 

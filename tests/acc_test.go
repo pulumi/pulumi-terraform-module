@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -19,7 +21,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/stretchr/testify/require"
+)
+
+const (
+	provider = "terraform-module"
 )
 
 // testdata/randmod is a fully local module written for test purposes that uses resources from the
@@ -35,8 +40,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	// Program written to support the test.
 	randModProg := filepath.Join("testdata", "programs", "ts", "randmod-program")
 
-	moduleProvider := "terraform-module-provider"
-	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
@@ -67,7 +71,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"create": 4,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
-		// TODO[pulumi/pulumi-terraform-module-provider#90] implement output propagation.
+		// TODO[pulumi/pulumi-terraform-module#90] implement output propagation.
 		require.Contains(t, upResult.StdOut+upResult.StdErr,
 			"warning: Undefined value (randomPriority) will not show as a stack output.")
 
@@ -89,6 +93,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		require.Equal(t, 1, randIntFound)
 
+		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
 		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
 		autogold.Expect(map[string]interface{}{
@@ -116,7 +121,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	// Program written to support the test.
 	twoinstProgram := filepath.Join("testdata", "programs", "ts", "twoinst-program")
 
-	moduleProvider := "terraform-module-provider"
+	moduleProvider := "terraform-module"
 	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
 	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
 	pt.CopyToTempDir(t)
@@ -167,27 +172,27 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	})
 
 	t.Run("python", func(t *testing.T) {
+		t.Skip("TODO[pulumi/pulumi-terraform-module#76] auto-installing global Python deps makes this fail")
 		d := dest("python")
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#76] auto-installing global Python deps makes this fail")
 		pulumiConvert(t, localProviderBinPath, example, d, "python", generateOnly)
 	})
 
 	t.Run("dotnet", func(t *testing.T) {
+		t.Skip("TODO[pulumi/pulumi-terraform-module#77] the project is missing the SDK")
 		d := dest("dotnet")
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#77] the generated project is missing the SDK and is not buildable")
 		pulumiConvert(t, localProviderBinPath, example, d, "dotnet", generateOnly)
 	})
 
 	t.Run("go", func(t *testing.T) {
+		t.Skip("TODO[pulumi/pulumi-terraform-module#78] pulumi convert fails when generating a Go SDK")
 		d := dest("go")
-		t.Skip("TODO[pulumi/pulumi-terraform-module-provider#78] pulumi convert fails when generating a Go SDK")
 		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
 	})
 
 	t.Run("java", func(t *testing.T) {
 		d := dest("java")
 		// Note that pulumi convert prints instructions how to make the result compile.
-		// They are not yet entirely accurate, and we do not yet attemt to compile the result.
+		// They are not yet entirely accurate, and we do not yet attempt to compile the result.
 		pulumiConvert(t, localProviderBinPath, example, d, "java", generateOnly)
 	})
 }
@@ -205,7 +210,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 
 	pt := pulumitest.NewPulumiTest(t, testDir,
-		opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath)),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)),
 		opttest.SkipInstall())
 	pt.CopyToTempDir(t)
 
@@ -265,7 +270,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 func TestAwsLambdaModuleIntegration(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 	testProgramLocation := filepath.Join("testdata", "programs", "ts", "awslambdamod")
-	localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	awsLambdaTest := pulumitest.NewPulumiTest(t, testProgramLocation, localPath)
 	// Add the package to the test
 	t.Run("pulumi package add", func(t *testing.T) {
@@ -310,21 +315,25 @@ func getRoot(t *testing.T) string {
 
 func ensureCompiledProvider(t *testing.T) string {
 	root := getRoot(t)
-	binPath := filepath.Join(root, "bin", "pulumi-resource-terraform-module-provider")
-	cmd := exec.Command("go", "build",
-		"-o", "bin/pulumi-resource-terraform-module-provider",
-		"./cmd/pulumi-resource-terraform-module-provider")
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		require.NoError(t, fmt.Errorf("failed to compile provider: %w\n%s", err, out))
-	}
-	return binPath
-}
+	binPath := filepath.Join(root, "bin", "pulumi-resource-"+provider)
 
-func dirExists(dir string) bool {
-	_, err := os.Stat(dir)
-	return !os.IsNotExist(err)
+	_, ci := os.LookupEnv("CI")
+	if !ci {
+		// In development ensure the provider binary is up-to-date.
+		cmd := exec.Command("make", "provider")
+		cmd.Dir = root
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			require.NoError(t, fmt.Errorf("failed to compile provider: %w\n%s", err, out))
+		}
+	}
+
+	_, err := os.Stat(binPath)
+	if os.IsNotExist(err) {
+		require.Failf(t, "No provider boundary found at the expected path: %q", binPath)
+	}
+
+	return binPath
 }
 
 func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string, generateOnly bool) {

@@ -23,11 +23,11 @@ import (
 	svchost "github.com/hashicorp/terraform-svchost"
 	"github.com/hashicorp/terraform-svchost/disco"
 
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/httpclient"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/logging"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/regsrc"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/registry/response"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/vendored/opentofu/version"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/httpclient"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/logging"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/regsrc"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/response"
+	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/version"
 )
 
 const (
