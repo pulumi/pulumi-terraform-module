@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-module-provider/pkg/tfsandbox"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -32,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 const (
@@ -215,8 +215,11 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	tfName := req.GetName()
-
+	// For Destroy, Terraform needs the module source and version as specified in the json file, but it doesn't
+	// need the exact name of the moduleComponent resource.
+	// Once https://github.com/pulumi/pulumi-terraform-module-provider/issues/115 is implemented, we won't need to create
+	// a terraform file at all.
+	tfName := "platypus"
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
@@ -234,7 +237,7 @@ func (h *moduleStateHandler) Delete(
 
 	err = tf.Destroy(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Apply failed: %w", err)
+		return nil, fmt.Errorf("Delete failed: %w", err)
 	}
 
 	// Send back empty pb if no error.
