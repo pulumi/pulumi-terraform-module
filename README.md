@@ -34,3 +34,18 @@ Local modules are supported. Any directory with `.tf` files and optionally `vari
 For example:
 
     pulumi package add ./infra infra
+
+### Overcoming "failed to get schema"
+
+You may encounter the following error while this repository is still internal:
+
+```
+error: failed to get schema: could not find latest version for provider terraform-module: 404 HTTP error fetching plugin from https://api.github.com/repos/pulumi/pulumi-terraform-module/releases/latest. If this is a private GitHub repository, try providing a token via the GITHUB_TOKEN environment variable. See: https://github.com/settings/tokens
+```
+
+To overcome, consider exporting the GITHUB_TOKEN. If you have GitHub CLI installed and
+authenticated, it can automatically generate a working token like so:
+
+``` shell
+export GITHUB_TOKEN=$(gh auth token)
+```
