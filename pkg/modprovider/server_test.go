@@ -124,7 +124,7 @@ type testEngineServer struct {
 	pulumirpc.UnimplementedEngineServer
 }
 
-func (t *testEngineServer) Log(ctx context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
+func (t *testEngineServer) Log(_ context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
 	t.t.Logf("Engine received Log: %s", req.Message)
 	return &emptypb.Empty{}, nil
 }
@@ -191,8 +191,8 @@ func (s *testResourceMonitorServer) FindResourceByType(
 }
 
 func (*testResourceMonitorServer) SupportsFeature(
-	ctx context.Context,
-	req *pulumirpc.SupportsFeatureRequest,
+	_ context.Context,
+	_ *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
 	return &pulumirpc.SupportsFeatureResponse{HasSupport: true}, nil
 }

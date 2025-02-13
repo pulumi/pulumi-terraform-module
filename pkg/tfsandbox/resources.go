@@ -30,7 +30,14 @@ func newStateResources(module *tfjson.StateModule) (stateResources, error) {
 // This can be either from the plan `PlannedValues` or the state `Values` (after apply is finished)
 // The `PlannedValues` contains the final result of the plan, which includes all the resources
 // that are going to be created, updated, deleted, replaced, or kept unchanged.
-func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateModule) error {
+//
+// The `AttributeValues` of each resource contains the final values of the resource properties
+// If we are in a plan, then `AttributeValues` might not contain the information we need on unknown
+// values so we need to augment with the `ResourceChange` data.
+func (sr stateResources) extractResourcesFromStateModule(
+	module *tfjson.StateModule,
+	resourceChanges map[ResourceAddress]*tfjson.ResourceChange,
+) error {
 	if module.ChildModules != nil {
 		for _, childModule := range module.ChildModules {
 			if err := sr.extractResourcesFromStateModule(childModule); err != nil {

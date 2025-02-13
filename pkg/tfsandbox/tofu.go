@@ -101,6 +101,7 @@ func downloadTofu(ctx context.Context) (string, error) {
 		return "", err
 	}
 
+	//nolint:gosec
 	if err := os.WriteFile(absFile, binary, 0755); err != nil {
 		return "", err
 	}

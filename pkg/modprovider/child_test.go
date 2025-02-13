@@ -130,14 +130,14 @@ func TestChildResourceDelete(t *testing.T) {
 
 type testResourceState struct {
 	address ResourceAddress
-	type_   TFResourceType
+	resType TFResourceType
 	name    string
 	index   interface{}
 	attrs   resource.PropertyMap
 }
 
 func (s *testResourceState) Address() ResourceAddress              { return s.address }
-func (s *testResourceState) Type() TFResourceType                  { return s.type_ }
+func (s *testResourceState) Type() TFResourceType                  { return s.resType }
 func (s *testResourceState) Name() string                          { return s.name }
 func (s *testResourceState) Index() interface{}                    { return s.index }
 func (s *testResourceState) AttributeValues() resource.PropertyMap { return s.attrs }

@@ -59,7 +59,7 @@ func TestState(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceCount := 0
-	state.Resources.VisitResources(func(rs *ResourceState) {
+	state.Resources.VisitResources(func(_ *ResourceState) {
 		resourceCount++
 	})
 

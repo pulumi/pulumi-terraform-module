@@ -133,19 +133,6 @@ type mockResource struct {
 	pulumi.CustomResourceState
 }
 
-type mockMonitor struct {
-	ch chan<- pulumi.MockResourceArgs
-}
-
-func (mm *mockMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	panic("Call not supported")
-}
-
-func (mm *mockMonitor) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
-	mm.ch <- args
-	return "", resource.PropertyMap{}, nil
-}
-
 type fakeEngineServer struct {
 	t *testing.T
 	pulumirpc.UnimplementedEngineServer
@@ -156,11 +143,17 @@ type fakeResourceMonitorServer struct {
 	registerResourceChan chan<- resource.PropertyMap
 }
 
-func (f *fakeResourceMonitorServer) SupportsFeature(context.Context, *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
+func (f *fakeResourceMonitorServer) SupportsFeature(
+	context.Context,
+	*pulumirpc.SupportsFeatureRequest,
+) (*pulumirpc.SupportsFeatureResponse, error) {
 	return &pulumirpc.SupportsFeatureResponse{HasSupport: true}, nil
 }
 
-func (f *fakeResourceMonitorServer) RegisterResource(ctx context.Context, req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
+func (f *fakeResourceMonitorServer) RegisterResource(
+	_ context.Context,
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
 	props, err := plugin.UnmarshalProperties(req.GetObject(), plugin.MarshalOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,

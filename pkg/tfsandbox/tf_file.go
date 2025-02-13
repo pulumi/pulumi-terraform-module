@@ -73,7 +73,7 @@ func CreateTFFile(
 		return err
 	}
 
-	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0644); err != nil {
+	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0600); err != nil {
 		return err
 	}
 	return nil

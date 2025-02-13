@@ -23,7 +23,7 @@ variable "tf_var" {
 
 	err := os.Mkdir(filepath.Join(workingDir, "local-module"), 0755)
 	assert.NoError(t, err)
-	err = os.WriteFile(filepath.Join(workingDir, "local-module", "variables.tf"), []byte(tfVarFile), 0644)
+	err = os.WriteFile(filepath.Join(workingDir, "local-module", "variables.tf"), []byte(tfVarFile), 0600)
 	assert.NoError(t, err)
 }
 
@@ -46,12 +46,17 @@ func TestCreateTFFile(t *testing.T) {
 		{
 			name:           "string secret",
 			tfVariableType: "string",
-			inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
+			inputsValue: resource.NewSecretProperty(&resource.Secret{
+				Element: resource.NewStringProperty("hello"),
+			}),
 		},
 		{
 			name:           "list(string)",
 			tfVariableType: "list(string)",
-			inputsValue:    resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("hello"), resource.NewStringProperty("world")}),
+			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("hello"),
+				resource.NewStringProperty("world"),
+			}),
 		},
 		{
 			name:           "bool",
@@ -66,31 +71,43 @@ func TestCreateTFFile(t *testing.T) {
 		{
 			name:           "map(string)",
 			tfVariableType: "map(string)",
-			inputsValue:    resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
+			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewStringProperty("value"),
+			}),
 		},
 		{
 			name:           "list(map(string))",
 			tfVariableType: "list(map(string))",
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"key": resource.NewStringProperty("value"),
+				}),
 			}),
 		},
 		{
 			name:           "map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
+				"key": resource.NewObjectProperty(resource.PropertyMap{
+					"key": resource.NewStringProperty("value"),
+				}),
 			}),
 		},
 		{
 			name:           "set(string)",
 			tfVariableType: "set(string)",
-			inputsValue:    resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("hello"), resource.NewStringProperty("world")}),
+			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("hello"),
+				resource.NewStringProperty("world"),
+			}),
 		},
 		{
 			name:           "object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
-			inputsValue:    resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.NewStringProperty("hello"), "number_val": resource.NewNumberProperty(42)}),
+			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
+				"string_val": resource.NewStringProperty("hello"),
+				"number_val": resource.NewNumberProperty(42),
+			}),
 		},
 	}
 

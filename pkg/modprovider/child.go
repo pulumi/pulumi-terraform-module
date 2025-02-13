@@ -135,7 +135,7 @@ func newChildHandler(planStore *planStore) *childHandler {
 }
 
 func (h *childHandler) Check(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{
@@ -159,7 +159,7 @@ func (h *childHandler) mustParseAddress(pb *structpb.Struct) (resource.URN, Reso
 }
 
 func (h *childHandler) Diff(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
 	modUrn, addr := h.mustParseAddress(req.GetNews())
@@ -202,7 +202,7 @@ func (h *childHandler) outputsStruct(pm resource.PropertyMap) *structpb.Struct {
 }
 
 func (h *childHandler) Create(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
 	if req.Preview {
@@ -221,7 +221,7 @@ func (h *childHandler) Create(
 }
 
 func (h *childHandler) Update(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
 	modUrn, addr := h.mustParseAddress(req.GetNews())
@@ -240,19 +240,8 @@ func (h *childHandler) Update(
 }
 
 func (h *childHandler) Delete(
-	ctx context.Context,
-	req *pulumirpc.DeleteRequest,
+	_ context.Context,
+	_ *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
-}
-
-func marshalStruct(m map[string]any) (*structpb.Struct, error) {
-	pm := resource.NewPropertyMapFromMap(m)
-	return plugin.MarshalProperties(pm, plugin.MarshalOptions{
-		Label:            "newStruct",
-		KeepSecrets:      true,
-		KeepUnknowns:     true,
-		KeepResources:    true,
-		KeepOutputValues: true,
-	})
 }

@@ -58,7 +58,7 @@ func TestSavingModuleState(t *testing.T) {
 			params: params,
 			oldModuleState: &pulumirpc.RegisterResourceResponse{
 				Urn:    "",
-				Id:     moduleStateResourceId,
+				Id:     moduleStateResourceID,
 				Object: (&moduleState{rawState: realisticState}).Marshal(),
 			},
 		}
