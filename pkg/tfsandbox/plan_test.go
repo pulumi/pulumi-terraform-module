@@ -41,16 +41,7 @@ func TestProcessPlan(t *testing.T) {
 		plan.VisitResources(func(rp *ResourcePlan) {
 			// This is the only resource that has a diff in this plan file
 			if rp.Type() == "aws_s3_bucket_server_side_encryption_configuration" {
-				autogold.Expect(resource.PropertyMap{
-					resource.PropertyKey("bucket"): resource.PropertyValue{
-						V: "terraform-20250131154056635300000001",
-					},
-					resource.PropertyKey("expected_bucket_owner"): resource.PropertyValue{V: ""},
-					resource.PropertyKey("id"):                    resource.PropertyValue{V: "terraform-20250205181746271500000001"},
-					resource.PropertyKey("rule"): resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{
-						V: "",
-					}}},
-				}).Equal(t, rp.props)
+				autogold.ExpectFile(t, rp.props)
 			}
 		})
 	})
