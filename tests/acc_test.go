@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -344,6 +346,11 @@ func TestIntegration(t *testing.T) {
 			localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
+			prefix := generateTestResourcePrefix(tc.name, integrationTest.WorkingDir())
+
+			// Get a prefix for resource names
+			integrationTest.SetConfig(t, "prefix", prefix)
+
 			// Generate package
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
 
@@ -463,4 +470,12 @@ func pulumiPackageAdd(
 	}
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
+}
+
+func generateTestResourcePrefix(programName, workingDir string) string {
+	low := 100000
+	high := 999999
+
+	num := low + rand.Intn(high-low)
+	return strconv.Itoa(num)
 }
