@@ -2,7 +2,7 @@
 
 PACK := terraform-module
 ORG := pulumi
-PROJECT := github.com/$(ORG)/pulumi-$(PACK)-provider
+PROJECT := github.com/$(ORG)/pulumi-$(PACK)
 GO_MODULE := $(PROJECT)
 PROVIDER := pulumi-resource-$(PACK)
 TESTPARALLELISM := 10
