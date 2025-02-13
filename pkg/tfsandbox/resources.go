@@ -57,7 +57,7 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 // then the entire array is marked as such. This makes sense because I don't think it is possible to guarantee the order
 // of the elements in the array (i.e. the unknown value could return 1 item or 10).
 func mapReplv(filter interface{}, old resource.PropertyValue, replv func(resource.PropertyValue) resource.PropertyValue) (resource.PropertyValue, bool) {
-	contract.Assertf(!old.IsArchive() && !old.IsAsset() && !old.IsResourceReference(), "Archive, Asset, and Resource references are not expected here")
+	contract.Assertf(!old.IsArchive() && !old.IsAsset() && !old.IsResourceReference() && !old.IsSecret(), "Archive, Asset, Secret, and Resource references are not expected here")
 	switch f := filter.(type) {
 	case bool:
 		if f {

@@ -118,6 +118,40 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			}),
 		},
 		{
+			// Don't think this is possible, but handling for completeness
+			// If a value is "unknown" it won't also be marked as sensitive
+			name: "AfterUnknown=true and AfterSensitive=true - AttributeValues property is complex type",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []map[string]interface{}{
+						{
+							"nestedProp2": "value",
+						},
+					},
+				},
+			},
+			resourceChange: &tfjson.ResourceChange{
+				Address: "aws_s3_bucket.this",
+				Change: &tfjson.Change{
+					AfterUnknown: map[string]interface{}{
+						"nestedProps": true,
+					},
+					AfterSensitive: map[string]interface{}{
+						"nestedProps": []map[string]interface{}{
+							{
+								"nestedProp2": true,
+							},
+						},
+					},
+				},
+			},
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": resource.MakeComputed(resource.NewStringProperty("")),
+			}),
+		},
+		{
 			// Only those nested properties that are marked as unknown in AfterUnknown should be updated
 			name: "AfterUnknown=true (nested in array) - AttributeValues nested property is nil",
 			stateResource: tfjson.StateResource{
