@@ -320,7 +320,7 @@ func ensureCompiledProvider(t *testing.T) string {
 	_, ci := os.LookupEnv("CI")
 	if !ci {
 		// In development ensure the provider binary is up-to-date.
-		cmd := exec.Command("make", "provider_no_deps")
+		cmd := exec.Command("make", "provider")
 		cmd.Dir = root
 		out, err := cmd.CombinedOutput()
 		if err != nil {
