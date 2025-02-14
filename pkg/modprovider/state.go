@@ -31,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 const (
@@ -201,9 +202,44 @@ func (h *moduleStateHandler) Update(
 
 // Delete does not do anything. This could be reused to trigger deletion support in the future
 func (h *moduleStateHandler) Delete(
-	_ context.Context,
-	_ *pulumirpc.DeleteRequest,
+	ctx context.Context,
+	req *pulumirpc.DeleteRequest,
+	moduleSource TFModuleSource,
+	moduleVersion TFModuleVersion,
 ) (*emptypb.Empty, error) {
+	oldState := moduleState{}
+	oldState.Unmarshal(req.GetProperties())
+
+	tf, err := tfsandbox.NewTofu(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
+
+	// For Destroy, Terraform needs the module source and version as specified in the json file, but it doesn't
+	// need the exact name of the moduleComponent resource.
+	// TODO: https://github.com/pulumi/pulumi-terraform-module/issues/118
+	tfName := "platypus"
+	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
+	if err != nil {
+		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+	}
+
+	err = tf.Init(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Init failed: %w", err)
+	}
+
+	err = tf.PushState(ctx, oldState.rawState)
+	if err != nil {
+		return nil, fmt.Errorf("PushState failed: %w", err)
+	}
+
+	err = tf.Destroy(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Delete failed: %w", err)
+	}
+
+	// Send back empty pb if no error.
 	return &emptypb.Empty{}, nil
 }
 

@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -305,6 +307,72 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 	})
 }
 
+// TODO: Ensure Delete truly deletes from the cloud https://github.com/pulumi/pulumi-terraform-module/issues/119
+
+func TestIntegration(t *testing.T) {
+
+	type testCase struct {
+		name            string // Must be same as project folder in testdata/programs/ts
+		moduleName      string
+		moduleVersion   string
+		moduleNamespace string
+		previewExpect   map[apitype.OpType]int
+		upExpect        map[string]int
+		deleteExpect    map[string]int
+	}
+
+	testcases := []testCase{
+		{
+			name:            "s3bucketmod",
+			moduleName:      "terraform-aws-modules/s3-bucket/aws",
+			moduleVersion:   "4.5.0",
+			moduleNamespace: "bucket",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 5,
+			},
+			upExpect: map[string]int{
+				"create": 8,
+			},
+			deleteExpect: map[string]int{
+				"delete": 8,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		localProviderBinPath := ensureCompiledProvider(t)
+		skipLocalRunsWithoutCreds(t)
+		t.Run(tc.name, func(t *testing.T) {
+			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
+			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+			prefix := generateTestResourcePrefix()
+
+			// Get a prefix for resource names
+			integrationTest.SetConfig(t, "prefix", prefix)
+
+			// Generate package
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
+
+			// Preview
+			previewResult := integrationTest.Preview(t)
+			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Up
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+
+		})
+	}
+
+}
+
 func getRoot(t *testing.T) string {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
@@ -404,4 +472,13 @@ func pulumiPackageAdd(
 	}
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
+}
+
+//nolint:gosec
+func generateTestResourcePrefix() string {
+	low := 100000
+	high := 999999
+
+	num := low + rand.Intn(high-low)
+	return strconv.Itoa(num)
 }
