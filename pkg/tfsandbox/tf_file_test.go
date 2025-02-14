@@ -134,7 +134,12 @@ func TestCreateTFFile(t *testing.T) {
 		{
 			name:           "unknown object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
-			inputsValue:    resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.MakeComputed(resource.NewStringProperty("hello")), "number_val": resource.NewNumberProperty(42)}),
+			inputsValue: resource.NewObjectProperty(
+				resource.PropertyMap{
+					"string_val": resource.MakeComputed(resource.NewStringProperty("hello")),
+					"number_val": resource.NewNumberProperty(42),
+				},
+			),
 		},
 		{
 			name:           "secret list(map(string))",
@@ -147,7 +152,11 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "secret map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeSecret(resource.NewStringProperty(""))}),
+				"key": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"key": resource.MakeSecret(resource.NewStringProperty("")),
+					},
+				),
 			}),
 		},
 		{
@@ -160,12 +169,24 @@ func TestCreateTFFile(t *testing.T) {
 		{
 			name:           "secret object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
-			inputsValue:    resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.MakeSecret(resource.NewStringProperty("hello")), "number_val": resource.NewNumberProperty(42)}),
+			inputsValue: resource.NewObjectProperty(
+				resource.PropertyMap{
+					"string_val": resource.MakeSecret(resource.NewStringProperty("hello")),
+					"number_val": resource.NewNumberProperty(42),
+				},
+			),
 		},
 		{
 			name:           "top level secret object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
-			inputsValue:    resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.NewStringProperty("hello"), "number_val": resource.NewNumberProperty(42)})),
+			inputsValue: resource.MakeSecret(
+				resource.NewObjectProperty(
+					resource.PropertyMap{
+						"string_val": resource.NewStringProperty("hello"),
+						"number_val": resource.NewNumberProperty(42),
+					},
+				),
+			),
 		},
 	}
 
