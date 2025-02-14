@@ -348,7 +348,7 @@ func TestIntegration(t *testing.T) {
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-			prefix := generateTestResourcePrefix(tc.name, integrationTest.WorkingDir())
+			prefix := generateTestResourcePrefix()
 
 			// Get a prefix for resource names
 			integrationTest.SetConfig(t, "prefix", prefix)
@@ -474,7 +474,8 @@ func pulumiPackageAdd(
 	require.Equal(t, 0, exitCode)
 }
 
-func generateTestResourcePrefix(programName, workingDir string) string {
+//nolint:gosec
+func generateTestResourcePrefix() string {
 	low := 100000
 	high := 999999
 
