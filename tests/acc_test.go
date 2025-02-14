@@ -363,6 +363,21 @@ func TestIntegration(t *testing.T) {
 				"delete": 6,
 			},
 		},
+		{
+			name:            "awslambdamod",
+			moduleName:      "terraform-aws-modules/lambda/aws",
+			moduleVersion:   "7.20.1",
+			moduleNamespace: "lambda",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 10,
+			},
+			upExpect: map[string]int{
+				"create": 15,
+			},
+			deleteExpect: map[string]int{
+				"delete": 15,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -375,6 +390,12 @@ func TestIntegration(t *testing.T) {
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
 			prefix := generateTestResourcePrefix()
+
+			envs := os.Environ()
+
+			for _, entry := range envs {
+				t.Log(entry)
+			}
 
 			// Get a prefix for resource names
 			integrationTest.SetConfig(t, "prefix", prefix)
@@ -410,6 +431,10 @@ func TestIntegration(t *testing.T) {
 				//nolint:all
 				"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
 			}).Equal(t, encyptionsConfig.Inputs["rule"])
+
+			state := integrationTest.ExportStack(t)
+
+			t.Log(string(state.Deployment))
 
 			// Delete
 			destroyResult := integrationTest.Destroy(t)

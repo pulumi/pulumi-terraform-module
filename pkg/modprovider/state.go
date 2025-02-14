@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -219,6 +220,8 @@ func (h *moduleStateHandler) Delete(
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
+
+	h.hc.Log(ctx, diag.Warning, "", fmt.Sprintf("raw state: %s", string(oldState.rawState)))
 
 	tf, err := tfsandbox.NewTofu(ctx)
 	if err != nil {
