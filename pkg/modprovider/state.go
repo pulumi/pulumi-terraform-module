@@ -217,8 +217,7 @@ func (h *moduleStateHandler) Delete(
 
 	// For Destroy, Terraform needs the module source and version as specified in the json file, but it doesn't
 	// need the exact name of the moduleComponent resource.
-	// Once https://github.com/pulumi/pulumi-terraform-module-provider/issues/115 is implemented, we won't need to create
-	// a terraform file at all.
+	// TODO: https://github.com/pulumi/pulumi-terraform-module/issues/118
 	tfName := "platypus"
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
 	if err != nil {

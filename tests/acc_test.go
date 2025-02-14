@@ -307,6 +307,8 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 	})
 }
 
+// TODO: Ensure Delete truly deletes from the cloud https://github.com/pulumi/pulumi-terraform-module/issues/119
+
 func TestIntegration(t *testing.T) {
 
 	type testCase struct {
@@ -343,7 +345,7 @@ func TestIntegration(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
-			localPath := opttest.LocalProviderPath("terraform-module-provider", filepath.Dir(localProviderBinPath))
+			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
 			prefix := generateTestResourcePrefix(tc.name, integrationTest.WorkingDir())
