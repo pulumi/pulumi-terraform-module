@@ -2,40 +2,41 @@ package tfsandbox
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path"
 
-	"github.com/pulumi/pulumi-go-provider/resourcex"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var (
-	TerraformDataResourceType = "terraform_data"
-	TerraformDataResourceName = "unknown_proxy"
+	terraformDataResourceType = "terraform_data"
+	terraformDataResourceName = "unknown_proxy"
 )
 
 // decode decodes a PropertyValue, recursively replacing any unknown values
 // with the unknown proxy
 func decode(pv resource.PropertyValue) (interface{}, bool) {
-	value := pv
-	if pv.IsObject() {
-		mapValue := pv.ObjectValue().MapRepl(nil, decode)
-		value = resource.NewObjectProperty(resource.NewPropertyMapFromMap(mapValue))
+	// paranoid asserts
+	// TODO: [pulumi/pulumi-terraform-module-provider#103]
+	contract.Assertf(!pv.IsSecret(), "did not expect secrets here")
+	contract.Assertf(!pv.IsAsset(), "did not expect assets here")
+	contract.Assertf(!pv.IsArchive(), "did not expect archives here")
+	contract.Assertf(!pv.IsResourceReference(), "did not expect resource references here")
+
+	// If the output value is known, process the underlying value
+	if pv.IsOutput() && pv.OutputValue().Known {
+		return pv.OutputValue().Element.MapRepl(nil, decode), true
 	}
-	if pv.IsArray() {
-		arr := []resource.PropertyValue{}
-		for _, e := range pv.ArrayValue() {
-			arr = append(arr, resource.NewPropertyValue(e.MapRepl(nil, decode)))
-		}
-		value = resource.NewArrayProperty(arr)
+
+	// Replace computed's with references and stop
+	if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
+		return "${terraform_data.unknown_proxy.output}", true
 	}
-	if value.IsComputed() || (value.IsOutput() && !value.OutputValue().Known) {
-		// reference to our unknown proxy resource
-		return resource.NewStringProperty("${terraform_data.unknown_proxy.output}"), true
-	}
-	return value, true
+
+	// Otherwise continue recursive processing as before.
+	return nil, false
 }
 
 // Writes a pulumi.tf.json file in the workingDir that instructs Terraform to call a given module instance.
@@ -75,28 +76,17 @@ func CreateTFFile(
 	// NOTE: this should only happen at plan time. At apply time all computed values
 	// should be resolved
 	if containsUnknowns {
-		inputsMap := inputs.MapRepl(nil, decode)
-		inputs = resource.NewPropertyMapFromMap(inputsMap)
 		tfFile["resource"] = map[string]interface{}{
-			TerraformDataResourceType: map[string]interface{}{
-				TerraformDataResourceName: map[string]interface{}{
+			terraformDataResourceType: map[string]interface{}{
+				terraformDataResourceName: map[string]interface{}{
 					"input": "unknown",
 				},
 			},
 		}
 	}
+	inputsMap := inputs.MapRepl(nil, decode)
 
-	var values map[string]any
-	res, err := resourcex.Unmarshal(&values, inputs, resourcex.UnmarshalOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal inputs: %w", err)
-	}
-
-	// TODO: [pulumi/pulumi-terraform-module-provider#103]
-	if res.ContainsSecrets || res.ContainsUnknowns {
-		return fmt.Errorf("something went wrong, secret or unknown values found in module inputs")
-	}
-	for k, v := range values {
+	for k, v := range inputsMap {
 		// TODO: I'm only converting the top layer properties for now
 		// It doesn't look like modules have info on nested properties, typically
 		// the type looks something like `map(map(string))`.

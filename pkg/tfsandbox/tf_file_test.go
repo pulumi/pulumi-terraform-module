@@ -153,19 +153,6 @@ func TestCreateTFFile(t *testing.T) {
 			assertValidateSuccess(t, tofu)
 		})
 	}
-
-	t.Run("Fails on secrets", func(t *testing.T) {
-		tofu, err := NewTofu(context.Background())
-		assert.NoError(t, err)
-		t.Cleanup(func() {
-			os.RemoveAll(tofu.WorkingDir())
-		})
-		writeTfVarFile(t, tofu.WorkingDir(), "string")
-		err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
-			"tfVar": resource.MakeSecret(resource.NewStringProperty("abcd")),
-		})
-		assert.ErrorContains(t, err, "secret or unknown values found in module inputs")
-	})
 }
 
 func Test_decode(t *testing.T) {
@@ -206,6 +193,24 @@ func Test_decode(t *testing.T) {
 			},
 		},
 		{
+			name: "output unknown value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewOutputProperty(resource.Output{Known: false}),
+			},
+			expected: map[string]interface{}{
+				"key1": "${terraform_data.unknown_proxy.output}",
+			},
+		},
+		{
+			name: "output known value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewStringProperty("value")}),
+			},
+			expected: map[string]interface{}{
+				"key1": "value",
+			},
+		},
+		{
 			name: "nested computed value",
 			inputsValue: resource.PropertyMap{
 				"key1": resource.NewArrayProperty([]resource.PropertyValue{
@@ -218,6 +223,25 @@ func Test_decode(t *testing.T) {
 				"key1": []interface{}{
 					map[string]interface{}{
 						"key2": "${terraform_data.unknown_proxy.output}",
+					},
+				},
+			},
+		},
+		{
+			name: "nested output unknown value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.MakeComputed(resource.NewStringProperty("value1")),
+						"key3": resource.NewOutputProperty(resource.Output{Known: false}),
+					})}),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": []interface{}{
+					map[string]interface{}{
+						"key2": "${terraform_data.unknown_proxy.output}",
+						"key3": "${terraform_data.unknown_proxy.output}",
 					},
 				},
 			},
