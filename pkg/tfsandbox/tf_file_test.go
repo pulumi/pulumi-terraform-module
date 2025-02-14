@@ -9,8 +9,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/pulumi/pulumi-go-provider/resourcex"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -111,7 +109,11 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "unknown map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
+				"key": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"key": resource.MakeComputed(resource.NewStringProperty("")),
+					},
+				),
 			}),
 		},
 		{
@@ -251,9 +253,8 @@ func Test_decode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := tt.inputsValue.MapRepl(nil, decode)
-			actual := resourcex.Decode(resource.NewPropertyMapFromMap(res))
 
-			assert.Equal(t, tt.expected, actual)
+			assert.Equal(t, tt.expected, res)
 		})
 	}
 }
