@@ -2,8 +2,10 @@ package tfsandbox
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -15,12 +17,66 @@ var (
 	terraformDataResourceName = "unknown_proxy"
 )
 
+// mapReplSecret recursively converts Pulumi Secret values to Terraform sensitive function calls
+//
+// When a JSON string is encountered its value is first parsed as a string template
+// and then it is evaluated to produce the final result.
+// The sequences ${ begins a template sequence and Terraform will evaluate the expression
+// inside the braces and replace the entire sequence with the result.
+//
+// For secret values that means we can use "${sensitive(<value>)}",
+// but the <value> inside of the sensitive function must be a valid Terraform expression (not JSON)
+// For example, this Pulumi ts code:
+//
+//	new module.Module("name", {
+//	   property: pulumi.secret({
+//	       key: {
+//	           nestedKey: pulumi.secret("value")
+//	       }
+//	   })
+//	})
+//
+// will be converted to the following Terraform JSON:
+//
+//	{
+//	   "property": "${sensitive({\"key\" = {\"nestedKey\" = sensitive(\"value\")}})}"
+//	}
+func mapReplSecret(value resource.PropertyValue) (interface{}, bool) {
+	if value.IsSecret() {
+		result := value.SecretValue().Element.MapRepl(nil, mapReplSecret)
+		return fmt.Sprintf("sensitive(%v)", result), true
+	}
+
+	if value.IsObject() {
+		final := []string{}
+		for k, v := range value.ObjectValue() {
+			final = append(final, fmt.Sprintf("%q = %v", k, v.MapRepl(nil, mapReplSecret)))
+		}
+		return fmt.Sprintf("{%s}", strings.Join(final, ", ")), true
+	}
+
+	if value.IsArray() {
+		final := ""
+		for i, v := range value.ArrayValue() {
+			if i > 0 {
+				final += ", "
+			}
+			final += fmt.Sprintf("%v", v.MapRepl(nil, mapReplSecret))
+		}
+		return fmt.Sprintf("[%s]", final), true
+	}
+
+	if value.IsString() {
+		return fmt.Sprintf("%q", value.StringValue()), true
+	}
+
+	return nil, false
+}
+
 // decode decodes a PropertyValue, recursively replacing any unknown values
 // with the unknown proxy
 func decode(pv resource.PropertyValue) (interface{}, bool) {
 	// paranoid asserts
-	// TODO: [pulumi/pulumi-terraform-module-provider#103]
-	contract.Assertf(!pv.IsSecret(), "did not expect secrets here")
 	contract.Assertf(!pv.IsAsset(), "did not expect assets here")
 	contract.Assertf(!pv.IsArchive(), "did not expect archives here")
 	contract.Assertf(!pv.IsResourceReference(), "did not expect resource references here")
@@ -35,6 +91,11 @@ func decode(pv resource.PropertyValue) (interface{}, bool) {
 		return "${terraform_data.unknown_proxy.output}", true
 	}
 
+	// secret values are encoded using the sensitive function
+	if pv.IsSecret() {
+		val := pv.SecretValue().Element.MapRepl(nil, mapReplSecret)
+		return fmt.Sprintf("${sensitive(%v)}", val), true
+	}
 	// Otherwise continue recursive processing as before.
 	return nil, false
 }

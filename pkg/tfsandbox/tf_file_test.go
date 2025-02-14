@@ -49,12 +49,11 @@ func TestCreateTFFile(t *testing.T) {
 			tfVariableType: "string",
 			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
 		},
-		// TODO: [pulumi/pulumi-terraform-module-provider#103]
-		// {
-		// 	name:           "string secret",
-		// 	tfVariableType: "string",
-		// 	inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
-		// },
+		{
+			name:           "string secret",
+			tfVariableType: "string",
+			inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
+		},
 		{
 			name:           "list(string)",
 			tfVariableType: "list(string)",
@@ -132,6 +131,42 @@ func TestCreateTFFile(t *testing.T) {
 				"number_val": resource.NewNumberProperty(42),
 			}),
 		},
+		{
+			name:           "unknown object type",
+			tfVariableType: "object({string_val=string, number_val=number})",
+			inputsValue:    resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.MakeComputed(resource.NewStringProperty("hello")), "number_val": resource.NewNumberProperty(42)}),
+		},
+		{
+			name:           "secret list(map(string))",
+			tfVariableType: "list(map(string))",
+			inputsValue: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+			})),
+		},
+		{
+			name:           "secret map(map(any))",
+			tfVariableType: "map(map(any))",
+			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeSecret(resource.NewStringProperty(""))}),
+			}),
+		},
+		{
+			name:           "top level secret map(map(any))",
+			tfVariableType: "map(map(any))",
+			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+			})),
+		},
+		{
+			name:           "secret object type",
+			tfVariableType: "object({string_val=string, number_val=number})",
+			inputsValue:    resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.MakeSecret(resource.NewStringProperty("hello")), "number_val": resource.NewNumberProperty(42)}),
+		},
+		{
+			name:           "top level secret object type",
+			tfVariableType: "object({string_val=string, number_val=number})",
+			inputsValue:    resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{"string_val": resource.NewStringProperty("hello"), "number_val": resource.NewNumberProperty(42)})),
+		},
 	}
 
 	for _, tt := range tests {
@@ -148,6 +183,11 @@ func TestCreateTFFile(t *testing.T) {
 				"tfVar": tt.inputsValue,
 			})
 			assert.NoError(t, err)
+
+			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), "pulumi.tf.json"))
+			assert.NoError(t, err)
+			t.Logf("Contents: %s", string(contents))
+
 			var res bytes.Buffer
 			err = tofu.tf.InitJSON(context.Background(), &res)
 			assert.NoError(t, err)
@@ -246,6 +286,68 @@ func Test_decode(t *testing.T) {
 						"key3": "${terraform_data.unknown_proxy.output}",
 					},
 				},
+			},
+		},
+		{
+			name: "simple secret value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewSecretProperty(&resource.Secret{
+					Element: resource.NewStringProperty("some secret value"),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": "${sensitive(\"some secret value\")}",
+			},
+		},
+		{
+			name: "complex secret value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewSecretProperty(&resource.Secret{
+					Element: resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"key": resource.NewObjectProperty(resource.PropertyMap{
+								"nestedKey":  resource.NewStringProperty("value"),
+								"nestedKey2": resource.NewNumberProperty(8),
+							}),
+						}),
+					}),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": "${sensitive([{\"key\" = {\"nestedKey\" = \"value\", \"nestedKey2\" = 8}}])}",
+			},
+		},
+		{
+			name: "nested sensitive value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.MakeSecret(resource.NewStringProperty("value1")),
+					}),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": []interface{}{
+					map[string]interface{}{
+						"key2": "${sensitive(\"value1\")}",
+					},
+				},
+			},
+		},
+		{
+			name: "top level sensitive with nested sensitive value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.MakeSecret(resource.NewStringProperty("value1")),
+					}),
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key3": resource.MakeSecret(resource.NewStringProperty("value2")),
+					}),
+				})),
+			},
+			expected: map[string]interface{}{
+				"key1": "${sensitive([{\"key2\" = sensitive(\"value1\")}, {\"key3\" = sensitive(\"value2\")}])}",
 			},
 		},
 	}
