@@ -216,7 +216,7 @@ func (h *moduleStateHandler) Delete(
 	}
 
 	urn := h.mustParseModURN(req.OldInputs)
-	tfName := urn.Name()
+	tfName := GetModuleName(urn)
 
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
 	if err != nil {
@@ -251,4 +251,9 @@ func (*moduleStateHandler) mustParseModURN(pb *structpb.Struct) urn.URN {
 	urn, err := urn.Parse(v2)
 	contract.AssertNoErrorf(err, "URN should parse correctly")
 	return urn
+}
+
+// GetModuleName extracts the Pulumi name of the module from the module's URN.
+func GetModuleName(urn urn.URN) string {
+	return urn.Name()
 }
