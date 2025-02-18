@@ -215,10 +215,9 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	// For Destroy, Terraform needs the module source and version as specified in the json file, but it doesn't
-	// need the exact name of the moduleComponent resource.
-	// TODO: https://github.com/pulumi/pulumi-terraform-module/issues/118
-	tfName := "platypus"
+	urn := h.mustParseModURN(req.OldInputs)
+	tfName := getModuleName(urn)
+
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
@@ -252,4 +251,9 @@ func (*moduleStateHandler) mustParseModURN(pb *structpb.Struct) urn.URN {
 	urn, err := urn.Parse(v2)
 	contract.AssertNoErrorf(err, "URN should parse correctly")
 	return urn
+}
+
+// getModuleName extracts the Terraform module instance name from the module's URN.
+func getModuleName(urn urn.URN) string {
+	return urn.Name()
 }
