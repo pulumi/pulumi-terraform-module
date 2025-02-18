@@ -70,7 +70,6 @@ func CreateTFFile(
 		// "variable":  map[string]interface{}{},
 	}
 
-	// TODO: [pulumi/pulumi-terraform-module#28] Support unknown values
 	containsUnknowns := inputs.ContainsUnknowns()
 
 	// NOTE: this should only happen at plan time. At apply time all computed values
