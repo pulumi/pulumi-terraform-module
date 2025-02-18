@@ -115,7 +115,7 @@ func NewModuleComponentResource(
 	// Pulumi name as present in the module URN.
 	// The name chosen here will proliferate into ResourceAddress of every child resource as well,
 	// which will get further reused for Pulumi URNs.
-	tfName := GetModuleName(urn)
+	tfName := getModuleName(urn)
 
 	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
 	if err != nil {
