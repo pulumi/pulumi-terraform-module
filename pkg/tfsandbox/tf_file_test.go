@@ -172,7 +172,11 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(
 					resource.PropertyMap{
-						"key": resource.NewPropertyValue(resource.Output{Element: resource.NewStringProperty("value"), Known: true, Secret: true}),
+						"key": resource.NewPropertyValue(resource.Output{
+							Element: resource.NewStringProperty("value"),
+							Known:   true,
+							Secret:  true,
+						}),
 					},
 				),
 			}),
@@ -206,7 +210,11 @@ func TestCreateTFFile(t *testing.T) {
 			tfVariableType: "object({string_val=string, number_val=number})",
 			inputsValue: resource.NewObjectProperty(
 				resource.PropertyMap{
-					"string_val": resource.NewPropertyValue(resource.Output{Element: resource.NewStringProperty("hello"), Known: true, Secret: true}),
+					"string_val": resource.NewPropertyValue(resource.Output{
+						Element: resource.NewStringProperty("hello"),
+						Known:   true,
+						Secret:  true,
+					}),
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
@@ -426,7 +434,11 @@ func Test_decode(t *testing.T) {
 			inputsValue: resource.PropertyMap{
 				"key1": resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.NewPropertyValue(resource.Output{Element: resource.NewStringProperty("value1"), Known: true, Secret: true}),
+						"key2": resource.NewPropertyValue(resource.Output{
+							Element: resource.NewStringProperty("value1"),
+							Known:   true,
+							Secret:  true,
+						}),
 					}),
 				}),
 			},
