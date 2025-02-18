@@ -328,13 +328,13 @@ func TestIntegration(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 5,
+				apitype.OpType("create"): 6,
 			},
 			upExpect: map[string]int{
-				"create": 8,
+				"create": 9,
 			},
 			deleteExpect: map[string]int{
-				"delete": 8,
+				"delete": 9,
 			},
 		},
 	}

@@ -48,6 +48,7 @@ type InferredModuleSchema struct {
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
+var anyType = schema.TypeSpec{Ref: "pulumi.json#/Any"}
 var boolType = schema.TypeSpec{Type: "boolean"}
 var numberType = schema.TypeSpec{Type: "number"}
 
@@ -135,6 +136,12 @@ func convertType(
 		ref := fmt.Sprintf("#/types/%s", objectTypeToken)
 		supportingTypes[objectTypeToken] = complexType
 		return refType(ref)
+	}
+
+	// if the type is a dynamic pseudo-type, we represent it as an Any type
+	// e.g. when a variable is defined as type = any
+	if terraformType.Equals(cty.DynamicPseudoType) {
+		return anyType
 	}
 
 	// default type is string
