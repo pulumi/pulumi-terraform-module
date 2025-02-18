@@ -149,12 +149,30 @@ func TestCreateTFFile(t *testing.T) {
 			})),
 		},
 		{
+			name:           "output secret list(map(string))",
+			tfVariableType: "list(map(string))",
+			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+			}), Known: true, Secret: true}),
+		},
+		{
 			name:           "secret map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(
 					resource.PropertyMap{
 						"key": resource.MakeSecret(resource.NewStringProperty("")),
+					},
+				),
+			}),
+		},
+		{
+			name:           "output secret map(map(any))",
+			tfVariableType: "map(map(any))",
+			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"key": resource.NewPropertyValue(resource.Output{Element: resource.NewStringProperty("value"), Known: true, Secret: true}),
 					},
 				),
 			}),
@@ -167,11 +185,28 @@ func TestCreateTFFile(t *testing.T) {
 			})),
 		},
 		{
+			name:           "top level output secret map(map(any))",
+			tfVariableType: "map(map(any))",
+			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+			}), Known: true, Secret: true}),
+		},
+		{
 			name:           "secret object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
 			inputsValue: resource.NewObjectProperty(
 				resource.PropertyMap{
 					"string_val": resource.MakeSecret(resource.NewStringProperty("hello")),
+					"number_val": resource.NewNumberProperty(42),
+				},
+			),
+		},
+		{
+			name:           "output secret object type",
+			tfVariableType: "object({string_val=string, number_val=number})",
+			inputsValue: resource.NewObjectProperty(
+				resource.PropertyMap{
+					"string_val": resource.NewPropertyValue(resource.Output{Element: resource.NewStringProperty("hello"), Known: true, Secret: true}),
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
@@ -321,6 +356,19 @@ func Test_decode(t *testing.T) {
 			},
 		},
 		{
+			name: "simple output secret value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("some secret value"),
+					Secret:  true,
+					Known:   true,
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": "${sensitive(\"some secret value\")}",
+			},
+		},
+		{
 			name: "complex secret value",
 			inputsValue: resource.PropertyMap{
 				"key1": resource.NewSecretProperty(&resource.Secret{
@@ -333,6 +381,24 @@ func Test_decode(t *testing.T) {
 						}),
 					}),
 				}),
+			},
+			expected: map[string]interface{}{
+				"key1": "${sensitive([{\"key\" = {\"nestedKey\" = \"value\", \"nestedKey2\" = 8}}])}",
+			},
+		},
+		{
+			name: "complex output secret value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"key": resource.NewObjectProperty(resource.PropertyMap{
+								"nestedKey":  resource.NewStringProperty("value"),
+								"nestedKey2": resource.NewNumberProperty(8),
+							}),
+						}),
+					}),
+					Known: true, Secret: true}),
 			},
 			expected: map[string]interface{}{
 				"key1": "${sensitive([{\"key\" = {\"nestedKey\" = \"value\", \"nestedKey2\" = 8}}])}",
@@ -356,6 +422,23 @@ func Test_decode(t *testing.T) {
 			},
 		},
 		{
+			name: "nested output secret value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.NewPropertyValue(resource.Output{Element: resource.NewStringProperty("value1"), Known: true, Secret: true}),
+					}),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": []interface{}{
+					map[string]interface{}{
+						"key2": "${sensitive(\"value1\")}",
+					},
+				},
+			},
+		},
+		{
 			name: "top level sensitive with nested sensitive value",
 			inputsValue: resource.PropertyMap{
 				"key1": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
@@ -366,6 +449,22 @@ func Test_decode(t *testing.T) {
 						"key3": resource.MakeSecret(resource.NewStringProperty("value2")),
 					}),
 				})),
+			},
+			expected: map[string]interface{}{
+				"key1": "${sensitive([{\"key2\" = sensitive(\"value1\")}, {\"key3\" = sensitive(\"value2\")}])}",
+			},
+		},
+		{
+			name: "top level output secret with nested secret value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.MakeSecret(resource.NewStringProperty("value1")),
+					}),
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key3": resource.MakeSecret(resource.NewStringProperty("value2")),
+					}),
+				}), Known: true, Secret: true}),
 			},
 			expected: map[string]interface{}{
 				"key1": "${sensitive([{\"key2\" = sensitive(\"value1\")}, {\"key3\" = sensitive(\"value2\")}])}",
