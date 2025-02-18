@@ -105,7 +105,10 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"max":       "10",
 			"min":       "1",
 			"result":    "2",
-			"seed":      "9",
+			"seed": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `"9"`,
+			},
 		}).Equal(t, randInt.Inputs)
 		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
