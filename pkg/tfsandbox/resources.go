@@ -1,6 +1,7 @@
 package tfsandbox
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -185,7 +186,10 @@ func extractPropertyMapFromState(stateResource tfjson.StateResource) resource.Pr
 	resourcePropertyMap := extractPropertyMap(stateResource)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
 	if stateResource.SensitiveValues != nil {
-		objectProperty = updateResourceValue(objectProperty, stateResource.SensitiveValues, resource.MakeSecret)
+		var sensitiveValues interface{}
+		err := json.Unmarshal(stateResource.SensitiveValues, &sensitiveValues)
+		contract.AssertNoErrorf(err, "sensitive values cannot be unmarshaled")
+		objectProperty = updateResourceValue(objectProperty, sensitiveValues, resource.MakeSecret)
 	}
 	return objectProperty.ObjectValue()
 }
