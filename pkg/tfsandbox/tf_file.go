@@ -82,9 +82,6 @@ func decode(pv resource.PropertyValue) (interface{}, bool) {
 	contract.Assertf(!pv.IsResourceReference(), "did not expect resource references here")
 
 	// If the output value is known, process the underlying value
-	if pv.IsOutput() && pv.OutputValue().Known {
-		return pv.OutputValue().Element.MapRepl(nil, decode), true
-	}
 
 	// Replace computed's with references and stop
 	if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
@@ -95,6 +92,14 @@ func decode(pv resource.PropertyValue) (interface{}, bool) {
 	if pv.IsSecret() {
 		val := pv.SecretValue().Element.MapRepl(nil, mapReplSecret)
 		return fmt.Sprintf("${sensitive(%v)}", val), true
+	}
+
+	if pv.IsOutput() && pv.OutputValue().Secret {
+		return fmt.Sprintf("${sensitive(%v)}", pv.OutputValue().Element.MapRepl(nil, mapReplSecret)), true
+	}
+
+	if pv.IsOutput() && pv.OutputValue().Known {
+		return pv.OutputValue().Element.MapRepl(nil, decode), true
 	}
 	// Otherwise continue recursive processing as before.
 	return nil, false
@@ -144,6 +149,7 @@ func CreateTFFile(
 			},
 		}
 	}
+
 	inputsMap := inputs.MapRepl(nil, decode)
 
 	for k, v := range inputsMap {
