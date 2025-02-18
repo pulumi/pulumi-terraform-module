@@ -73,8 +73,11 @@ func mapReplSecret(value resource.PropertyValue) (interface{}, bool) {
 	return nil, false
 }
 
-// decode decodes a PropertyValue, recursively replacing any unknown values
-// with the unknown proxy
+// decode decodes a PropertyValue into a Terraform JSON value
+// it will:
+// - replace computed values with references to the unknown_proxy resource
+// - replace known output values with their underlying value
+// - replace secret values with the sensitive function
 func decode(pv resource.PropertyValue) (interface{}, bool) {
 	// paranoid asserts
 	contract.Assertf(!pv.IsAsset(), "did not expect assets here")
@@ -94,10 +97,12 @@ func decode(pv resource.PropertyValue) (interface{}, bool) {
 		return fmt.Sprintf("${sensitive(%v)}", val), true
 	}
 
+	// sometimes secrets are wrapped in output values
 	if pv.IsOutput() && pv.OutputValue().Secret {
 		return fmt.Sprintf("${sensitive(%v)}", pv.OutputValue().Element.MapRepl(nil, mapReplSecret)), true
 	}
 
+	// replace outputs with their underlying value
 	if pv.IsOutput() && pv.OutputValue().Known {
 		return pv.OutputValue().Element.MapRepl(nil, decode), true
 	}
