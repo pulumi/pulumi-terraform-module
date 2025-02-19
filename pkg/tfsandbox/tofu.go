@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/hashicorp/hc-install/fs"
+	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/opentofu/tofudl"
 )
@@ -49,7 +51,31 @@ func NewTofu(ctx context.Context) (*Tofu, error) {
 	}, nil
 }
 
+func findExistingTofu(ctx context.Context, extraPaths []string) (string, bool) {
+	anyVersion := fs.AnyVersion{
+		ExtraPaths: extraPaths,
+		Product: &product.Product{
+			Name: "tofu",
+			BinaryName: func() string {
+				if runtime.GOOS == "windows" {
+					return "tofu.exe"
+				}
+				return "tofu"
+			},
+		},
+	}
+	found, err := anyVersion.Find(ctx)
+	return found, err == nil
+}
+
 func downloadTofu(ctx context.Context) (string, error) {
+	tmpDir := path.Join(os.TempDir(), "tofu-install")
+	if found, ok := findExistingTofu(ctx, []string{tmpDir}); ok {
+		return found, nil
+	} else if !ok {
+		panic("not found")
+	}
+
 	dl, err := tofudl.New()
 	if err != nil {
 		return "", err
@@ -60,7 +86,6 @@ func downloadTofu(ctx context.Context) (string, error) {
 		file += ".exe"
 	}
 
-	tmpDir := path.Join(os.TempDir(), "tofu-install")
 	absFile := path.Join(tmpDir, file)
 
 	// If the file already exists (we've already downloaded it)
