@@ -141,7 +141,7 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("PushState failed: %w", err)
 	}
 
-	moduleOutputs := resource.PropertyMap{}
+	var moduleOutputs resource.PropertyMap
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview

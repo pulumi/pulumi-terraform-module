@@ -174,7 +174,7 @@ func parseParameterizeRequest(
 }
 
 func (s *server) GetSchema(
-	ctx context.Context,
+	_ context.Context,
 	_ *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
 	if s.params == nil {
