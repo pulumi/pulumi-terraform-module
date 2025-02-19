@@ -36,7 +36,7 @@ func TestExtractModuleContentWorks(t *testing.T) {
 func TestInferringModuleSchemaWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("terraform-aws-modules")
-	awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
+	awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.19.0")
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 	// verify a sample of the inputs with different inferred types
@@ -62,10 +62,15 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 			Secret:      false,
 			TypeSpec:    mapType(stringType),
 		},
+		"vpc_block_public_access_exclusions": {
+			Description: "A map of VPC block public access exclusions",
+			Secret:      false,
+			TypeSpec:    mapType(anyType),
+		},
 		"customer_gateways": {
 			Description: "Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)",
 			Secret:      false,
-			TypeSpec:    mapType(mapType(stringType)),
+			TypeSpec:    mapType(mapType(anyType)),
 		},
 		"database_inbound_acl_rules": {
 			Description: "Database subnets inbound network ACL rules",

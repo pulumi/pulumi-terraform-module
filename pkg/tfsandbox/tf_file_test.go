@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,12 +46,16 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue:    resource.NewStringProperty("hello"),
 		},
 		{
-			name:           "string secret",
+			name:           "unknown",
 			tfVariableType: "string",
-			inputsValue: resource.NewSecretProperty(&resource.Secret{
-				Element: resource.NewStringProperty("hello"),
-			}),
+			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
 		},
+		// TODO: [pulumi/pulumi-terraform-module-provider#103]
+		// {
+		// 	name:           "string secret",
+		// 	tfVariableType: "string",
+		// 	inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
+		// },
 		{
 			name:           "list(string)",
 			tfVariableType: "list(string)",
@@ -86,12 +91,30 @@ func TestCreateTFFile(t *testing.T) {
 			}),
 		},
 		{
+			name:           "unknown list(map(string))",
+			tfVariableType: "list(map(string))",
+			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
+			}),
+		},
+		{
 			name:           "map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(resource.PropertyMap{
 					"key": resource.NewStringProperty("value"),
 				}),
+			}),
+		},
+		{
+			name:           "unknown map(map(any))",
+			tfVariableType: "map(map(any))",
+			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"key": resource.MakeComputed(resource.NewStringProperty("")),
+					},
+				),
 			}),
 		},
 		{
@@ -133,27 +156,117 @@ func TestCreateTFFile(t *testing.T) {
 			assertValidateSuccess(t, tofu)
 		})
 	}
+}
 
-	t.Run("Fails on unknowns", func(t *testing.T) {
-		tofu, err := NewTofu(context.Background())
-		assert.NoError(t, err)
-		t.Cleanup(func() {
-			os.RemoveAll(tofu.WorkingDir())
+func Test_decode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		inputsValue resource.PropertyMap
+		expected    map[string]interface{}
+	}{
+		{
+			name: "plain values",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewStringProperty("value1"),
+				"key2": resource.NewObjectProperty(resource.PropertyMap{
+					"key3": resource.NewStringProperty("value3"),
+				}),
+				"key4": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("value4"),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": "value1",
+				"key2": map[string]interface{}{
+					"key3": "value3",
+				},
+				"key4": []interface{}{
+					"value4",
+				},
+			},
+		},
+		{
+			name: "computed value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.MakeComputed(resource.NewStringProperty("")),
+			},
+			expected: map[string]interface{}{
+				"key1": "${terraform_data.unknown_proxy.output}",
+			},
+		},
+		{
+			name: "output unknown value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewOutputProperty(resource.Output{Known: false}),
+			},
+			expected: map[string]interface{}{
+				"key1": "${terraform_data.unknown_proxy.output}",
+			},
+		},
+		{
+			name: "output known value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewStringProperty("value")}),
+			},
+			expected: map[string]interface{}{
+				"key1": "value",
+			},
+		},
+		{
+			name: "nested computed value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.MakeComputed(resource.NewStringProperty("value1")),
+					}),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": []interface{}{
+					map[string]interface{}{
+						"key2": "${terraform_data.unknown_proxy.output}",
+					},
+				},
+			},
+		},
+		{
+			name: "nested output unknown value",
+			inputsValue: resource.PropertyMap{
+				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewObjectProperty(resource.PropertyMap{
+						"key2": resource.MakeComputed(resource.NewStringProperty("value1")),
+						"key3": resource.NewOutputProperty(resource.Output{Known: false}),
+					})}),
+				}),
+			},
+			expected: map[string]interface{}{
+				"key1": []interface{}{
+					map[string]interface{}{
+						"key2": "${terraform_data.unknown_proxy.output}",
+						"key3": "${terraform_data.unknown_proxy.output}",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := tt.inputsValue.MapRepl(nil, decode)
+
+			assert.Equal(t, tt.expected, res)
 		})
-		outputs := []TFOutputSpec{}
-		writeTfVarFile(t, tofu.WorkingDir(), "string")
-		err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
-			"tfVar": resource.MakeComputed(resource.NewStringProperty("")),
-		}, outputs)
-		assert.ErrorContains(t, err, "unknown values are not yet supported")
-	})
-
+	}
 }
 
 // validate will fail if any of the module inputs don't match
 // the schema of the module
 func assertValidateSuccess(t *testing.T, tofu *Tofu) {
 	val, err := tofu.tf.Validate(context.Background())
+	for diag := range slices.Values(val.Diagnostics) {
+		t.Logf("Diagnostic: %v", diag)
+	}
 	assert.NoErrorf(t, err, "Tofu validation failed")
 	assert.Equalf(t, true, val.Valid, "Tofu validation - expected valid=true, got valid=false")
 	assert.Equalf(t, 0, val.ErrorCount, "Tofu validation - expected error count=0, got %d", val.ErrorCount)

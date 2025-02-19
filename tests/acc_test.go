@@ -59,7 +59,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			optpreview.ProgressStreams(os.Stdout),
 		)
 		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 4,
+			apitype.OpType("create"): 5,
 		}).Equal(t, previewResult.ChangeSummary)
 	})
 
@@ -70,7 +70,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		)
 
 		autogold.Expect(&map[string]int{
-			"create": 4,
+			"create": 5,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
 		// TODO[pulumi/pulumi-terraform-module#90] implement output propagation.
@@ -101,11 +101,11 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		autogold.Expect(map[string]interface{}{
 			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
-			"id":        "5",
+			"id":        "2",
 			"max":       "10",
 			"min":       "1",
-			"result":    "5",
-			"seed":      "the-most-random-seed",
+			"result":    "2",
+			"seed":      "9",
 		}).Equal(t, randInt.Inputs)
 		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
@@ -328,13 +328,13 @@ func TestIntegration(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 5,
+				apitype.OpType("create"): 6,
 			},
 			upExpect: map[string]int{
-				"create": 8,
+				"create": 9,
 			},
 			deleteExpect: map[string]int{
-				"delete": 8,
+				"delete": 9,
 			},
 		},
 	}

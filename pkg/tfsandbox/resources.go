@@ -1,6 +1,7 @@
 package tfsandbox
 
 import (
+	"fmt"
 	"slices"
 
 	tfjson "github.com/hashicorp/terraform-json"
@@ -40,6 +41,11 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 	}
 
 	for _, resource := range module.Resources {
+		// ignore the unknown value proxy resource because we don't need to show it
+		// to the user
+		if resource.Address == fmt.Sprintf("%s.%s", terraformDataResourceType, terraformDataResourceName) {
+			continue
+		}
 		sr[ResourceAddress(resource.Address)] = *resource
 	}
 
