@@ -137,16 +137,19 @@ func NewModuleComponentResource(
 
 	var childResources []*childResource
 
+	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
+	// may be able to reuse the plan from DryRun for the subsequent application.
+	plan, err := tf.Plan(ctx.Context())
+	if err != nil {
+		return nil, fmt.Errorf("Plan failed: %w", err)
+	}
+
+	planStore.SetPlan(urn, plan)
+
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
-		plan, err := tf.Plan(ctx.Context())
-		if err != nil {
-			return nil, fmt.Errorf("Plan failed: %w", err)
-		}
 
-		planStore.SetPlan(urn, plan)
-
-		// Make sure child resources can read the unchanged state.
+		// Make sure child resources can read the state, even though it is not changed.
 		stateStore.SetNewState(urn, state)
 
 		var errs []error
