@@ -387,6 +387,151 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 	}
 }
 
+func Test_extractPropertyMapFromState(t *testing.T) {
+	cases := []struct {
+		name            string
+		stateResource   tfjson.StateResource
+		expected        resource.PropertyMap
+		sensitiveValues json.RawMessage
+	}{
+		{
+			name: "string value",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"bucketName": "my-bucket",
+				},
+			},
+			sensitiveValues: []byte(`{"bucketName": true}`),
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"bucketName": resource.MakeSecret(resource.NewStringProperty("my-bucket")),
+			}),
+		},
+		{
+			name: "SensitiveValues property is nil",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"bucketName": "my-bucket",
+				},
+			},
+			sensitiveValues: []byte(`{}`),
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"bucketName": resource.NewStringProperty("my-bucket"),
+			}),
+		},
+		{
+			name: "SensitiveValues key is nil",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"bucketName": "my-bucket",
+				},
+			},
+			sensitiveValues: []byte(`{"bucketName": {}}`),
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"bucketName": resource.NewStringProperty("my-bucket"),
+			}),
+		},
+		{
+			// Common scenario. The AttributeValue is a complex type (map/array) and the entire property
+			// is marked as secret.
+			name: "Sensitive=true (top level) - AttributeValues property is complex type",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []map[string]interface{}{
+						{
+							"nestedProp2": "value",
+						},
+					},
+				},
+			},
+			sensitiveValues: []byte(`{"nestedProps": true}`),
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nestedProp2": resource.NewStringProperty("value"),
+					}),
+				})),
+			}),
+		},
+		{
+			// Only those nested properties that are marked as sensitive should be updated
+			name: "Sensitive=true (nested in array)",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []interface{}{
+						map[string]interface{}{
+							"nestedProp2": "value",
+							"nestedProp1": "value",
+						},
+					},
+				},
+			},
+			sensitiveValues: []byte(`{"nestedProps": [{"nestedProp2": true},{"nestedProp1": false}]}`),
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					map[string]interface{}{
+						"nestedProp2": resource.MakeSecret(resource.NewStringProperty("value")),
+						"nestedProp1": resource.NewStringProperty("value"),
+					},
+				},
+			}),
+		},
+		{
+			name: "Sensitive mixed (in array) - AttributeValues mixed",
+			stateResource: tfjson.StateResource{
+				Type:    "aws_s3_bucket",
+				Address: "aws_s3_bucket.this",
+				AttributeValues: map[string]interface{}{
+					"nestedProps": []interface{}{
+						map[string]interface{}{
+							"nestedProp2": "value",
+						},
+						map[string]interface{}{
+							"nestedProp1": "value",
+						},
+						map[string]interface{}{
+							"nestedProp2": "value",
+						},
+						"value",
+					},
+				},
+			},
+			sensitiveValues: []byte(`{"nestedProps": [true,{"nestedProp1": true},{"nestedProp2": false},false]}`),
+			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"nestedProps": []interface{}{
+					resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+						"nestedProp2": "value",
+					}))),
+					resource.NewPropertyMapFromMap(map[string]interface{}{
+						"nestedProp1": resource.MakeSecret(resource.NewStringProperty("value")),
+					}),
+					resource.NewPropertyMapFromMap(map[string]interface{}{
+						"nestedProp2": resource.NewStringProperty("value"),
+					}),
+					resource.NewStringProperty("value"),
+				},
+			}),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.stateResource.SensitiveValues = tc.sensitiveValues
+			actual := extractPropertyMapFromState(tc.stateResource)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
 func TestCreatePlan(t *testing.T) {
 	planData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "plans", "create_plan.json"))
 	require.NoError(t, err)
