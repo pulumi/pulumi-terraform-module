@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -62,6 +63,7 @@ func NewModuleComponentResource(
 	tfModuleVersion TFModuleVersion,
 	name string,
 	args resource.PropertyMap,
+	inferredModule *InferredModuleSchema,
 	opts ...pulumi.ResourceOption,
 ) (*ModuleComponentResource, error) {
 	component := ModuleComponentResource{}
@@ -116,7 +118,14 @@ func NewModuleComponentResource(
 	// child resource as well, which will get further reused for Pulumi URNs.
 	tfName := name
 
-	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args)
+	outputs := []tfsandbox.TFOutputSpec{}
+	for outputName, spec := range inferredModule.Outputs {
+		outputs = append(outputs, tfsandbox.TFOutputSpec{
+			Name:      outputName,
+			Sensitive: spec.Secret,
+		})
+	}
+	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args, outputs)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
@@ -130,6 +139,8 @@ func NewModuleComponentResource(
 	if err != nil {
 		return nil, fmt.Errorf("PushState failed: %w", err)
 	}
+
+	moduleOutputs := resource.PropertyMap{}
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
@@ -162,6 +173,8 @@ func NewModuleComponentResource(
 		for _, cr := range childResources {
 			cr.Await(ctx.Context())
 		}
+
+		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
 		tfState, err := tf.Apply(ctx.Context())
@@ -202,9 +215,12 @@ func NewModuleComponentResource(
 		for _, cr := range childResources {
 			cr.Await(ctx.Context())
 		}
+
+		moduleOutputs = tfState.Outputs()
 	}
 
-	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {
+	marshalledOutputs := property.MustUnmarshalPropertyMap(ctx, moduleOutputs)
+	if err := ctx.RegisterResourceOutputs(&component, marshalledOutputs); err != nil {
 		return nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
 	}
 

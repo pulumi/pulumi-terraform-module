@@ -37,6 +37,7 @@ func TestCreateTFFile(t *testing.T) {
 		name           string
 		tfVariableType string
 		inputsValue    resource.PropertyValue
+		outputs        []TFOutputSpec
 	}{
 		{
 			name:           "string",
@@ -123,7 +124,7 @@ func TestCreateTFFile(t *testing.T) {
 
 			err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
 				"tfVar": tt.inputsValue,
-			})
+			}, tt.outputs)
 			assert.NoError(t, err)
 			var res bytes.Buffer
 			err = tofu.tf.InitJSON(context.Background(), &res)
@@ -139,10 +140,11 @@ func TestCreateTFFile(t *testing.T) {
 		t.Cleanup(func() {
 			os.RemoveAll(tofu.WorkingDir())
 		})
+		outputs := []TFOutputSpec{}
 		writeTfVarFile(t, tofu.WorkingDir(), "string")
 		err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
 			"tfVar": resource.MakeComputed(resource.NewStringProperty("")),
-		})
+		}, outputs)
 		assert.ErrorContains(t, err, "unknown values are not yet supported")
 	})
 

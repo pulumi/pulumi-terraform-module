@@ -11,6 +11,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+type TFOutputSpec struct {
+	// The name of the output.
+	Name string
+	// Whether the output is sensitive.
+	Sensitive bool
+}
+
 // Writes a pulumi.tf.json file in the workingDir that instructs Terraform to call a given module instance.
 func CreateTFFile(
 	name string, // name of the module instance
@@ -18,6 +25,7 @@ func CreateTFFile(
 	version TFModuleVersion,
 	workingDir string,
 	inputs resource.PropertyMap,
+	outputs []TFOutputSpec,
 ) error {
 	moduleProps := map[string]interface{}{
 		"source": source,
@@ -56,16 +64,40 @@ func CreateTFFile(
 		moduleProps[tfKey] = v
 	}
 
+	// for every output in the source module, create an output in wrapping module
+	// such that the outputs become available to the caller of the wrapping module
+	// the format in the JSON terraform file is as follows:
+	// output: [
+	//   { "output_name1": { "value": "${module.source_module.output_name1}" } },
+	//   { "output_name2": { "value": "${module.source_module.output_name2}" } },
+	//   ...
+	// ]
+	// if the source module output is sensitive,
+	// we mark the wrapping output as sensitive as well
+	moduleOutputs := []map[string]interface{}{}
+	for _, output := range outputs {
+		definition := map[string]interface{}{
+			"value": fmt.Sprintf("${module.%s.%s}", name, output.Name),
+		}
+		if output.Sensitive {
+			definition["sensitive"] = true
+		}
+
+		moduleOutputs = append(moduleOutputs, map[string]interface{}{
+			output.Name: definition,
+		})
+	}
+
 	tfFile := map[string]interface{}{
 		// TODO: other available sections
 		// "terraform": map[string]interface{}{},
 		// "provider":  map[string]interface{}{},
 		// "locals":    map[string]interface{}{},
-		// "output":    map[string]interface{}{},
 		// "variable":  map[string]interface{}{},
 		"module": map[string]interface{}{
 			name: moduleProps,
 		},
+		"output": moduleOutputs,
 	}
 
 	contents, err := json.MarshalIndent(tfFile, "", "  ")

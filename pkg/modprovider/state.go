@@ -219,7 +219,10 @@ func (h *moduleStateHandler) Delete(
 	// need the exact name of the moduleComponent resource.
 	// TODO: https://github.com/pulumi/pulumi-terraform-module/issues/118
 	tfName := "platypus"
-	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
+	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
+		tf.WorkingDir(),
+		resource.PropertyMap{}, /*inputs*/
+		[]tfsandbox.TFOutputSpec{} /*outputs*/)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}

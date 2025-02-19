@@ -48,15 +48,16 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	planStore          *planStore
-	params             *ParameterizeArgs
-	hostClient         *provider.HostClient
-	stateStore         moduleStateStore
-	moduleStateHandler *moduleStateHandler
-	childHandler       *childHandler
-	packageName        packageName
-	packageVersion     packageVersion
-	componentTypeName  componentTypeName
+	planStore            *planStore
+	params               *ParameterizeArgs
+	hostClient           *provider.HostClient
+	stateStore           moduleStateStore
+	moduleStateHandler   *moduleStateHandler
+	childHandler         *childHandler
+	packageName          packageName
+	packageVersion       packageVersion
+	componentTypeName    componentTypeName
+	inferredModuleSchema *InferredModuleSchema
 }
 
 func (s *server) Parameterize(
@@ -72,7 +73,15 @@ func (s *server) Parameterize(
 	s.componentTypeName = defaultComponentTypeName
 	s.packageName = pargs.PackageName
 	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
+	inferredModuleSchema, err := InferModuleSchema(ctx, s.packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
+	if err != nil {
+		return nil, fmt.Errorf("error while inferring module schema for '%s' version %s: %w",
+			pargs.TFModuleSource,
+			pargs.TFModuleVersion,
+			err)
+	}
 
+	s.inferredModuleSchema = inferredModuleSchema
 	return &pulumirpc.ParameterizeResponse{
 		Name:    string(s.packageName),
 		Version: string(s.packageVersion),
@@ -171,7 +180,7 @@ func (s *server) GetSchema(
 	if s.params == nil {
 		return nil, fmt.Errorf("Expected Parameterize() call before a GetSchema() call to set parameters")
 	}
-	spec, err := inferPulumiSchemaForModule(ctx, s.params)
+	spec, err := pulumiSchemaForModule(s.params, s.inferredModuleSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +243,9 @@ func (s *server) Construct(
 				s.params.TFModuleSource,
 				s.params.TFModuleVersion,
 				name,
-				inputProps)
+				inputProps,
+				s.inferredModuleSchema)
+
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
 			}

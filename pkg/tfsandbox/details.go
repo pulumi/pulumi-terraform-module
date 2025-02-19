@@ -146,6 +146,7 @@ func (s *ResourceState) Values() resource.PropertyMap { return s.AttributeValues
 
 type Plan struct {
 	Resources[*ResourcePlan]
+	rawPlan *tfjson.Plan
 }
 
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
@@ -173,7 +174,30 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 				}
 			},
 		},
+		rawPlan: rawPlan,
 	}, nil
+}
+
+// unknown returns a computed property with an empty string.
+// used to represent unknown values from a terraform plan or state file
+func unknown() resource.PropertyValue {
+	return resource.NewComputedProperty(resource.Computed{
+		Element: resource.NewStringProperty(""),
+	})
+}
+
+// Outputs returns the outputs of a terraform plan as a Pulumi property map.
+func (p *Plan) Outputs() resource.PropertyMap {
+	outputs := resource.PropertyMap{}
+	for outputKey, output := range p.rawPlan.OutputChanges {
+		key := resource.PropertyKey(outputKey)
+		if afterUnknown, ok := output.AfterUnknown.(bool); ok && afterUnknown {
+			outputs[key] = unknown()
+		} else {
+			outputs[key] = resource.NewPropertyValue(output.After)
+		}
+	}
+	return outputs
 }
 
 type State struct {
@@ -200,4 +224,24 @@ func newState(rawState *tfjson.State) (*State, error) {
 		},
 		rawState: rawState,
 	}, nil
+}
+
+// Outputs returns the outputs of a terraform module state as a Pulumi property map.
+// Sensitive outputs are marked as secret.
+func (s *State) Outputs() resource.PropertyMap {
+	outputs := resource.PropertyMap{}
+	if s.rawState.Values == nil {
+		return outputs
+	}
+	for outputKey, output := range s.rawState.Values.Outputs {
+		key := resource.PropertyKey(outputKey)
+		value := resource.NewPropertyValue(output.Value)
+		if output.Sensitive {
+			value = resource.MakeSecret(value)
+		}
+
+		outputs[key] = value
+	}
+
+	return outputs
 }
