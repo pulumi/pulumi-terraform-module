@@ -130,7 +130,9 @@ func CreateTFFile(
 		})
 	}
 
-	tfFile["output"] = moduleOutputs
+	if len(moduleOutputs) > 0 {
+		tfFile["output"] = moduleOutputs
+	}
 	tfFile["module"] = map[string]interface{}{
 		name: moduleProps,
 	}
