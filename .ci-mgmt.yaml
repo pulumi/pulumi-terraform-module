@@ -15,3 +15,8 @@ actions:
       uses: opentofu/setup-opentofu@v1
       with:
         tofu_wrapper: false
+  preBuild:
+    - name: Install opentofu
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_wrapper: false
