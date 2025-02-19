@@ -32,7 +32,7 @@ require (
 	github.com/pulumi/pulumi-go-provider v0.24.1
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.102.0
 	github.com/pulumi/pulumi/pkg/v3 v3.147.0
-	github.com/pulumi/pulumi/sdk/v3 v3.147.0
+	github.com/pulumi/pulumi/sdk/v3 v3.150.0
 	github.com/spf13/afero v1.10.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zclconf/go-cty v1.16.1
