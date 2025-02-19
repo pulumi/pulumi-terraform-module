@@ -1054,7 +1054,7 @@ export interface ModuleArgs {
     /**
      * Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)
      */
-    customer_gateways?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string>}>}>;
+    customer_gateways?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: any}>}>;
     /**
      * The customer owned IPv4 address pool. Typically used with the `map_customer_owned_ip_on_launch` argument. The `outpost_arn` argument must be specified when configured
      */

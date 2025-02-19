@@ -8,6 +8,7 @@ import com.pulumi.core.annotations.Import;
 import com.pulumi.vpc.inputs.FlowLogCloudwatchIamRoleConditionsArgs;
 import java.lang.Boolean;
 import java.lang.Double;
+import java.lang.Object;
 import java.lang.String;
 import java.util.List;
 import java.util.Map;
@@ -325,13 +326,13 @@ public final class ModuleArgs extends com.pulumi.resources.ResourceArgs {
      * 
      */
     @Import(name="customer_gateways")
-    private @Nullable Output<Map<String,Map<String,String>>> customer_gateways;
+    private @Nullable Output<Map<String,Map<String,Object>>> customer_gateways;
 
     /**
      * @return Maps of Customer Gateway&#39;s attributes (BGP ASN and Gateway&#39;s Internet-routable external IP address)
      * 
      */
-    public Optional<Output<Map<String,Map<String,String>>>> customer_gateways() {
+    public Optional<Output<Map<String,Map<String,Object>>>> customer_gateways() {
         return Optional.ofNullable(this.customer_gateways);
     }
 
@@ -4191,7 +4192,7 @@ public final class ModuleArgs extends com.pulumi.resources.ResourceArgs {
          * @return builder
          * 
          */
-        public Builder customer_gateways(@Nullable Output<Map<String,Map<String,String>>> customer_gateways) {
+        public Builder customer_gateways(@Nullable Output<Map<String,Map<String,Object>>> customer_gateways) {
             $.customer_gateways = customer_gateways;
             return this;
         }
@@ -4202,7 +4203,7 @@ public final class ModuleArgs extends com.pulumi.resources.ResourceArgs {
          * @return builder
          * 
          */
-        public Builder customer_gateways(Map<String,Map<String,String>> customer_gateways) {
+        public Builder customer_gateways(Map<String,Map<String,Object>> customer_gateways) {
             return customer_gateways(Output.of(customer_gateways));
         }
 
