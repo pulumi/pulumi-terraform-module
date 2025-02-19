@@ -349,7 +349,7 @@ func TestIntegration(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath, opttest.TestInPlace())
+			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
 			prefix := generateTestResourcePrefix()
 
@@ -368,8 +368,6 @@ func TestIntegration(t *testing.T) {
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
 			deploy := integrationTest.ExportStack(t)
-			t.Logf("STATE: %s", string(deploy.Deployment))
-
 			var deployment apitype.DeploymentV3
 			err := json.Unmarshal(deploy.Deployment, &deployment)
 			require.NoError(t, err)
@@ -386,7 +384,8 @@ func TestIntegration(t *testing.T) {
 			require.Equal(t, 1, encyptionsConfigFound)
 			autogold.Expect(map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				"plaintext":                        "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
+				//nolint:all
+				"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
 			}).Equal(t, encyptionsConfig.Inputs["rule"])
 
 			// Delete

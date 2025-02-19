@@ -49,7 +49,9 @@ func mapReplSecret(value resource.PropertyValue) (interface{}, bool) {
 
 	if value.IsObject() {
 		final := []string{}
-		for k, v := range value.ObjectValue() {
+		objectValue := value.ObjectValue()
+		for _, k := range objectValue.StableKeys() {
+			v := objectValue[k]
 			final = append(final, fmt.Sprintf("%q = %v", k, v.MapRepl(nil, mapReplSecret)))
 		}
 		return fmt.Sprintf("{%s}", strings.Join(final, ", ")), true
