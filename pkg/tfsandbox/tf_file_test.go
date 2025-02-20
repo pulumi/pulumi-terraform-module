@@ -145,14 +145,14 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "secret list(map(string))",
 			tfVariableType: "list(map(string))",
 			inputsValue: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
 			})),
 		},
 		{
 			name:           "output secret list(map(string))",
 			tfVariableType: "list(map(string))",
 			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
 			}), Known: true, Secret: true}),
 		},
 		{
@@ -161,7 +161,7 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(
 					resource.PropertyMap{
-						"key": resource.MakeSecret(resource.NewStringProperty("")),
+						"key": resource.MakeSecret(resource.NewStringProperty("value")),
 					},
 				),
 			}),
@@ -186,6 +186,13 @@ func TestCreateTFFile(t *testing.T) {
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+			})),
+		},
+		{
+			name:           "top level secret nested map(map(any))",
+			tfVariableType: "map(map(any))",
+			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeSecret(resource.NewStringProperty("value"))}),
 			})),
 		},
 		{
@@ -264,9 +271,10 @@ func TestCreateTFFile(t *testing.T) {
 func Test_decode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		inputsValue resource.PropertyMap
-		expected    map[string]interface{}
+		name           string
+		inputsValue    resource.PropertyMap
+		expected       map[string]interface{}
+		expectedLocals map[string]interface{}
 	}{
 		{
 			name: "plain values",
@@ -360,7 +368,10 @@ func Test_decode(t *testing.T) {
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(\"some secret value\")}",
+				"key1": "${sensitive(local.local1)}",
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": "some secret value",
 			},
 		},
 		{
@@ -373,7 +384,10 @@ func Test_decode(t *testing.T) {
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(\"some secret value\")}",
+				"key1": "${sensitive(local.local1)}",
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": "some secret value",
 			},
 		},
 		{
@@ -391,7 +405,17 @@ func Test_decode(t *testing.T) {
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive([{\"key\" = {\"nestedKey\" = \"value\", \"nestedKey2\" = 8}}])}",
+				"key1": "${sensitive(local.local1)}",
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": []interface{}{
+					map[string]interface{}{
+						"key": map[string]interface{}{
+							"nestedKey":  "value",
+							"nestedKey2": float64(8),
+						},
+					},
+				},
 			},
 		},
 		{
@@ -409,11 +433,21 @@ func Test_decode(t *testing.T) {
 					Known: true, Secret: true}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive([{\"key\" = {\"nestedKey\" = \"value\", \"nestedKey2\" = 8}}])}",
+				"key1": "${sensitive(local.local1)}",
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": []interface{}{
+					map[string]interface{}{
+						"key": map[string]interface{}{
+							"nestedKey":  "value",
+							"nestedKey2": float64(8),
+						},
+					},
+				},
 			},
 		},
 		{
-			name: "nested sensitive value",
+			name: "single nested sensitive value",
 			inputsValue: resource.PropertyMap{
 				"key1": resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
@@ -424,13 +458,16 @@ func Test_decode(t *testing.T) {
 			expected: map[string]interface{}{
 				"key1": []interface{}{
 					map[string]interface{}{
-						"key2": "${sensitive(\"value1\")}",
+						"key2": "${sensitive(local.local1)}",
 					},
 				},
 			},
+			expectedLocals: map[string]interface{}{
+				"local1": "value1",
+			},
 		},
 		{
-			name: "nested output secret value",
+			name: "single nested output secret value",
 			inputsValue: resource.PropertyMap{
 				"key1": resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
@@ -445,9 +482,12 @@ func Test_decode(t *testing.T) {
 			expected: map[string]interface{}{
 				"key1": []interface{}{
 					map[string]interface{}{
-						"key2": "${sensitive(\"value1\")}",
+						"key2": "${sensitive(local.local1)}",
 					},
 				},
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": "value1",
 			},
 		},
 		{
@@ -463,7 +503,19 @@ func Test_decode(t *testing.T) {
 				})),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive([{\"key2\" = sensitive(\"value1\")}, {\"key3\" = sensitive(\"value2\")}])}",
+				"key1": "${sensitive(local.local3)}",
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": "value1",
+				"local2": "value2",
+				"local3": []interface{}{
+					map[string]interface{}{
+						"key2": "${sensitive(local.local1)}",
+					},
+					map[string]interface{}{
+						"key3": "${sensitive(local.local2)}",
+					},
+				},
 			},
 		},
 		{
@@ -479,16 +531,35 @@ func Test_decode(t *testing.T) {
 				}), Known: true, Secret: true}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive([{\"key2\" = sensitive(\"value1\")}, {\"key3\" = sensitive(\"value2\")}])}",
+				"key1": "${sensitive(local.local3)}",
+			},
+			expectedLocals: map[string]interface{}{
+				"local1": "value1",
+				"local2": "value2",
+				"local3": []interface{}{
+					map[string]interface{}{
+						"key2": "${sensitive(local.local1)}",
+					},
+					map[string]interface{}{
+						"key3": "${sensitive(local.local2)}",
+					},
+				},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := tt.inputsValue.MapRepl(nil, decode)
+			locals := &locals{
+				entries: make(map[string]interface{}),
+				counter: 0,
+			}
+			res := tt.inputsValue.MapRepl(nil, locals.decode)
 
 			assert.Equal(t, tt.expected, res)
+			if len(tt.expectedLocals) > 0 {
+				assert.Equal(t, tt.expectedLocals, locals.entries)
+			}
 		})
 	}
 }
