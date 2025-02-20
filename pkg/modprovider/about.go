@@ -14,10 +14,17 @@
 
 package modprovider
 
+import (
+	"github.com/pulumi/pulumi-terraform-module/pkg/version"
+)
+
 func Name() string {
 	return "terraform-module"
 }
 
 func Version() string {
-	return "0.0.1"
+	if version.Version == "" {
+		return "0.0.1"
+	}
+	return version.Version
 }
