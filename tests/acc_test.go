@@ -109,6 +109,16 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		}).Equal(t, randInt.Inputs)
 		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
+
+	t.Run("pulumi preview should be empty", func(t *testing.T) {
+		previewResult := pt.Preview(t)
+		autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 5}).Equal(t, previewResult.ChangeSummary)
+	})
+
+	t.Run("pulumi up should be no-op", func(t *testing.T) {
+		upResult := pt.Up(t)
+		autogold.Expect(&map[string]int{"same": 5}).Equal(t, upResult.Summary.ResourceChanges)
+	})
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular

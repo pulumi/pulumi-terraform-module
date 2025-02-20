@@ -12,19 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package modprovider
+package version
 
-import (
-	"github.com/pulumi/pulumi-terraform-module/pkg/version"
-)
-
-func Name() string {
-	return "terraform-module"
-}
-
-func Version() string {
-	if version.Version == "" {
-		return "0.0.1"
-	}
-	return version.Version
-}
+// Version is initialized by the Go linker to contain the semver of this build.
+var Version string

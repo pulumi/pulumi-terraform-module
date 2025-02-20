@@ -65,7 +65,7 @@ func NewModuleComponentResource(
 	args resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
 	opts ...pulumi.ResourceOption,
-) (*ModuleComponentResource, error) {
+) (finalModuleComponentResource *ModuleComponentResource, finalError error) {
 	component := ModuleComponentResource{}
 	tok := componentTypeToken(pkgName, compTypeName)
 	err := ctx.RegisterComponentResource(string(tok), name, &component, opts...)
@@ -102,9 +102,12 @@ func NewModuleComponentResource(
 
 	state := stateStore.AwaitOldState(urn)
 	defer func() {
-		// Save any modifications to state that may have been done in the course of pulumi up. This is expected
-		// to be called even if the state is not modified.
-		stateStore.SetNewState(urn, state)
+		// SetNewState must be called on every possible exit to make sure child resources do
+		// not wait indefinitely for the state. If existing normally, this should have
+		// already happened, but this code makes sure error exists are covered as well.
+		if finalError != nil {
+			stateStore.SetNewState(urn, state)
+		}
 	}()
 
 	tf, err := tfsandbox.NewTofu(ctx.Context())
@@ -131,6 +134,7 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
 
+	var moduleOutputs resource.PropertyMap
 	err = tf.Init(ctx.Context())
 	if err != nil {
 		return nil, fmt.Errorf("Init failed: %w", err)
@@ -141,19 +145,25 @@ func NewModuleComponentResource(
 		return nil, fmt.Errorf("PushState failed: %w", err)
 	}
 
-	var moduleOutputs resource.PropertyMap
+	var childResources []*childResource
+
+	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
+	// may be able to reuse the plan from DryRun for the subsequent application.
+	plan, err := tf.Plan(ctx.Context())
+	if err != nil {
+		return nil, fmt.Errorf("Plan failed: %w", err)
+	}
+
+	planStore.SetPlan(urn, plan)
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
-		plan, err := tf.Plan(ctx.Context())
-		if err != nil {
-			return nil, fmt.Errorf("Plan failed: %w", err)
-		}
 
-		planStore.SetPlan(urn, plan)
+		// Make sure child resources can read the state, even though it is not changed.
+		stateStore.SetNewState(urn, state)
 
 		var errs []error
-		var childResources []*childResource
+
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
 			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
@@ -169,12 +179,6 @@ func NewModuleComponentResource(
 		if err := errors.Join(errs...); err != nil {
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
-
-		// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
-		for _, cr := range childResources {
-			cr.Await(ctx.Context())
-		}
-
 		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
@@ -194,8 +198,10 @@ func NewModuleComponentResource(
 		}
 		state.rawState = rawState
 
+		// Make sure child resources can read updated state.
+		stateStore.SetNewState(urn, state)
+
 		var errs []error
-		var childResources []*childResource
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
 			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
@@ -212,12 +218,14 @@ func NewModuleComponentResource(
 			return nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 
-		// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
-		for _, cr := range childResources {
-			cr.Await(ctx.Context())
-		}
-
 		moduleOutputs = tfState.Outputs()
+	}
+
+	// Wait for all child resources to complete provisioning.
+	//
+	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
+	for _, cr := range childResources {
+		cr.Await(ctx.Context())
 	}
 
 	marshalledOutputs := property.MustUnmarshalPropertyMap(ctx, moduleOutputs)
