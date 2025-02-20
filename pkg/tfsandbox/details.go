@@ -186,18 +186,37 @@ func unknown() resource.PropertyValue {
 	})
 }
 
+func extractPlanOutputs(outputChanges map[string]*tfjson.Change) resource.PropertyMap {
+	outputs := resource.PropertyMap{}
+	for outputKey, output := range outputChanges {
+		key := resource.PropertyKey(outputKey)
+		value := resource.NewPropertyValue(output.After)
+
+		if output.AfterUnknown != nil {
+			outputs[key] = updateResourceValue(
+				value,
+				output.AfterUnknown,
+				func(_ resource.PropertyValue) resource.PropertyValue {
+					return unknown()
+				})
+
+			continue
+		}
+
+		if output.AfterSensitive != nil {
+			outputs[key] = updateResourceValue(value, output.AfterSensitive, resource.MakeSecret)
+			continue
+		}
+
+		outputs[key] = value
+	}
+
+	return outputs
+}
+
 // Outputs returns the outputs of a terraform plan as a Pulumi property map.
 func (p *Plan) Outputs() resource.PropertyMap {
-	outputs := resource.PropertyMap{}
-	for outputKey, output := range p.rawPlan.OutputChanges {
-		key := resource.PropertyKey(outputKey)
-		if afterUnknown, ok := output.AfterUnknown.(bool); ok && afterUnknown {
-			outputs[key] = unknown()
-		} else {
-			outputs[key] = resource.NewPropertyValue(output.After)
-		}
-	}
-	return outputs
+	return extractPlanOutputs(p.rawPlan.OutputChanges)
 }
 
 type State struct {
