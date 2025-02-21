@@ -192,7 +192,9 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "top level secret nested map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeSecret(resource.NewStringProperty("value"))}),
+				"key": resource.NewObjectProperty(resource.PropertyMap{
+					"key": resource.MakeSecret(resource.NewStringProperty("value")),
+				}),
 			})),
 		},
 		{
