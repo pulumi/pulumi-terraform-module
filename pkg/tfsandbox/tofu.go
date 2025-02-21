@@ -54,7 +54,7 @@ func NewTofu(ctx context.Context) (*Tofu, error) {
 
 // findExistingTofu checks if tofu is already installed on the machine
 // it will check against the PATH and the provided extra paths
-// TODO: add version specific support
+// TODO: [pulumi/pulumi-terraform-module#71] add more configuration options (e.g. specific version support)
 func findExistingTofu(ctx context.Context, extraPaths []string) (string, bool) {
 	anyVersion := fs.AnyVersion{
 		ExtraPaths: extraPaths,

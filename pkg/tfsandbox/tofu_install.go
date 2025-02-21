@@ -52,14 +52,14 @@ func installTool(ctx context.Context, dir string, finalPath string, reinstall bo
 		return err
 	}
 
-	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
+	// Create a file lock file at <tf-modules-dir>/<name>-<version>.lock.
 	unlock, err := installLock(dir)
 	if err != nil {
 		return err
 	}
 	defer unlock()
 
-	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
+	// Get the partial file path (e.g. <tf-modules-dir>/<name>-<version>.partial).
 	partialFilePath := dir + ".partial"
 
 	// Check whether the directory exists while we were waiting on the lock.
