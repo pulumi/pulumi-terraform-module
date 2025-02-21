@@ -1,0 +1,190 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.9.0",
+  "values": {
+    "root_module": {
+      "child_modules": [
+        {
+          "resources": [
+            {
+              "address": "module.test-bucket.data.aws_canonical_user_id.this",
+              "mode": "data",
+              "type": "aws_canonical_user_id",
+              "name": "this",
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "display_name": "",
+                "id": "9164e01b8"
+              },
+              "sensitive_values": {}
+            },
+            {
+              "address": "module.test-bucket.aws_s3_bucket.this[0]",
+              "mode": "managed",
+              "type": "aws_s3_bucket",
+              "name": "this",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "acceleration_status": "",
+                "acl": null,
+                "arn": "arn:aws:s3:::user-test-bucket",
+                "bucket": "user-test-bucket",
+                "bucket_domain_name": "user-test-bucket.s3.amazonaws.com",
+                "bucket_prefix": "",
+                "bucket_regional_domain_name": "user-test-bucket.s3.us-east-2.amazonaws.com",
+                "cors_rule": [],
+                "force_destroy": false,
+                "grant": [
+                  {
+                    "id": "9164e01b8",
+                    "permissions": [
+                      "FULL_CONTROL"
+                    ],
+                    "type": "CanonicalUser",
+                    "uri": ""
+                  }
+                ],
+                "hosted_zone_id": "Z2O1EMRO9K5GLX",
+                "id": "user-test-bucket",
+                "lifecycle_rule": [],
+                "logging": [],
+                "object_lock_configuration": [],
+                "object_lock_enabled": false,
+                "policy": "",
+                "region": "us-east-2",
+                "replication_configuration": [],
+                "request_payer": "BucketOwner",
+                "server_side_encryption_configuration": [
+                  {
+                    "rule": [
+                      {
+                        "apply_server_side_encryption_by_default": [
+                          {
+                            "kms_master_key_id": "",
+                            "sse_algorithm": "AES256"
+                          }
+                        ],
+                        "bucket_key_enabled": false
+                      }
+                    ]
+                  }
+                ],
+                "tags": null,
+                "tags_all": {},
+                "timeouts": null,
+                "versioning": [
+                  {
+                    "enabled": false,
+                    "mfa_delete": false
+                  }
+                ],
+                "website": [],
+                "website_domain": null,
+                "website_endpoint": null
+              },
+              "sensitive_values": {
+                "cors_rule": [],
+                "grant": [
+                  {
+                    "permissions": [
+                      false
+                    ]
+                  }
+                ],
+                "lifecycle_rule": [],
+                "logging": [],
+                "object_lock_configuration": [],
+                "replication_configuration": [],
+                "server_side_encryption_configuration": [
+                  {
+                    "rule": [
+                      {
+                        "apply_server_side_encryption_by_default": [
+                          {}
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "tags_all": {},
+                "versioning": [
+                  {}
+                ],
+                "website": []
+              }
+            },
+            {
+              "address": "module.test-bucket.aws_s3_bucket_public_access_block.this[0]",
+              "mode": "managed",
+              "type": "aws_s3_bucket_public_access_block",
+              "name": "this",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "block_public_acls": false,
+                "block_public_policy": false,
+                "bucket": "user-test-bucket",
+                "id": "user-test-bucket",
+                "ignore_public_acls": false,
+                "restrict_public_buckets": false
+              },
+              "sensitive_values": {},
+              "depends_on": [
+                "module.test-bucket.aws_s3_bucket.this",
+                "module.test-bucket.aws_s3_bucket_policy.this",
+                "module.test-bucket.data.aws_elb_service_account.this",
+                "module.test-bucket.data.aws_iam_policy_document.combined",
+                "module.test-bucket.data.aws_iam_policy_document.deny_insecure_transport",
+                "module.test-bucket.data.aws_iam_policy_document.elb_log_delivery",
+                "module.test-bucket.data.aws_iam_policy_document.lb_log_delivery",
+                "module.test-bucket.data.aws_iam_policy_document.require_latest_tls"
+              ]
+            },
+            {
+              "address": "module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]",
+              "mode": "managed",
+              "type": "aws_s3_bucket_server_side_encryption_configuration",
+              "name": "this",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "bucket": "user-test-bucket",
+                "expected_bucket_owner": "",
+                "id": "user-test-bucket",
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {
+                        "kms_master_key_id": "",
+                        "sse_algorithm": "AES256"
+                      }
+                    ],
+                    "bucket_key_enabled": null
+                  }
+                ]
+              },
+              "sensitive_values": {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {}
+                    ]
+                  }
+                ]
+              },
+              "depends_on": [
+                "module.test-bucket.aws_s3_bucket.this"
+              ]
+            }
+          ],
+          "address": "module.test-bucket"
+        }
+      ]
+    }
+  }
+}

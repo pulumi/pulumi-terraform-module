@@ -298,7 +298,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 			optpreview.ProgressStreams(&preview),
 		)
 		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 10,
+			apitype.OpType("create"): 9,
 		}).Equal(t, previewResult.ChangeSummary)
 	})
 	// Test up
@@ -312,7 +312,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 		)
 
 		autogold.Expect(&map[string]int{
-			"create": 10,
+			"create": 9,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 	})
 }
@@ -341,10 +341,10 @@ func TestIntegration(t *testing.T) {
 				apitype.OpType("create"): 6,
 			},
 			upExpect: map[string]int{
-				"create": 9,
+				"create": 6,
 			},
 			deleteExpect: map[string]int{
-				"delete": 9,
+				"delete": 6,
 			},
 		},
 	}
