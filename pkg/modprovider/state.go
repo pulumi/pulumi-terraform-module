@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -238,11 +237,16 @@ func (h *moduleStateHandler) Delete(
 		KeepSecrets:   true,
 		KeepResources: true,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
+	}
+
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
 		olds["args"].ObjectValue(), /*inputs*/
 		[]tfsandbox.TFOutputSpec{}  /*outputs*/)
+
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
