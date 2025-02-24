@@ -234,7 +234,7 @@ func (s *server) Construct(
 		ctok := componentTypeToken(s.packageName, s.componentTypeName)
 		switch typ {
 		case string(ctok):
-			component, err := NewModuleComponentResource(ctx,
+			componentUrn, outputs, err := NewModuleComponentResource(ctx,
 				s.stateStore,
 				s.planStore,
 				s.packageName,
@@ -249,9 +249,9 @@ func (s *server) Construct(
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
 			}
-			constructResult, err := pulumiprovider.NewConstructResult(component)
-			if err != nil {
-				return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
+			constructResult := &pulumiprovider.ConstructResult{
+				URN:   pulumi.URN(string(*componentUrn)),
+				State: outputs,
 			}
 			return constructResult, nil
 		default:
