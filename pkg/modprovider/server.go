@@ -272,7 +272,7 @@ func (s *server) Construct(
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
-		KeepOutputValues: true,
+		KeepOutputValues: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)

@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -226,8 +225,6 @@ func (h *moduleStateHandler) Delete(
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
 
-	h.hc.Log(ctx, diag.Warning, "", fmt.Sprintf("raw state: %s", string(oldState.rawState)))
-
 	tf, err := tfsandbox.NewTofu(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
@@ -237,10 +234,9 @@ func (h *moduleStateHandler) Delete(
 	tfName := getModuleName(urn)
 
 	olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: true,
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
 	})
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
