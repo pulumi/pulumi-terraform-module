@@ -295,62 +295,44 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 }
 
 func TestS3BucketModSecret(t *testing.T) {
-	type testCase struct {
-		name                          string // Must be same as project folder in testdata/programs/ts
-		moduleName                    string
-		moduleVersion                 string
-		moduleNamespace               string
-		encryptionsConfigExpect       int
-		encryptionsConfigInputsExpect map[string]interface{}
-	}
-	tc := testCase{
-		name:                    "s3bucketmod",
-		moduleName:              "terraform-aws-modules/s3-bucket/aws",
-		moduleVersion:           "4.5.0",
-		moduleNamespace:         "bucket",
-		encryptionsConfigExpect: 1,
-		encryptionsConfigInputsExpect: map[string]interface{}{
-			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-			//nolint:all
-			"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
-		},
-	}
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-	t.Run(tc.name, func(t *testing.T) {
-		localProviderBinPath := ensureCompiledProvider(t)
-		skipLocalRunsWithoutCreds(t)
-		testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
-		localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-		integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
 
-		// Get a prefix for resource names
-		prefix := generateTestResourcePrefix()
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
 
-		// Set prefix via config
-		integrationTest.SetConfig(t, "prefix", prefix)
+	// Generate package
+	//nolint:all
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	integrationTest.Up(t)
 
-		// Generate package
-		pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
-		integrationTest.Up(t)
+	deploy := integrationTest.ExportStack(t)
+	var deployment apitype.DeploymentV3
+	err := json.Unmarshal(deploy.Deployment, &deployment)
+	require.NoError(t, err)
 
-		deploy := integrationTest.ExportStack(t)
-		var deployment apitype.DeploymentV3
-		err := json.Unmarshal(deploy.Deployment, &deployment)
-		require.NoError(t, err)
-
-		var encyptionsConfig apitype.ResourceV3
-		encyptionsConfigFound := 0
-		for _, r := range deployment.Resources {
-			if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
-				encyptionsConfig = r
-				encyptionsConfigFound++
-			}
+	var encyptionsConfig apitype.ResourceV3
+	encyptionsConfigFound := 0
+	for _, r := range deployment.Resources {
+		if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
+			encyptionsConfig = r
+			encyptionsConfigFound++
 		}
+	}
 
-		require.Equal(t, tc.encryptionsConfigExpect, encyptionsConfigFound)
-		autogold.Expect(tc.encryptionsConfigInputsExpect).Equal(t, encyptionsConfig.Inputs["rule"])
-		integrationTest.Destroy(t)
-	})
+	require.Equal(t, 1, encyptionsConfigFound)
+	autogold.Expect(map[string]interface{}{
+		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		//nolint:all
+		"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
+	}).Equal(t, encyptionsConfig.Inputs["rule"])
+	integrationTest.Destroy(t)
 
 }
 
@@ -431,6 +413,32 @@ func TestIntegration(t *testing.T) {
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
+}
+
+func TestDelete(t *testing.T) {
+	// Set up Lambda with Role and logs
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "awslambdamod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:all
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
+	integrationTest.Up(t)
+	// Delete
+	destroyResult := integrationTest.Destroy(t)
+	t.Log(destroyResult.StdOut)
+	t.Log(destroyResult.StdErr)
+	t.Log(destroyResult.Summary)
+
 }
 
 func getRoot(t *testing.T) string {
