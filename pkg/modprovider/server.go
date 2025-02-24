@@ -198,8 +198,12 @@ func (*server) Configure(
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
-		AcceptOutputs:   true,
 		AcceptResources: true,
+
+		// By letting the engine handle first-class outputs, the implementation loses some
+		// precision around tracking precise dependencies at value-by-value level, but that
+		// seems to be acceptable for a simpler implementation.
+		AcceptOutputs: false,
 	}, nil
 }
 
