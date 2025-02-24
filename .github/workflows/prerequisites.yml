@@ -60,6 +60,10 @@ jobs:
         tools: go, pulumictl, pulumicli, schema-tools
     - name: Prepare local workspace before restoring previously built files
       run: make prepare_local_workspace
+    - name: Install opentofu
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_wrapper: false
     - name: Build provider binary
       run: make provider
     - name: Unit-test provider code

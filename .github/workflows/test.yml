@@ -66,6 +66,10 @@ jobs:
         role-duration-seconds: 7200
         role-session-name: terraform-module@githubActions
         role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+    - name: Install opentofu
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_wrapper: false
     - name: Generate test shards
       run: |-
         cd tests

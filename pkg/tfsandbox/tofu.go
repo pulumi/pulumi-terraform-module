@@ -6,10 +6,13 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"time"
 
+	"github.com/blang/semver"
+	"github.com/hashicorp/hc-install/fs"
+	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"github.com/opentofu/tofudl"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Tofu struct {
@@ -25,7 +28,7 @@ func (t *Tofu) WorkingDir() string {
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
 func NewTofu(ctx context.Context) (*Tofu, error) {
-	execPath, err := downloadTofu(ctx)
+	execPath, err := getTofuExecutable(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error downloading tofu: %w", err)
 	}
@@ -49,61 +52,53 @@ func NewTofu(ctx context.Context) (*Tofu, error) {
 	}, nil
 }
 
-func downloadTofu(ctx context.Context) (string, error) {
-	dl, err := tofudl.New()
-	if err != nil {
-		return "", err
+// findExistingTofu checks if tofu is already installed on the machine
+// it will check against the PATH and the provided extra paths
+// TODO: [pulumi/pulumi-terraform-module#71] add more configuration options (e.g. specific version support)
+func findExistingTofu(ctx context.Context, extraPaths []string) (string, bool) {
+	anyVersion := fs.AnyVersion{
+		ExtraPaths: extraPaths,
+		Product: &product.Product{
+			Name: "tofu",
+			BinaryName: func() string {
+				if runtime.GOOS == "windows" {
+					return "tofu.exe"
+				}
+				return "tofu"
+			},
+		},
 	}
+	found, err := anyVersion.Find(ctx)
+	return found, err == nil
+}
 
-	file := "tofu"
+// getTofuExecutable will try to get a tofu executable to use
+// it will first check if tofu is already installed, if not it will
+// download and install tofu
+func getTofuExecutable(ctx context.Context, version *semver.Version) (string, error) {
+	pulumiPath, err := workspace.GetPulumiPath("tf-modules")
+	if err != nil {
+		return "", fmt.Errorf("could not find pulumi path: %w", err)
+	}
+	installDir := "tofu"
+	if version != nil {
+		installDir = fmt.Sprintf("%s-%s", installDir, version.String())
+	}
+	finalDir := path.Join(pulumiPath, installDir)
+	binaryPath := path.Join(finalDir, "tofu")
 	if runtime.GOOS == "windows" {
-		file += ".exe"
+		binaryPath += ".exe"
 	}
 
-	tmpDir := path.Join(os.TempDir(), "tofu-install")
-	absFile := path.Join(tmpDir, file)
-
-	// If the file already exists (we've already downloaded it)
-	// then just use that
-	if _, err := os.Stat(absFile); err == nil {
-		return absFile, nil
+	// first check if we already have tofu installed
+	if found, ok := findExistingTofu(ctx, []string{binaryPath}); ok {
+		return found, nil
 	}
 
-	_, err = os.Stat(tmpDir)
+	err = installTool(ctx, finalDir, binaryPath, false)
 	if err != nil {
-		if os.IsNotExist(err) {
-			if err := os.Mkdir(tmpDir, 0755); err != nil {
-				return "", err
-			}
-		} else {
-			return "", err
-		}
+		return "", fmt.Errorf("error installing tofu: %w", err)
 	}
 
-	storage, err := tofudl.NewFilesystemStorage(tmpDir)
-	if err != nil {
-		return "", err
-	}
-
-	mirror, err := tofudl.NewMirror(tofudl.MirrorConfig{
-		AllowStale:           false,
-		APICacheTimeout:      time.Minute * 10,
-		ArtifactCacheTimeout: time.Hour * 24,
-	},
-		storage,
-		dl)
-	if err != nil {
-		return "", err
-	}
-
-	binary, err := mirror.Download(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	//nolint:gosec
-	if err := os.WriteFile(absFile, binary, 0755); err != nil {
-		return "", err
-	}
-	return absFile, nil
+	return binaryPath, nil
 }
