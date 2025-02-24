@@ -2,6 +2,7 @@ package tfsandbox
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 
@@ -15,24 +16,81 @@ var (
 	terraformDataResourceName = "unknown_proxy"
 )
 
-// decode decodes a PropertyValue, recursively replacing any unknown values
-// with the unknown proxy
-func decode(pv resource.PropertyValue) (interface{}, bool) {
+type locals struct {
+	entries map[string]interface{}
+	counter int
+}
+
+func (l *locals) createLocal(v interface{}) string {
+	l.counter++
+	key := fmt.Sprintf("local%d", l.counter)
+	l.entries[key] = v
+	return key
+}
+
+// decode decodes a PropertyValue into a Terraform JSON value
+// it will:
+// - replace computed values with references to the unknown_proxy resource
+// - replace known output values with their underlying value
+// - replace secret values with the sensitive function
+//
+// `sensitive()` functions expect a string that can be parsed as a Terraform expression so rather
+// than try to create one we instead local `locals` to store the value and reference it in the sensitive function.
+//
+// For each secret that we encounter we first create a local variable to store the value, and then we replace the secret
+// value with a reference to that local `${sensitive(local.<key>)}`
+//
+// For example, this Pulumi ts code:
+//
+//	new module.Module("name", {
+//	   property: pulumi.secret({
+//	       key: {
+//	           nestedKey: pulumi.secret("value")
+//	       }
+//	   })
+//	})
+//
+// will be converted to the following Terraform JSON:
+//
+//		{
+//	    "locals": {
+//	      "local2": {
+//	        "key": {
+//	          "nestedKey": "${sensitive(local.local1)}"
+//	        }
+//	      },
+//	      "local2": "value"
+//	    },
+//		   "property": "${sensitive(local.local2)}"
+//		}
+func (l *locals) decode(pv resource.PropertyValue) (interface{}, bool) {
 	// paranoid asserts
-	// TODO: [pulumi/pulumi-terraform-module-provider#103]
-	contract.Assertf(!pv.IsSecret(), "did not expect secrets here")
 	contract.Assertf(!pv.IsAsset(), "did not expect assets here")
 	contract.Assertf(!pv.IsArchive(), "did not expect archives here")
 	contract.Assertf(!pv.IsResourceReference(), "did not expect resource references here")
 
-	// If the output value is known, process the underlying value
-	if pv.IsOutput() && pv.OutputValue().Known {
-		return pv.OutputValue().Element.MapRepl(nil, decode), true
-	}
-
 	// Replace computed's with references and stop
 	if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
 		return "${terraform_data.unknown_proxy.output}", true
+	}
+
+	// secret values are encoded using the sensitive function
+	// and we need to recurse depth first to handle nested secrets
+	if pv.IsSecret() {
+		result := pv.SecretValue().Element.MapRepl(nil, l.decode)
+		key := l.createLocal(result)
+		return fmt.Sprintf("${sensitive(local.%s)}", key), true
+	}
+
+	if pv.IsOutput() && pv.OutputValue().Secret {
+		result := pv.OutputValue().Element.MapRepl(nil, l.decode)
+		key := l.createLocal(result)
+		return fmt.Sprintf("${sensitive(local.%s)}", key), true
+	}
+
+	// If the output value is known, process the underlying value
+	if pv.IsOutput() && pv.OutputValue().Known {
+		return pv.OutputValue().Element.MapRepl(nil, l.decode), true
 	}
 
 	// Otherwise continue recursive processing as before.
@@ -83,7 +141,12 @@ func CreateTFFile(
 			},
 		}
 	}
-	inputsMap := inputs.MapRepl(nil, decode)
+
+	locals := &locals{
+		entries: make(map[string]interface{}),
+		counter: 0,
+	}
+	inputsMap := inputs.MapRepl(nil, locals.decode)
 
 	for k, v := range inputsMap {
 		// TODO: I'm only converting the top layer properties for now
@@ -101,6 +164,10 @@ func CreateTFFile(
 
 	tfFile["module"] = map[string]interface{}{
 		name: moduleProps,
+	}
+
+	if len(locals.entries) > 0 {
+		tfFile["locals"] = locals.entries
 	}
 
 	contents, err := json.MarshalIndent(tfFile, "", "  ")
