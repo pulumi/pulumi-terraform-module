@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -57,20 +58,28 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 	if s == nil {
 		return // empty
 	}
-	state, ok := s.Fields["state"]
+	props, err := plugin.UnmarshalProperties(s, plugin.MarshalOptions{
+		KeepSecrets: false, // so we don't have to immediately unwrap
+	})
+	contract.AssertNoErrorf(err, "plugin.UnmarshalProperties should not fail")
+	state, ok := props["state"]
 	if !ok {
 		return // empty
 	}
-	stateString := state.GetStringValue()
+	stateString := state.StringValue()
 	ms.rawState = []byte(stateString)
 }
 
 func (ms *moduleState) Marshal() *structpb.Struct {
-	s, err := structpb.NewStruct(map[string]any{
-		"state": string(ms.rawState),
+	state := resource.PropertyMap{
+		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
+	}
+
+	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
+		KeepSecrets: true,
 	})
-	contract.AssertNoErrorf(err, "structpb.NewStruct should not fail")
-	return s
+	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
+	return value
 }
 
 type moduleStateStore interface {

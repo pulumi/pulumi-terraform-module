@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -106,9 +105,10 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte 
 
 	// Verify that ModuleState resource is allocated with some state.
 	mstate := s.FindResourceByType(moduleStateTypeName)
-	props := mstate.Object.AsMap()
-	state, gotState := props["state"]
+	moduleState := &moduleState{}
+	moduleState.Unmarshal(mstate.Object)
+
+	state := moduleState.rawState
 	t.Logf("state: %s", state)
-	assert.Truef(t, gotState, "Expected %q to register a state argument", moduleStateTypeName)
-	return []byte(state.(string))
+	return state
 }
