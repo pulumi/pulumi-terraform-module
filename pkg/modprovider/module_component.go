@@ -91,6 +91,7 @@ func NewModuleComponentResource(
 			pkgName,
 			urn,
 			packageRef,
+			args,
 			pulumi.Parent(&component),
 		)
 

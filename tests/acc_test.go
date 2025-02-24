@@ -391,12 +391,6 @@ func TestIntegration(t *testing.T) {
 
 			prefix := generateTestResourcePrefix()
 
-			envs := os.Environ()
-
-			for _, entry := range envs {
-				t.Log(entry)
-			}
-
 			// Get a prefix for resource names
 			integrationTest.SetConfig(t, "prefix", prefix)
 
