@@ -375,7 +375,6 @@ func TestS3BucketModSecret(t *testing.T) {
 		"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
 	}).Equal(t, encyptionsConfig.Inputs["rule"])
 	integrationTest.Destroy(t)
-
 }
 
 // When writing out TF files, we need to replace data that is random with a static value
@@ -396,7 +395,7 @@ func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, repl
 				s = strings.ReplaceAll(s, data, replace)
 			}
 
-			err = os.WriteFile(path, []byte(s), 0600)
+			err = os.WriteFile(path, []byte(s), 0o600)
 			if err != nil {
 				return err
 			}
@@ -510,7 +509,7 @@ func TestE2eTs(t *testing.T) {
 			deleteExpect: map[string]int{
 				"delete": 9,
 			},
-			//TODO: [Fix delete-replace on null_resource](https://github.com/pulumi/pulumi-terraform-module/issues/166)
+			// TODO: [Fix delete-replace on null_resource](https://github.com/pulumi/pulumi-terraform-module/issues/166)
 			diffNoChangesExpect: map[apitype.OpType]int{
 				apitype.OpType("replace"): 1,
 				apitype.OpType("same"):    8,
@@ -769,7 +768,6 @@ func TestE2eGo(t *testing.T) {
 				tc.moduleName,
 				tc.moduleVersion,
 				tc.moduleNamespace)
-
 			previewResult := e2eTest.Preview(t)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
@@ -858,7 +856,6 @@ func TestE2eYAML(t *testing.T) {
 
 			destroyResult := e2eTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
-
 		})
 	}
 }
@@ -884,7 +881,7 @@ func TestDiffDetail(t *testing.T) {
 	// Up
 	diffDetailTest.Up(t)
 
-	//Change program to remove the module input `server_side_encryption_configuration`
+	// Change program to remove the module input `server_side_encryption_configuration`
 	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
 
 	// Preview
@@ -1160,7 +1157,6 @@ func TestDeleteLambda(t *testing.T) {
 	} else {
 		t.Fatalf("encountered unexpected error verifying log group was deleted: %v ", err)
 	}
-
 }
 
 // Test that Pulumi understands dependencies.
