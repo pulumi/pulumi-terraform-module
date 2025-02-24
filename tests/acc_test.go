@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -295,45 +294,69 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 }
 
-func TestAwsLambdaModuleIntegration(t *testing.T) {
-	localProviderBinPath := ensureCompiledProvider(t)
-	testProgramLocation := filepath.Join("testdata", "programs", "ts", "awslambdamod")
-	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	awsLambdaTest := pulumitest.NewPulumiTest(t, testProgramLocation, localPath)
-	// Add the package to the test
-	t.Run("pulumi package add", func(t *testing.T) {
-		pulumiPackageAdd(t, awsLambdaTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
-	})
-	// Test preview
-	t.Run("pulumi preview", func(t *testing.T) {
-		skipLocalRunsWithoutCreds(t)
-		var preview bytes.Buffer
-		previewResult := awsLambdaTest.Preview(t,
-			optpreview.Diff(),
-			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(&preview),
-		)
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 9,
-		}).Equal(t, previewResult.ChangeSummary)
-	})
-	// Test up
-	t.Run("pulumi up", func(t *testing.T) {
-		t.Skip("Skipping this test until Destroy works")
-		skipLocalRunsWithoutCreds(t)
+func TestEncryptionConfig(t *testing.T) {
+	type testCase struct {
+		name                          string // Must be same as project folder in testdata/programs/ts
+		moduleName                    string
+		moduleVersion                 string
+		moduleNamespace               string
+		encryptionsConfigExpect       int
+		encryptionsConfigInputsExpect map[string]interface{}
+	}
+	testcases := []testCase{
+		{
+			name:                    "s3bucketmod",
+			moduleName:              "terraform-aws-modules/s3-bucket/aws",
+			moduleVersion:           "4.5.0",
+			moduleNamespace:         "bucket",
+			encryptionsConfigExpect: 1,
+			encryptionsConfigInputsExpect: map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				//nolint:all
+				"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
+			},
+		},
+	}
 
-		upResult := awsLambdaTest.Up(t,
-			optup.ErrorProgressStreams(os.Stderr),
-			optup.ProgressStreams(os.Stdout),
-		)
+	for _, tc := range testcases {
+		tc := tc
+		localProviderBinPath := ensureCompiledProvider(t)
+		skipLocalRunsWithoutCreds(t)
+		t.Run(tc.name, func(t *testing.T) {
+			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
+			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-		autogold.Expect(&map[string]int{
-			"create": 9,
-		}).Equal(t, upResult.Summary.ResourceChanges)
-	})
+			// Get a prefix for resource names
+			prefix := generateTestResourcePrefix()
+
+			// Set prefix via config
+			integrationTest.SetConfig(t, "prefix", prefix)
+
+			// Generate package
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
+			integrationTest.Up(t)
+
+			deploy := integrationTest.ExportStack(t)
+			var deployment apitype.DeploymentV3
+			err := json.Unmarshal(deploy.Deployment, &deployment)
+			require.NoError(t, err)
+
+			var encyptionsConfig apitype.ResourceV3
+			encyptionsConfigFound := 0
+			for _, r := range deployment.Resources {
+				if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
+					encyptionsConfig = r
+					encyptionsConfigFound++
+				}
+			}
+
+			require.Equal(t, tc.encryptionsConfigExpect, encyptionsConfigFound)
+			autogold.Expect(tc.encryptionsConfigInputsExpect).Equal(t, encyptionsConfig.Inputs["rule"])
+			integrationTest.Destroy(t)
+		})
+	}
 }
-
-// TODO: Ensure Delete truly deletes from the cloud https://github.com/pulumi/pulumi-terraform-module/issues/119
 
 func TestIntegration(t *testing.T) {
 
@@ -369,13 +392,13 @@ func TestIntegration(t *testing.T) {
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 10,
+				apitype.OpType("create"): 9,
 			},
 			upExpect: map[string]int{
-				"create": 15,
+				"create": 9,
 			},
 			deleteExpect: map[string]int{
-				"delete": 15,
+				"delete": 9,
 			},
 		},
 	}
@@ -389,9 +412,10 @@ func TestIntegration(t *testing.T) {
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
+			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
 
-			// Get a prefix for resource names
+			// Set prefix via config
 			integrationTest.SetConfig(t, "prefix", prefix)
 
 			// Generate package
@@ -405,38 +429,12 @@ func TestIntegration(t *testing.T) {
 			upResult := integrationTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
-			deploy := integrationTest.ExportStack(t)
-			var deployment apitype.DeploymentV3
-			err := json.Unmarshal(deploy.Deployment, &deployment)
-			require.NoError(t, err)
-
-			var encyptionsConfig apitype.ResourceV3
-			encyptionsConfigFound := 0
-			for _, r := range deployment.Resources {
-				if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
-					encyptionsConfig = r
-					encyptionsConfigFound++
-				}
-			}
-
-			require.Equal(t, 1, encyptionsConfigFound)
-			autogold.Expect(map[string]interface{}{
-				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				//nolint:all
-				"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
-			}).Equal(t, encyptionsConfig.Inputs["rule"])
-
-			state := integrationTest.ExportStack(t)
-
-			t.Log(string(state.Deployment))
-
 			// Delete
+			// TODO: Ensure Delete truly deletes from the cloud https://github.com/pulumi/pulumi-terraform-module/issues/119
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
-
 		})
 	}
-
 }
 
 func getRoot(t *testing.T) string {
