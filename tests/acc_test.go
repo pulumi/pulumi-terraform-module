@@ -3,7 +3,11 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/smithy-go"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -429,12 +433,68 @@ func TestDelete(t *testing.T) {
 	// Set prefix via config
 	integrationTest.SetConfig(t, "prefix", prefix)
 
+	// Save the name of the function
+	functionName := prefix + "-testlambda"
+
+	t.Log("Here's our function name: ", functionName)
+
 	// Generate package
 	//nolint:all
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
+
+	//Provision module: Lambda, Role, CloudWatch logs
 	integrationTest.Up(t)
+
+	// Verify resources with AWS Client
+	// Load the AWS SDK's configuration
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		t.Fatalf("unable to load SDK config, %v", err)
+	}
+
+	// Create an AWS Lambda client
+	client := lambda.NewFromConfig(cfg)
+	//iamClient := iam.NewFromConfig(cfg)
+
+	// Initialize request input parameters
+	lambdaInput := &lambda.GetFunctionInput{
+		FunctionName: &functionName,
+	}
+	//iamInput := &iam.GetRoleInput{RoleName: &functionName}
+
+	// Get our Lambda function
+	_, err = client.GetFunction(context.TODO(), lambdaInput)
+
+	if err != nil {
+		// A Lambda should exist at this point, so the test should fail if it does not.
+		t.Fatalf("failed to get specified Lambda function, %v", err)
+	}
+
+	//_, err = iamClient.GetRole(context.TODO(), iamInput)
+	//if err != nil {
+	//	// An IAM Role should exist at this point, so the test should fail.
+	//	t.Fatalf("failed to get specified IAM role, %v", err)
+	//}
 	// Delete
 	destroyResult := integrationTest.Destroy(t)
+
+	//	TODO: rerun the get steps from above once the setup is working
+	_, err = client.GetFunction(context.TODO(), lambdaInput)
+	if err == nil {
+		// The Lambda should have been deleted at this point.
+		t.Fatalf("found a Lambda function that should have been deleted")
+	}
+	if err != nil {
+		var ae smithy.APIError
+		if errors.As(err, &ae) {
+
+			t.Logf("code: %s, message: %s, fault: %s, error: %s", ae.ErrorCode(), ae.ErrorMessage(), ae.ErrorFault().String(), ae.Error())
+		}
+		// ResourceNotFoundException
+		t.Logf("We definitely want a function not found error here; we need to check if integrationTest locks appropriately if there's no error. %v", err)
+
+	}
+
 	t.Log(destroyResult.StdOut)
 	t.Log(destroyResult.StdErr)
 	t.Log(destroyResult.Summary)
