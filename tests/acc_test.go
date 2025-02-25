@@ -454,6 +454,8 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
+	// add pulumi bin to path. This is required to get tests to work locally
+	path = fmt.Sprintf("%s:%s", filepath.Join(getRoot(t), ".pulumi", "bin"), path)
 
 	cmd.Dir = sourceDir
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s", path))
