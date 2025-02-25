@@ -272,7 +272,7 @@ func (s *server) Construct(
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
-		KeepOutputValues: false,
+		KeepOutputValues: false, // TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
