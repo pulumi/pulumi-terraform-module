@@ -126,7 +126,7 @@ func workdirCleanDotTerraform(workdir string) error {
 func workdirPath(workdir Workdir) string {
 	tmpDir := os.TempDir()
 	prov := "pulumi-terraform-module"
-	var parts []string = []string{tmpDir, prov, "workdirs"}
+	parts := []string{tmpDir, prov, "workdirs"}
 	parts = append(parts, workdir...)
 	return filepath.Join(parts...)
 }

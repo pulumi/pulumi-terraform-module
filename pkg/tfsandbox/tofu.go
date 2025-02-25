@@ -45,7 +45,7 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
-			fmt.Sprintf("rand-%d", rand.Int()),
+			fmt.Sprintf("rand-%d", rand.Int()), //nolint:gosec
 		})
 	}
 
