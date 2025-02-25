@@ -532,6 +532,20 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 	}
 }
 
+func TestCreateState(t *testing.T) {
+	stateData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "states", "s3bucketmod.json"))
+	require.NoError(t, err)
+	var tfState *tfjson.State
+	err = json.Unmarshal(stateData, &tfState)
+	require.NoError(t, err)
+	s, err := newState(tfState)
+	assert.NoError(t, err)
+
+	s.VisitResources(func(rs *ResourceState) {
+		assert.Equal(t, rs.sr.Mode, tfjson.ManagedResourceMode)
+	})
+}
+
 func TestCreatePlan(t *testing.T) {
 	planData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "plans", "create_plan.json"))
 	require.NoError(t, err)

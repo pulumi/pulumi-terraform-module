@@ -108,7 +108,10 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"max":       "10",
 			"min":       "1",
 			"result":    "2",
-			"seed":      "9",
+			"seed": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `"9"`,
+			},
 		}).Equal(t, randInt.Inputs)
 		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
@@ -301,7 +304,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 			optpreview.ProgressStreams(&preview),
 		)
 		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 10,
+			apitype.OpType("create"): 9,
 		}).Equal(t, previewResult.ChangeSummary)
 	})
 	// Test up
@@ -315,7 +318,7 @@ func TestAwsLambdaModuleIntegration(t *testing.T) {
 		)
 
 		autogold.Expect(&map[string]int{
-			"create": 10,
+			"create": 9,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 	})
 }
@@ -344,10 +347,10 @@ func TestIntegration(t *testing.T) {
 				apitype.OpType("create"): 6,
 			},
 			upExpect: map[string]int{
-				"create": 9,
+				"create": 6,
 			},
 			deleteExpect: map[string]int{
-				"delete": 9,
+				"delete": 6,
 			},
 		},
 	}
@@ -376,6 +379,27 @@ func TestIntegration(t *testing.T) {
 			// Up
 			upResult := integrationTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			deploy := integrationTest.ExportStack(t)
+			var deployment apitype.DeploymentV3
+			err := json.Unmarshal(deploy.Deployment, &deployment)
+			require.NoError(t, err)
+
+			var encyptionsConfig apitype.ResourceV3
+			encyptionsConfigFound := 0
+			for _, r := range deployment.Resources {
+				if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
+					encyptionsConfig = r
+					encyptionsConfigFound++
+				}
+			}
+
+			require.Equal(t, 1, encyptionsConfigFound)
+			autogold.Expect(map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				//nolint:all
+				"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
+			}).Equal(t, encyptionsConfig.Inputs["rule"])
 
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
@@ -433,6 +457,8 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
+	// add pulumi bin to path. This is required to get tests to work locally
+	path = fmt.Sprintf("%s:%s", filepath.Join(getRoot(t), ".pulumi", "bin"), path)
 
 	cmd.Dir = sourceDir
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s", path))

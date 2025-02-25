@@ -42,6 +42,10 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 	}
 
 	for _, resource := range module.Resources {
+		// don't register data resources
+		if resource.Mode == tfjson.DataResourceMode {
+			continue
+		}
 		// ignore the unknown value proxy resource because we don't need to show it
 		// to the user
 		if resource.Address == fmt.Sprintf("%s.%s", terraformDataResourceType, terraformDataResourceName) {
