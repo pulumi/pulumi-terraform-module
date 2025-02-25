@@ -188,34 +188,6 @@ func unknown() resource.PropertyValue {
 	})
 }
 
-func extractPlanOutputs(outputChanges map[string]*tfjson.Change) resource.PropertyMap {
-	outputs := resource.PropertyMap{}
-	for outputKey, output := range outputChanges {
-		key := resource.PropertyKey(outputKey)
-		value := resource.NewPropertyValue(output.After)
-
-		if output.AfterUnknown != nil {
-			outputs[key] = updateResourceValue(
-				value,
-				output.AfterUnknown,
-				func(_ resource.PropertyValue) resource.PropertyValue {
-					return unknown()
-				})
-
-			continue
-		}
-
-		if output.AfterSensitive != nil {
-			outputs[key] = updateResourceValue(value, output.AfterSensitive, resource.MakeSecret)
-			continue
-		}
-
-		outputs[key] = value
-	}
-
-	return outputs
-}
-
 // secretUnknown returns true if the value is a secret and the secret value is unknown.
 func secretUnknown(value resource.PropertyValue) bool {
 	if value.IsSecret() {
@@ -228,8 +200,11 @@ func secretUnknown(value resource.PropertyValue) bool {
 	return false
 }
 
-func (res *ResourcePlan) IsInternalOutputResource() bool {
-	return strings.HasPrefix(res.Name(), terraformDataResourcePrefix)
+// IsInternalOutputResource returns true if the resource is an internal output resource.
+// which is used to expose outputs from the source module in a way that maintains unknown-ness
+// and secretness of the outputs.
+func (p *ResourcePlan) IsInternalOutputResource() bool {
+	return strings.HasPrefix(p.Name(), terraformDataResourcePrefix)
 }
 
 // Outputs returns the outputs of a terraform plan as a Pulumi property map.
@@ -279,8 +254,11 @@ func newState(rawState *tfjson.State) (*State, error) {
 	}, nil
 }
 
-func (res *ResourceState) IsInternalOutputResource() bool {
-	return strings.HasPrefix(res.Name(), terraformDataResourcePrefix)
+// IsInternalOutputResource returns true if the resource is an internal output resource.
+// which is used to expose outputs from the source module in a way that maintains unknown-ness
+// and secretness of the outputs.
+func (s *ResourceState) IsInternalOutputResource() bool {
+	return strings.HasPrefix(s.Name(), terraformDataResourcePrefix)
 }
 
 // Outputs returns the outputs of a terraform module state as a Pulumi property map.
