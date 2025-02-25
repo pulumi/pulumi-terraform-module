@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/providertest/pulumitest"
@@ -274,11 +275,14 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		tfStateRaw, gotTfState := moduleState.Outputs["state"]
 		require.True(t, gotTfState)
 
-		tfState, isStr := tfStateRaw.(string)
-		require.True(t, isStr)
+		tfState, isMap := tfStateRaw.(map[string]interface{})
+		require.True(t, isMap)
 
-		require.Less(t, 10, len(tfState))
-		require.Contains(t, tfState, "vpc_id")
+		//nolint:lll
+		// secret signature https://github.com/pulumi/pulumi/blob/4e3ca419c9dc3175399fc24e2fa43f7d9a71a624/developer-docs/architecture/deployment-schema.md?plain=1#L483-L487
+		assert.Contains(t, tfState, "4dabf18193072939515e22adb298388d")
+		assert.Equal(t, tfState["4dabf18193072939515e22adb298388d"], "1b47061264138c4ac30d75fd1eb44270")
+		require.Contains(t, tfState["plaintext"], "vpc_id")
 	})
 }
 
