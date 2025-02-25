@@ -123,10 +123,9 @@ func NewModuleComponentResource(
 	tfName := getModuleName(urn)
 
 	outputSpecs := []tfsandbox.TFOutputSpec{}
-	for outputName, spec := range inferredModule.Outputs {
+	for outputName := range inferredModule.Outputs {
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name:      outputName,
-			Sensitive: spec.Secret,
+			Name: outputName,
 		})
 	}
 	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args, outputSpecs)
@@ -165,6 +164,12 @@ func NewModuleComponentResource(
 		var errs []error
 
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
+			if rp.IsInternalOutputResource() {
+				// skip internal output resources which we created
+				// so that we propagate outputs from module
+				return
+			}
+
 			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 
@@ -203,6 +208,11 @@ func NewModuleComponentResource(
 
 		var errs []error
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
+			if rp.IsInternalOutputResource() {
+				// skip internal output resources which we created
+				// so that we propagate outputs from module
+				return
+			}
 			cr, err := newChildResource(ctx, urn, pkgName, rp,
 				pulumi.Parent(&component),
 

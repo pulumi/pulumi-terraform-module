@@ -15,6 +15,8 @@
 package tfsandbox
 
 import (
+	"strings"
+
 	tfjson "github.com/hashicorp/terraform-json"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -214,9 +216,41 @@ func extractPlanOutputs(outputChanges map[string]*tfjson.Change) resource.Proper
 	return outputs
 }
 
+// secretUnknown returns true if the value is a secret and the secret value is unknown.
+func secretUnknown(value resource.PropertyValue) bool {
+	if value.IsSecret() {
+		secret := value.SecretValue()
+		if secret != nil && secret.Element.IsComputed() {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (res *ResourcePlan) IsInternalOutputResource() bool {
+	return strings.HasPrefix(res.Name(), terraformDataResourcePrefix)
+}
+
 // Outputs returns the outputs of a terraform plan as a Pulumi property map.
 func (p *Plan) Outputs() resource.PropertyMap {
-	return extractPlanOutputs(p.rawPlan.OutputChanges)
+	outputs := resource.PropertyMap{}
+	p.Resources.VisitResources(func(res *ResourcePlan) {
+		if res.IsInternalOutputResource() {
+			withoutPrefix := strings.TrimPrefix(res.Name(), terraformDataResourcePrefix)
+			outputKey := resource.PropertyKey(withoutPrefix)
+			plannedValues := res.PlannedValues()
+			if v, ok := plannedValues[resource.PropertyKey("input")]; ok {
+				if secretUnknown(v) {
+					// collapse secret unknowns into just unknown
+					outputs[outputKey] = unknown()
+				} else {
+					outputs[outputKey] = v
+				}
+			}
+		}
+	})
+	return outputs
 }
 
 type State struct {
@@ -245,22 +279,23 @@ func newState(rawState *tfjson.State) (*State, error) {
 	}, nil
 }
 
+func (res *ResourceState) IsInternalOutputResource() bool {
+	return strings.HasPrefix(res.Name(), terraformDataResourcePrefix)
+}
+
 // Outputs returns the outputs of a terraform module state as a Pulumi property map.
-// Sensitive outputs are marked as secret.
 func (s *State) Outputs() resource.PropertyMap {
 	outputs := resource.PropertyMap{}
-	if s.rawState.Values == nil {
-		return outputs
-	}
-	for outputKey, output := range s.rawState.Values.Outputs {
-		key := resource.PropertyKey(outputKey)
-		value := resource.NewPropertyValue(output.Value)
-		if output.Sensitive {
-			value = resource.MakeSecret(value)
+	s.Resources.VisitResources(func(res *ResourceState) {
+		if res.IsInternalOutputResource() {
+			withoutPrefix := strings.TrimPrefix(res.Name(), terraformDataResourcePrefix)
+			outputKey := resource.PropertyKey(withoutPrefix)
+			attributeValues := res.AttributeValues()
+			if v, ok := attributeValues[resource.PropertyKey("input")]; ok {
+				outputs[outputKey] = v
+			}
 		}
-
-		outputs[key] = value
-	}
+	})
 
 	return outputs
 }

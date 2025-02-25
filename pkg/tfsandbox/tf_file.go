@@ -14,13 +14,12 @@ import (
 type TFOutputSpec struct {
 	// The name of the output.
 	Name string
-	// Whether the output is sensitive.
-	Sensitive bool
 }
 
 var (
-	terraformDataResourceType = "terraform_data"
-	terraformDataResourceName = "unknown_proxy"
+	terraformDataResourceType   = "terraform_data"
+	terraformDataResourceName   = "unknown_proxy"
+	terraformDataResourcePrefix = "internal_output_"
 )
 
 // decode decodes a PropertyValue, recursively replacing any unknown values
@@ -79,14 +78,13 @@ func CreateTFFile(
 
 	containsUnknowns := inputs.ContainsUnknowns()
 
+	resources := map[string]map[string]interface{}{}
 	// NOTE: this should only happen at plan time. At apply time all computed values
 	// should be resolved
 	if containsUnknowns {
-		tfFile["resource"] = map[string]interface{}{
-			terraformDataResourceType: map[string]interface{}{
-				terraformDataResourceName: map[string]interface{}{
-					"input": "unknown",
-				},
+		resources[terraformDataResourceType] = map[string]interface{}{
+			terraformDataResourceName: map[string]interface{}{
+				"input": "unknown",
 			},
 		}
 	}
@@ -106,33 +104,38 @@ func CreateTFFile(
 		moduleProps[tfKey] = v
 	}
 
-	// for every output in the source module, create an output in wrapping module
-	// such that the outputs become available to the caller of the wrapping module
-	// the format in the JSON terraform file is as follows:
-	// output: [
-	//   { "output_name1": { "value": "${module.source_module.output_name1}" } },
-	//   { "output_name2": { "value": "${module.source_module.output_name2}" } },
-	//   ...
-	// ]
-	// if the source module output is sensitive,
-	// we mark the wrapping output as sensitive as well
-	moduleOutputs := []map[string]interface{}{}
+	// To expose outputs from a module, we create proxy resources of type "terraform_data"
+	// the inputs to those resources are the outputs of the source module
+	// the resources are named "internal_output_<output_name>" and have the following format
+	// "resource": {
+	//    "terraform_data": {
+	//       "internal_output_output_name1": {
+	//           "input": "${module.source_module.output_name1}"
+	//       },
+	//       "internal_output_output_name2": {
+	//           "input": "${module.source_module.output_name2}"
+	//       },
+	//       ...
+	//     }
+	// }
+	// the reason we are using terraform_data resource is because
+	// they maintain unknown-ness and secretness of the outputs of the modules
+	// regardless of whether the outputs were marked as sensitive or not
 	for _, output := range outputs {
-		definition := map[string]interface{}{
-			"value": fmt.Sprintf("${module.%s.%s}", name, output.Name),
-		}
-		if output.Sensitive {
-			definition["sensitive"] = true
+		if _, ok := resources[terraformDataResourceType]; !ok {
+			resources[terraformDataResourceType] = map[string]interface{}{}
 		}
 
-		moduleOutputs = append(moduleOutputs, map[string]interface{}{
-			output.Name: definition,
-		})
+		resourceName := fmt.Sprintf("%s%s", terraformDataResourcePrefix, output.Name)
+		resources[terraformDataResourceType][resourceName] = map[string]interface{}{
+			"input": fmt.Sprintf("${module.%s.%s}", name, output.Name),
+		}
 	}
 
-	if len(moduleOutputs) > 0 {
-		tfFile["output"] = moduleOutputs
+	if len(resources) > 0 {
+		tfFile["resource"] = resources
 	}
+
 	tfFile["module"] = map[string]interface{}{
 		name: moduleProps,
 	}

@@ -34,9 +34,9 @@ func TestState(t *testing.T) {
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
 	outputs := []TFOutputSpec{
-		{Name: "output1", Sensitive: false},
-		{Name: "sensitive_output", Sensitive: true},
-		{Name: "statically_known", Sensitive: false},
+		{Name: "output1"},
+		{Name: "sensitive_output"},
+		{Name: "statically_known"},
 	}
 	ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
