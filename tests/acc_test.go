@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
-	"github.com/aws/smithy-go"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -415,15 +417,14 @@ func TestIntegration(t *testing.T) {
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
 			// Delete
-			// TODO: Ensure Delete truly deletes from the cloud https://github.com/pulumi/pulumi-terraform-module/issues/119
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
 
-func TestDelete(t *testing.T) {
-	// Set up Lambda with Role and logs
+func TestDeleteLambda(t *testing.T) {
+	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "awslambdamod")
@@ -439,61 +440,65 @@ func TestDelete(t *testing.T) {
 	// Save the name of the function
 	functionName := prefix + "-testlambda"
 
-	t.Log("Here's our function name: ", functionName)
-
 	// Generate package
-	//nolint:all
+	//nolint:lll
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
 
-	//Provision module: Lambda, Role, CloudWatch logs
 	integrationTest.Up(t)
 
 	// Verify resources with AWS Client
 	// Load the AWS SDK's configuration
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		t.Fatalf("unable to load SDK config, %v", err)
 	}
 
-	// Create an AWS Lambda client
+	// Create AWS clients
 	lambdaClient := lambda.NewFromConfig(cfg)
 	iamClient := iam.NewFromConfig(cfg)
+	cloudwatchlogsClient := cloudwatchlogs.NewFromConfig(cfg)
 
 	// Initialize request input parameters
 	lambdaInput := &lambda.GetFunctionInput{
 		FunctionName: &functionName,
 	}
 	iamInput := &iam.GetRoleInput{
-		RoleName: &functionName
+		RoleName: &functionName,
+	}
+	logGroupName := "/aws/lambda/" + functionName
+	cloudwatchlogsInput := &cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(logGroupName),
 	}
 
-	// Get our Lambda function
-	_, err = lambdaClient.GetFunction(context.TODO(), lambdaInput)
-
-	t.Log("Verifying Lambda, IAM, and Cloudwatch logs were provisioned...")
+	// Verify resources exist
+	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
 	if err != nil {
-		// The specified Lambda should exist at this point, so the test should fail if it does not.
-		t.Fatalf("failed to get specified Lambda function, %v", err)
+		t.Fatalf("failed to get  Lambda function %s: %v", *lambdaInput.FunctionName, err)
 	}
 
-	_, err = iamClient.GetRole(context.TODO(), iamInput)
+	_, err = iamClient.GetRole(ctx, iamInput)
 	if err != nil {
-		// The specified IAM Role should exist at this point, so the test should fail.
-		t.Fatalf("failed to get specified IAM role, %v", err)
+		t.Fatalf("failed to get IAM role %s: %v", *iamInput.RoleName, err)
 	}
-	// TODO: CloudWatch
-	t.Log("Verified Lambda, IAM, and Cloudwatch logs were provisioned successfully")
 
-	// Delete
-	destroyResult := integrationTest.Destroy(t)
+	resp, err := cloudwatchlogsClient.DescribeLogGroups(context.TODO(), cloudwatchlogsInput)
+	if err != nil {
+		log.Fatalf("failed to describe log group, %v", err)
+	}
+	if !(len(resp.LogGroups) > 0) {
+		t.Fatalf("log group %s not found.", logGroupName)
+	}
 
-	// Rerun the get steps from above to see if Delete worked
-	_, err = lambdaClient.GetFunction(context.TODO(), lambdaInput)
+	integrationTest.Destroy(t)
+
+	// Rerun the AWS calls from above to see if Delete worked. We should see NotFound errors.
+	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
 	if err == nil {
-		// The Lambda should have been deleted at this point.
+		//nolint:lll
 		t.Fatalf("delete verification failed: found a Lambda function that should have been deleted: %s", *lambdaInput.FunctionName)
-	}else {
-		// ResourceNotFoundException is what we want. Fail on other errors.
+	} else {
+		// ResourceNotFoundException is the expected response after Delete
 		var resourceNotFoundError *lambdatypes.ResourceNotFoundException
 		if !errors.As(err, &resourceNotFoundError) {
 			t.Fatalf("encountered unexpected error verifying Lambda function was deleted: %v ", err)
@@ -501,21 +506,27 @@ func TestDelete(t *testing.T) {
 	}
 
 	// Verify IAM was deleted
-	_, err = iamClient.GetRole(context.TODO(), iamInput)
+	_, err = iamClient.GetRole(ctx, iamInput)
 	if err == nil {
-		// The Role should have been deleted at this point.
 		t.Fatalf("found an IAM Role that should have been deleted: %s", *iamInput.RoleName)
 	} else {
-		// No Such Entity Exception is what we want. Fail on other errors.
+		// No Such Entity Exception is the expected response after Delete.
 		var noSuchEntityError *iamtypes.NoSuchEntityException
 		if !errors.As(err, &noSuchEntityError) {
 			t.Fatalf("encountered unexpected error verifying IAM role was deleted: %v ", err)
 		}
 	}
 
-	t.Log(destroyResult.StdOut)
-	t.Log(destroyResult.StdErr)
-	t.Log(destroyResult.Summary)
+	// Verify CloudWatch log group was deleted
+	resp, err = cloudwatchlogsClient.DescribeLogGroups(ctx, cloudwatchlogsInput)
+	if err == nil {
+		if len(resp.LogGroups) > 0 {
+			//nolint:lll
+			log.Fatalf("found a log group that should have been deleted, %s", *cloudwatchlogsInput.LogGroupNamePrefix)
+		}
+	} else {
+		t.Fatalf("encountered unexpected error verifying log group was deleted: %v ", err)
+	}
 
 }
 
