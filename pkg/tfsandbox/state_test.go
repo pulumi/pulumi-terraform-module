@@ -33,18 +33,43 @@ func TestState(t *testing.T) {
 	require.NoError(t, err, "error initializing tofu")
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
+	outputs := []TFOutputSpec{
+		{Name: "output1"},
+		{Name: "sensitive_output"},
+		{Name: "statically_known"},
+	}
 	ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"inputVar": "test",
-		}))
+		}), outputs)
 	require.NoError(t, err, "error creating tf file")
 
 	err = tofu.Init(ctx)
 	require.NoError(t, err, "error running tofu init")
 
+	initialPlan, err := tofu.Plan(ctx)
+	require.NoError(t, err, "error running tofu plan (before apply)")
+	require.NotNil(t, initialPlan, "expected a non-nil plan")
+
+	plannedOutputs := initialPlan.Outputs()
+	require.Equal(t, resource.PropertyMap{
+		resource.PropertyKey("output1"):          unknown(),
+		resource.PropertyKey("sensitive_output"): unknown(),
+		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
+	}, plannedOutputs)
+
 	state, err := tofu.Apply(ctx)
 	require.NoError(t, err, "error running tofu apply")
+
+	moduleOutputs := state.Outputs()
+	// output value is the same as the input
+	expectedOutputValue := resource.NewStringProperty("test")
+	require.Equal(t, resource.PropertyMap{
+		resource.PropertyKey("output1"):          expectedOutputValue,
+		resource.PropertyKey("sensitive_output"): resource.MakeSecret(expectedOutputValue),
+		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
+	}, moduleOutputs)
 
 	rawState, ok, err := tofu.PullState(ctx)
 	require.NoError(t, err, "error pulling tofu state")

@@ -15,6 +15,8 @@
 package tfsandbox
 
 import (
+	"strings"
+
 	tfjson "github.com/hashicorp/terraform-json"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -176,6 +178,54 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	}, nil
 }
 
+// unknown returns a computed property with an empty string.
+// used to represent unknown values from a terraform plan or state file
+func unknown() resource.PropertyValue {
+	return resource.NewComputedProperty(resource.Computed{
+		Element: resource.NewStringProperty(""),
+	})
+}
+
+// secretUnknown returns true if the value is a secret and the secret value is unknown.
+func secretUnknown(value resource.PropertyValue) bool {
+	if value.IsSecret() {
+		secret := value.SecretValue()
+		if secret != nil && secret.Element.IsComputed() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsInternalOutputResource returns true if the resource is an internal output resource.
+// which is used to expose outputs from the source module in a way that maintains unknown-ness
+// and secretness of the outputs.
+func (p *ResourcePlan) IsInternalOutputResource() bool {
+	return strings.HasPrefix(p.Name(), terraformDataResourcePrefix)
+}
+
+// Outputs returns the outputs of a terraform plan as a Pulumi property map.
+func (p *Plan) Outputs() resource.PropertyMap {
+	outputs := resource.PropertyMap{}
+	p.Resources.VisitResources(func(res *ResourcePlan) {
+		if res.IsInternalOutputResource() {
+			withoutPrefix := strings.TrimPrefix(res.Name(), terraformDataResourcePrefix)
+			outputKey := resource.PropertyKey(withoutPrefix)
+			plannedValues := res.PlannedValues()
+			if v, ok := plannedValues[resource.PropertyKey("input")]; ok {
+				if secretUnknown(v) {
+					// collapse secret unknowns into just unknown
+					outputs[outputKey] = unknown()
+				} else {
+					outputs[outputKey] = v
+				}
+			}
+		}
+	})
+	return outputs
+}
+
 type State struct {
 	Resources[*ResourceState]
 	rawState *tfjson.State
@@ -200,4 +250,28 @@ func newState(rawState *tfjson.State) (*State, error) {
 		},
 		rawState: rawState,
 	}, nil
+}
+
+// IsInternalOutputResource returns true if the resource is an internal output resource.
+// which is used to expose outputs from the source module in a way that maintains unknown-ness
+// and secretness of the outputs.
+func (s *ResourceState) IsInternalOutputResource() bool {
+	return strings.HasPrefix(s.Name(), terraformDataResourcePrefix)
+}
+
+// Outputs returns the outputs of a terraform module state as a Pulumi property map.
+func (s *State) Outputs() resource.PropertyMap {
+	outputs := resource.PropertyMap{}
+	s.Resources.VisitResources(func(res *ResourceState) {
+		if res.IsInternalOutputResource() {
+			withoutPrefix := strings.TrimPrefix(res.Name(), terraformDataResourcePrefix)
+			outputKey := resource.PropertyKey(withoutPrefix)
+			attributeValues := res.AttributeValues()
+			if v, ok := attributeValues[resource.PropertyKey("input")]; ok {
+				outputs[outputKey] = v
+			}
+		}
+	})
+
+	return outputs
 }

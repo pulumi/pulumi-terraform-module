@@ -615,7 +615,3 @@ func TestCreatePlan(t *testing.T) {
 		}),
 	}), resource.NewObjectProperty(rBucketVersioning.PlannedValues()))
 }
-
-func unknown() resource.PropertyValue {
-	return resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")})
-}

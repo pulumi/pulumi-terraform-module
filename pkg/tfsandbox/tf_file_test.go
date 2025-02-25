@@ -38,6 +38,7 @@ func TestCreateTFFile(t *testing.T) {
 		name           string
 		tfVariableType string
 		inputsValue    resource.PropertyValue
+		outputs        []TFOutputSpec
 	}{
 		{
 			name:           "string",
@@ -254,7 +255,7 @@ func TestCreateTFFile(t *testing.T) {
 
 			err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
 				"tfVar": tt.inputsValue,
-			})
+			}, tt.outputs)
 			assert.NoError(t, err)
 
 			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), "pulumi.tf.json"))

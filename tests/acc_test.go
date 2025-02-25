@@ -74,15 +74,24 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"create": 5,
 		}).Equal(t, upResult.Summary.ResourceChanges)
 
-		// TODO[pulumi/pulumi-terraform-module#90] implement output propagation.
-		require.Contains(t, upResult.StdOut+upResult.StdErr,
-			"warning: Undefined value (randomPriority) will not show as a stack output.")
+		outputs, err := pt.CurrentStack().Outputs(context.Background())
+		require.NoError(t, err, "failed to get stack outputs")
+		require.Len(t, outputs, 2, "expected two outputs")
+		randomPriority, ok := outputs["randomPriority"]
+		require.True(t, ok, "expected output randomPriority")
+		require.Equal(t, "2", randomPriority.Value)
+		require.False(t, randomPriority.Secret, "expected output randomPriority to not be secret")
+
+		randomSeed, ok := outputs["randomSeed"]
+		require.True(t, ok, "expected output randomSeed")
+		require.Equal(t, "9", randomSeed.Value)
+		require.True(t, randomSeed.Secret, "expected output randomSeed to be secret")
 
 		deploy := pt.ExportStack(t)
 		t.Logf("STATE: %s", string(deploy.Deployment))
 
 		var deployment apitype.DeploymentV3
-		err := json.Unmarshal(deploy.Deployment, &deployment)
+		err = json.Unmarshal(deploy.Deployment, &deployment)
 		require.NoError(t, err)
 
 		var randInt apitype.ResourceV3

@@ -15,7 +15,6 @@
 package modprovider
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -34,15 +33,9 @@ func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 
 // sandbox will be available and having run `terraform init` it will have resolved and downloaded the module sources.
 // The code will need to run input/output schema inference for these sources to compute an appropriate PackageSpec.
-func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
+func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModuleSchema) (*schema.PackageSpec, error) {
 	pkgVer := inferPackageVersion(pargs.TFModuleVersion)
 	packageName := pargs.PackageName
-	inferredModule, err := InferModuleSchema(ctx, packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
-	if err != nil {
-		return nil, fmt.Errorf("error while inferring module schema for %s@%s: %w",
-			pargs.TFModuleSource, pargs.TFModuleVersion, err)
-	}
-
 	mainResourceToken := fmt.Sprintf("%s:index:%s", packageName, defaultComponentTypeName)
 	packageSpec := &schema.PackageSpec{
 		Name:    string(packageName),

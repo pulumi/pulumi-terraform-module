@@ -14,3 +14,4 @@ const m = new randmod.Module("myrandmod", {
 });
 
 export const randomPriority = m.random_priority;
+export const randomSeed = m.random_seed;

@@ -228,7 +228,11 @@ func (h *moduleStateHandler) Delete(
 	urn := h.mustParseModURN(req.OldInputs)
 	tfName := getModuleName(urn)
 
-	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion, tf.WorkingDir(), resource.PropertyMap{})
+	// when deleting, we do not require outputs to be exposed
+	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
+		tf.WorkingDir(),
+		resource.PropertyMap{}, /*inputs*/
+		[]tfsandbox.TFOutputSpec{} /*outputs*/)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
