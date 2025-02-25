@@ -33,14 +33,6 @@ type Tofu struct {
 	tf *tfexec.Terraform
 }
 
-type TofuArgs struct {
-	// The name of the Pulumi project.
-	Project string
-
-	// The name of the Pulumi stack.
-	Stack string
-}
-
 // WorkingDir returns the Terraform working directory
 // where all tofu commands will be run.
 func (t *Tofu) WorkingDir() string {
