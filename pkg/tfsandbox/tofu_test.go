@@ -12,7 +12,7 @@ import (
 )
 
 func TestTofuInit(t *testing.T) {
-	tofu, err := NewTofu(context.Background())
+	tofu, err := NewTofu(context.Background(), nil)
 	assert.NoError(t, err)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
@@ -26,7 +26,7 @@ func TestTofuInit(t *testing.T) {
 }
 
 func TestTofuPlan(t *testing.T) {
-	tofu, err := NewTofu(context.Background())
+	tofu, err := NewTofu(context.Background(), nil)
 	assert.NoError(t, err)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 	ctx := context.Background()
@@ -50,7 +50,7 @@ func TestTofuPlan(t *testing.T) {
 }
 
 func TestTofuApply(t *testing.T) {
-	tofu, err := NewTofu(context.Background())
+	tofu, err := NewTofu(context.Background(), nil)
 	assert.NoError(t, err)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 	ctx := context.Background()

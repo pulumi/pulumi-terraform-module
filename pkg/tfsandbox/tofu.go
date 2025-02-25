@@ -1,9 +1,23 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tfsandbox
 
 import (
 	"context"
 	"fmt"
-	"os"
+	"math/rand/v2"
 	"path"
 	"runtime"
 
@@ -19,6 +33,14 @@ type Tofu struct {
 	tf *tfexec.Terraform
 }
 
+type TofuArgs struct {
+	// The name of the Pulumi project.
+	Project string
+
+	// The name of the Pulumi stack.
+	Stack string
+}
+
 // WorkingDir returns the Terraform working directory
 // where all tofu commands will be run.
 func (t *Tofu) WorkingDir() string {
@@ -27,19 +49,22 @@ func (t *Tofu) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context) (*Tofu, error) {
+func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
+	// This is only used for testing.
+	if workdir == nil {
+		workdir = Workdir([]string{
+			fmt.Sprintf("rand-%d", rand.Int()),
+		})
+	}
+
 	execPath, err := getTofuExecutable(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error downloading tofu: %w", err)
 	}
 
-	// We will create a separate directory for each module,
-	// and MkdirTemp appends a random string to the end of the directory
-	// name to ensure uniqueness. Using the system temp directory should
-	// ensure the system cleans up after itself
-	workDir, err := os.MkdirTemp("", "pulumi-module-workdir")
+	workDir, err := workdirGetOrCreate(workdir)
 	if err != nil {
-		return nil, fmt.Errorf("error creating a tf module directory: %w", err)
+		return nil, err
 	}
 
 	tf, err := tfexec.NewTerraform(workDir, execPath)

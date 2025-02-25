@@ -29,7 +29,7 @@ import (
 func TestState(t *testing.T) {
 	ctx := context.Background()
 
-	tofu, err := NewTofu(ctx)
+	tofu, err := NewTofu(ctx, nil)
 	require.NoError(t, err, "error initializing tofu")
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 

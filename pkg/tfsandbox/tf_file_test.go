@@ -245,7 +245,7 @@ func TestCreateTFFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tofu, err := NewTofu(context.Background())
+			tofu, err := NewTofu(context.Background(), nil)
 			assert.NoError(t, err)
 			t.Cleanup(func() {
 				os.RemoveAll(tofu.WorkingDir())
