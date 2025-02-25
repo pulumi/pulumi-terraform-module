@@ -16,7 +16,7 @@ type TFOutputSpec struct {
 	Name string
 }
 
-var (
+const (
 	terraformDataResourceType   = "terraform_data"
 	terraformDataResourceName   = "unknown_proxy"
 	terraformDataResourcePrefix = "internal_output_"

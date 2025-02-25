@@ -218,6 +218,7 @@ func (h *moduleStateHandler) Delete(
 	urn := h.mustParseModURN(req.OldInputs)
 	tfName := getModuleName(urn)
 
+	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
 		resource.PropertyMap{}, /*inputs*/

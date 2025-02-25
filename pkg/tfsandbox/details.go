@@ -148,7 +148,6 @@ func (s *ResourceState) Values() resource.PropertyMap { return s.AttributeValues
 
 type Plan struct {
 	Resources[*ResourcePlan]
-	rawPlan *tfjson.Plan
 }
 
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
@@ -176,7 +175,6 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 				}
 			},
 		},
-		rawPlan: rawPlan,
 	}, nil
 }
 
