@@ -87,21 +87,14 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		var randInt apitype.ResourceV3
 		randIntFound := 0
-		var modState apitype.ResourceV3
-		modStateFound := 0
 		for _, r := range deployment.Resources {
 			if r.Type == "randmod:tf:random_integer" {
 				randInt = r
 				randIntFound++
 			}
-			if r.Type == "randmod:index:ModuleState" {
-				modState = r
-				modStateFound++
-			}
 		}
 
 		require.Equal(t, 1, randIntFound)
-		require.Equal(t, 1, modStateFound)
 
 		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
@@ -116,14 +109,6 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"seed":      "9",
 		}).Equal(t, randInt.Inputs)
 		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
-
-		// Assert that the module state is a secret
-		state, ok := modState.Outputs["state"].(map[string]interface{})
-		assert.Truef(t, ok, "expected state to be a map[string]interface{} but got %T", modState.Outputs["state"])
-		//nolint:lll
-		// secret signature https://github.com/pulumi/pulumi/blob/4e3ca419c9dc3175399fc24e2fa43f7d9a71a624/developer-docs/architecture/deployment-schema.md?plain=1#L483-L487
-		assert.Contains(t, state, "4dabf18193072939515e22adb298388d")
-		assert.Equal(t, state["4dabf18193072939515e22adb298388d"], "1b47061264138c4ac30d75fd1eb44270")
 	})
 
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
@@ -287,11 +272,14 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		tfStateRaw, gotTfState := moduleState.Outputs["state"]
 		require.True(t, gotTfState)
 
-		tfState, isStr := tfStateRaw.(string)
-		require.True(t, isStr)
+		tfState, isMap := tfStateRaw.(map[string]interface{})
+		require.True(t, isMap)
 
-		require.Less(t, 10, len(tfState))
-		require.Contains(t, tfState, "vpc_id")
+		//nolint:lll
+		// secret signature https://github.com/pulumi/pulumi/blob/4e3ca419c9dc3175399fc24e2fa43f7d9a71a624/developer-docs/architecture/deployment-schema.md?plain=1#L483-L487
+		assert.Contains(t, tfState, "4dabf18193072939515e22adb298388d")
+		assert.Equal(t, tfState["4dabf18193072939515e22adb298388d"], "1b47061264138c4ac30d75fd1eb44270")
+		require.Contains(t, tfState["plaintext"], "vpc_id")
 	})
 }
 
