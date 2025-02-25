@@ -245,7 +245,8 @@ func (h *moduleStateHandler) Delete(
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
 		olds["args"].ObjectValue(), /*inputs*/
-		[]tfsandbox.TFOutputSpec{}  /*outputs*/)
+		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)

@@ -269,10 +269,11 @@ func (s *server) Construct(
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
 	inputProps, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: false, // TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
+		KeepOutputValues: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
