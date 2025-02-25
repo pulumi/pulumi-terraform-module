@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/aws/smithy-go"
 	"math/rand"
 	"os"
@@ -453,46 +456,61 @@ func TestDelete(t *testing.T) {
 	}
 
 	// Create an AWS Lambda client
-	client := lambda.NewFromConfig(cfg)
-	//iamClient := iam.NewFromConfig(cfg)
+	lambdaClient := lambda.NewFromConfig(cfg)
+	iamClient := iam.NewFromConfig(cfg)
 
 	// Initialize request input parameters
 	lambdaInput := &lambda.GetFunctionInput{
 		FunctionName: &functionName,
 	}
-	//iamInput := &iam.GetRoleInput{RoleName: &functionName}
+	iamInput := &iam.GetRoleInput{
+		RoleName: &functionName
+	}
 
 	// Get our Lambda function
-	_, err = client.GetFunction(context.TODO(), lambdaInput)
+	_, err = lambdaClient.GetFunction(context.TODO(), lambdaInput)
 
+	t.Log("Verifying Lambda, IAM, and Cloudwatch logs were provisioned...")
 	if err != nil {
-		// A Lambda should exist at this point, so the test should fail if it does not.
+		// The specified Lambda should exist at this point, so the test should fail if it does not.
 		t.Fatalf("failed to get specified Lambda function, %v", err)
 	}
 
-	//_, err = iamClient.GetRole(context.TODO(), iamInput)
-	//if err != nil {
-	//	// An IAM Role should exist at this point, so the test should fail.
-	//	t.Fatalf("failed to get specified IAM role, %v", err)
-	//}
+	_, err = iamClient.GetRole(context.TODO(), iamInput)
+	if err != nil {
+		// The specified IAM Role should exist at this point, so the test should fail.
+		t.Fatalf("failed to get specified IAM role, %v", err)
+	}
+	// TODO: CloudWatch
+	t.Log("Verified Lambda, IAM, and Cloudwatch logs were provisioned successfully")
+
 	// Delete
 	destroyResult := integrationTest.Destroy(t)
 
-	//	TODO: rerun the get steps from above once the setup is working
-	_, err = client.GetFunction(context.TODO(), lambdaInput)
+	// Rerun the get steps from above to see if Delete worked
+	_, err = lambdaClient.GetFunction(context.TODO(), lambdaInput)
 	if err == nil {
 		// The Lambda should have been deleted at this point.
-		t.Fatalf("found a Lambda function that should have been deleted")
-	}
-	if err != nil {
-		var ae smithy.APIError
-		if errors.As(err, &ae) {
-
-			t.Logf("code: %s, message: %s, fault: %s, error: %s", ae.ErrorCode(), ae.ErrorMessage(), ae.ErrorFault().String(), ae.Error())
+		t.Fatalf("delete verification failed: found a Lambda function that should have been deleted: %s", *lambdaInput.FunctionName)
+	}else {
+		// ResourceNotFoundException is what we want. Fail on other errors.
+		var resourceNotFoundError *lambdatypes.ResourceNotFoundException
+		if !errors.As(err, &resourceNotFoundError) {
+			t.Fatalf("encountered unexpected error verifying Lambda function was deleted: %v ", err)
 		}
-		// ResourceNotFoundException
-		t.Logf("We definitely want a function not found error here; we need to check if integrationTest locks appropriately if there's no error. %v", err)
+	}
 
+	// Verify IAM was deleted
+	_, err = iamClient.GetRole(context.TODO(), iamInput)
+	if err == nil {
+		// The Role should have been deleted at this point.
+		t.Fatalf("found an IAM Role that should have been deleted: %s", *iamInput.RoleName)
+	} else {
+		// No Such Entity Exception is what we want. Fail on other errors.
+		var noSuchEntityError *iamtypes.NoSuchEntityException
+		if !errors.As(err, &noSuchEntityError) {
+			t.Fatalf("encountered unexpected error verifying IAM role was deleted: %v ", err)
+		}
 	}
 
 	t.Log(destroyResult.StdOut)
