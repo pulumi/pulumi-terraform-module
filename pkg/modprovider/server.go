@@ -224,7 +224,7 @@ func (s *server) acquirePackageReference(
 	monitorAddress string,
 ) (string, error) {
 	if s.params == nil {
-		return "", fmt.Errorf("expected parameter to be set before acquiring package reference")
+		return "", fmt.Errorf("expected package parameters to be set before acquiring package reference")
 	}
 
 	if s.packageVersion == "" {
