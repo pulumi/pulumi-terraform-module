@@ -423,6 +423,7 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
+// Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
 func TestDeleteLambda(t *testing.T) {
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
 	localProviderBinPath := ensureCompiledProvider(t)
@@ -486,9 +487,7 @@ func TestDeleteLambda(t *testing.T) {
 	if err != nil {
 		log.Fatalf("failed to describe log group, %v", err)
 	}
-	if !(len(resp.LogGroups) > 0) {
-		t.Fatalf("log group %s not found.", logGroupName)
-	}
+	require.Truef(t, len(resp.LogGroups) > 0, "log group %s not found.", logGroupName)
 
 	integrationTest.Destroy(t)
 

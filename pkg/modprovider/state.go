@@ -214,7 +214,7 @@ func (h *moduleStateHandler) Update(
 	}, nil
 }
 
-// Delete does not do anything. This could be reused to trigger deletion support in the future
+// Delete calls TF Destroy on the module's resources
 func (h *moduleStateHandler) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
@@ -236,6 +236,8 @@ func (h *moduleStateHandler) Delete(
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
+		KeepOutputValues: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
