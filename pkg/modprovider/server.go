@@ -22,12 +22,15 @@ import (
 	"io/fs"
 	"os"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -196,7 +199,7 @@ func (*server) GetPluginInfo(
 	_ *emptypb.Empty,
 ) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
-		Version: "1.0.0",
+		Version: Version(),
 	}, nil
 }
 
@@ -212,6 +215,55 @@ func (*server) Configure(
 	}, nil
 }
 
+// acquirePackageReference registers the parameterized package in the engine and returns
+// a self reference. This reference is then used when registering child resources in the module
+// that are wrapping. This is necessary so that the engine understand that child resources created
+// from the terraform module are part of this package, hence the self reference.
+func (s *server) acquirePackageReference(
+	ctx context.Context,
+	monitorAddress string,
+) (string, error) {
+	if s.params == nil {
+		return "", fmt.Errorf("expected parameter to be set before acquiring package reference")
+	}
+
+	if s.packageVersion == "" {
+		return "", fmt.Errorf("expected package version to be non-empty before acquiring package reference")
+	}
+
+	conn, err := grpc.NewClient(
+		monitorAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return "", fmt.Errorf("connect to resource monitor: %w", err)
+	}
+	defer conn.Close()
+
+	monitor := pulumirpc.NewResourceMonitorClient(conn)
+	parameter, err := json.Marshal(s.params)
+	if err != nil {
+		return "", fmt.Errorf("json.Marshal failed to serialize parameter: %w", err)
+	}
+
+	response, err := monitor.RegisterPackage(ctx, &pulumirpc.RegisterPackageRequest{
+		Name:    Name(),
+		Version: Version(),
+		Parameterization: &pulumirpc.Parameterization{
+			Name:    string(s.packageName),
+			Version: string(s.packageVersion),
+			Value:   parameter,
+		},
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("register package: %w", err)
+	}
+
+	return response.Ref, nil
+}
+
 func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
@@ -224,6 +276,11 @@ func (s *server) Construct(
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
+	}
+
+	packageRef, err := s.acquirePackageReference(ctx, req.MonitorEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("Construct failed to acquire package reference: %s", err)
 	}
 
 	return pulumiprovider.Construct(ctx, req, s.hostClient.EngineConn(), func(
@@ -244,7 +301,8 @@ func (s *server) Construct(
 				s.params.TFModuleVersion,
 				name,
 				inputProps,
-				s.inferredModuleSchema)
+				s.inferredModuleSchema,
+				packageRef)
 
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
