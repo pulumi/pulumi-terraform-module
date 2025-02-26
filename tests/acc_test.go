@@ -248,7 +248,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	pt.CopyToTempDir(t)
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		skipLocalRunsWithoutCreds(t)
+		SkipLocalRunsWithoutCreds(t)
 
 		pt.Preview(t,
 			optpreview.Diff(),
@@ -258,7 +258,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
-		skipLocalRunsWithoutCreds(t)
+		SkipLocalRunsWithoutCreds(t)
 
 		res := pt.Up(t,
 			optup.ErrorProgressStreams(os.Stderr),
@@ -305,7 +305,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 func TestS3BucketModSecret(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	skipLocalRunsWithoutCreds(t)
+	SkipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
@@ -393,7 +393,7 @@ func TestIntegration(t *testing.T) {
 	for _, tc := range testcases {
 		tc := tc
 		localProviderBinPath := ensureCompiledProvider(t)
-		skipLocalRunsWithoutCreds(t)
+		SkipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
@@ -427,7 +427,7 @@ func TestIntegration(t *testing.T) {
 func TestDeleteLambda(t *testing.T) {
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
 	localProviderBinPath := ensureCompiledProvider(t)
-	skipLocalRunsWithoutCreds(t)
+	SkipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "awslambdamod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
@@ -584,26 +584,6 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("failed to run pulumi convert: %v\n%s", err, out)
-	}
-}
-
-// Skip the test if it is being run locally without cloud credentials being configured.
-func skipLocalRunsWithoutCreds(t *testing.T) {
-	if _, ci := os.LookupEnv("CI"); ci {
-		return // never skip when in CI
-	}
-
-	awsConfigured := false
-	for _, envVar := range os.Environ() {
-		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_ACCESS_KEY_ID") {
-			awsConfigured = true
-		}
-		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_PROFILE") {
-			awsConfigured = true
-		}
-	}
-	if !awsConfigured {
-		t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
 	}
 }
 
