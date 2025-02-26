@@ -43,6 +43,9 @@ resource "aws_s3_bucket" "this" {
     prefix = "/abc" # optional
     id = "rule_id" # optional,computed
   }
+  lifecycle_rule { # schema.TypeList (optional, computed)
+    enabled = true # required
+  }
 }
 		`
 
@@ -60,12 +63,29 @@ resource "aws_s3_bucket" "this" {
 				"tags":                                   nil,
 				"transition":                             []interface{}{},
 			},
+			map[string]interface{}{
+				"abort_incomplete_multipart_upload_days": nil,
+				"enabled":                                true,
+				"expiration":                             []interface{}{},
+				"noncurrent_version_expiration":          []interface{}{},
+				"noncurrent_version_transition":          []interface{}{},
+				"prefix":                                 nil,
+				"tags":                                   nil,
+				"transition":                             []interface{}{},
+			},
 		})
 		assertResourceChangeForAddress(t, "aws_s3_bucket.this", "lifecycle_rule", *rawPlan, []interface{}{
 			map[string]interface{}{
 				"expiration":                    []interface{}{},
 				"noncurrent_version_expiration": []interface{}{},
 				"noncurrent_version_transition": []interface{}{},
+				"transition":                    []interface{}{},
+			},
+			map[string]interface{}{
+				"expiration":                    []interface{}{},
+				"noncurrent_version_expiration": []interface{}{},
+				"noncurrent_version_transition": []interface{}{},
+				"id":                            true,
 				"transition":                    []interface{}{},
 			},
 		})
@@ -75,6 +95,18 @@ resource "aws_s3_bucket" "this" {
 					"enabled":                                resource.NewBoolProperty(true),
 					"id":                                     resource.NewStringProperty("rule_id"),
 					"prefix":                                 resource.NewStringProperty("/abc"),
+					"abort_incomplete_multipart_upload_days": resource.NewNullProperty(),
+					"expiration":                             resource.NewArrayProperty([]resource.PropertyValue{}),
+					"noncurrent_version_expiration":          resource.NewArrayProperty([]resource.PropertyValue{}),
+					"noncurrent_version_transition":          resource.NewArrayProperty([]resource.PropertyValue{}),
+					"tags":                                   resource.NewNullProperty(),
+					"transition":                             resource.NewArrayProperty([]resource.PropertyValue{}),
+				}),
+			resource.NewObjectProperty(
+				resource.PropertyMap{
+					"enabled":                                resource.NewBoolProperty(true),
+					"id":                                     resource.MakeComputed(resource.NewStringProperty("")),
+					"prefix":                                 resource.NewNullProperty(),
 					"abort_incomplete_multipart_upload_days": resource.NewNullProperty(),
 					"expiration":                             resource.NewArrayProperty([]resource.PropertyValue{}),
 					"noncurrent_version_expiration":          resource.NewArrayProperty([]resource.PropertyValue{}),
@@ -374,9 +406,16 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
       prefix = "test" # Attribute.StringAttribute (optional,computed)
 			# object_size_greater_than = true # Attribute.StringAttribute (optional,computed)
 			# object_size_less_than = true # Attribute.StringAttribute (optional,computed)
+      and { # Blocks.ListNestedBlock
+        object_size_greater_than = 200 # NestedBlockObject.Int32Attribute (optional,computed)
+      }
     }
     transition { # SetNestedBlock
       days          = 30 # NestedBlockObject.Int32Attribute (optional,computed)
+      storage_class = "GLACIER" # NestedBlockObject.StringAttribute (required)
+    }
+    transition { # SetNestedBlock
+      # date = "" # NestedBlockObject.StringAttribute (optional)
       storage_class = "GLACIER" # NestedBlockObject.StringAttribute (required)
     }
   }
@@ -390,7 +429,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 				"expiration":                        []interface{}{},
 				"filter": []interface{}{
 					map[string]interface{}{
-						"and":    []interface{}{},
+						"and": []interface{}{
+							map[string]interface{}{
+								"object_size_greater_than": float64(200),
+								"tags":                     nil,
+							},
+						},
 						"prefix": "test",
 						"tag":    []interface{}{},
 					},
@@ -405,6 +449,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 						"days":          float64(30),
 						"storage_class": "GLACIER",
 					},
+					map[string]interface{}{
+						"date":          nil,
+						"storage_class": "GLACIER",
+					},
 				},
 			},
 		})
@@ -415,7 +463,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 				"expiration":                        []interface{}{},
 				"filter": []interface{}{
 					map[string]interface{}{
-						"and":                      []interface{}{},
+						"and": []interface{}{
+							map[string]interface{}{
+								"object_size_less_than": true,
+								"prefix":                true,
+							},
+						},
 						"object_size_greater_than": true,
 						"object_size_less_than":    true,
 						"tag":                      []interface{}{},
@@ -426,6 +479,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 				"prefix":                        true, // Attribute.StringAttribute (optional,computed)
 				"transition": []interface{}{
 					map[string]interface{}{},
+					map[string]interface{}{
+						"days": true,
+					},
 				},
 			},
 		})
@@ -448,11 +504,27 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 								"storage_class": resource.NewStringProperty("GLACIER"),
 							},
 						),
+						resource.NewObjectProperty(
+							resource.PropertyMap{
+								"days":          resource.MakeComputed(resource.NewStringProperty("")),
+								"date":          resource.NewNullProperty(),
+								"storage_class": resource.NewStringProperty("GLACIER"),
+							},
+						),
 					}),
 					"filter": resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewObjectProperty(
 							resource.PropertyMap{
-								"and":                      resource.NewArrayProperty([]resource.PropertyValue{}),
+								"and": resource.NewArrayProperty([]resource.PropertyValue{
+									resource.NewObjectProperty(
+										resource.PropertyMap{
+											"object_size_greater_than": resource.NewNumberProperty(200),
+											"tags":                     resource.NewNullProperty(),
+											"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
+											"prefix":                   resource.MakeComputed(resource.NewStringProperty("")),
+										},
+									),
+								}),
 								"prefix":                   resource.NewStringProperty("test"),
 								"tag":                      resource.NewArrayProperty([]resource.PropertyValue{}),
 								"object_size_greater_than": resource.MakeComputed(resource.NewStringProperty("")),
