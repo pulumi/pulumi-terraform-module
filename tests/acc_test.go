@@ -1,10 +1,11 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -13,6 +14,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -295,45 +303,47 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 }
 
-func TestAwsLambdaModuleIntegration(t *testing.T) {
+func TestS3BucketModSecret(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	testProgramLocation := filepath.Join("testdata", "programs", "ts", "awslambdamod")
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	awsLambdaTest := pulumitest.NewPulumiTest(t, testProgramLocation, localPath)
-	// Add the package to the test
-	t.Run("pulumi package add", func(t *testing.T) {
-		pulumiPackageAdd(t, awsLambdaTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
-	})
-	// Test preview
-	t.Run("pulumi preview", func(t *testing.T) {
-		skipLocalRunsWithoutCreds(t)
-		var preview bytes.Buffer
-		previewResult := awsLambdaTest.Preview(t,
-			optpreview.Diff(),
-			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(&preview),
-		)
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 9,
-		}).Equal(t, previewResult.ChangeSummary)
-	})
-	// Test up
-	t.Run("pulumi up", func(t *testing.T) {
-		t.Skip("Skipping this test until Destroy works")
-		skipLocalRunsWithoutCreds(t)
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-		upResult := awsLambdaTest.Up(t,
-			optup.ErrorProgressStreams(os.Stderr),
-			optup.ProgressStreams(os.Stdout),
-		)
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
 
-		autogold.Expect(&map[string]int{
-			"create": 9,
-		}).Equal(t, upResult.Summary.ResourceChanges)
-	})
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:all
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	integrationTest.Up(t)
+
+	deploy := integrationTest.ExportStack(t)
+	var deployment apitype.DeploymentV3
+	err := json.Unmarshal(deploy.Deployment, &deployment)
+	require.NoError(t, err)
+
+	var encyptionsConfig apitype.ResourceV3
+	encyptionsConfigFound := 0
+	for _, r := range deployment.Resources {
+		if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
+			encyptionsConfig = r
+			encyptionsConfigFound++
+		}
+	}
+
+	require.Equal(t, 1, encyptionsConfigFound)
+	autogold.Expect(map[string]interface{}{
+		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		//nolint:all
+		"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
+	}).Equal(t, encyptionsConfig.Inputs["rule"])
+	integrationTest.Destroy(t)
+
 }
-
-// TODO: Ensure Delete truly deletes from the cloud https://github.com/pulumi/pulumi-terraform-module/issues/119
 
 func TestIntegration(t *testing.T) {
 
@@ -363,6 +373,21 @@ func TestIntegration(t *testing.T) {
 				"delete": 6,
 			},
 		},
+		{
+			name:            "awslambdamod",
+			moduleName:      "terraform-aws-modules/lambda/aws",
+			moduleVersion:   "7.20.1",
+			moduleNamespace: "lambda",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 9,
+			},
+			upExpect: map[string]int{
+				"create": 9,
+			},
+			deleteExpect: map[string]int{
+				"delete": 9,
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -374,9 +399,10 @@ func TestIntegration(t *testing.T) {
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
+			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
 
-			// Get a prefix for resource names
+			// Set prefix via config
 			integrationTest.SetConfig(t, "prefix", prefix)
 
 			// Generate package
@@ -390,32 +416,115 @@ func TestIntegration(t *testing.T) {
 			upResult := integrationTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
-			deploy := integrationTest.ExportStack(t)
-			var deployment apitype.DeploymentV3
-			err := json.Unmarshal(deploy.Deployment, &deployment)
-			require.NoError(t, err)
-
-			var encyptionsConfig apitype.ResourceV3
-			encyptionsConfigFound := 0
-			for _, r := range deployment.Resources {
-				if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
-					encyptionsConfig = r
-					encyptionsConfigFound++
-				}
-			}
-
-			require.Equal(t, 1, encyptionsConfigFound)
-			autogold.Expect(map[string]interface{}{
-				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				//nolint:all
-				"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
-			}).Equal(t, encyptionsConfig.Inputs["rule"])
-
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
-
 		})
+	}
+}
+
+// Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
+func TestDeleteLambda(t *testing.T) {
+	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "awslambdamod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Save the name of the function
+	functionName := prefix + "-testlambda"
+
+	// Generate package
+	//nolint:lll
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
+
+	integrationTest.Up(t)
+
+	// Verify resources with AWS Client
+	// Load the AWS SDK's configuration
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		t.Fatalf("unable to load SDK config, %v", err)
+	}
+
+	// Create AWS clients
+	lambdaClient := lambda.NewFromConfig(cfg)
+	iamClient := iam.NewFromConfig(cfg)
+	cloudwatchlogsClient := cloudwatchlogs.NewFromConfig(cfg)
+
+	// Initialize request input parameters
+	lambdaInput := &lambda.GetFunctionInput{
+		FunctionName: &functionName,
+	}
+	iamInput := &iam.GetRoleInput{
+		RoleName: &functionName,
+	}
+	logGroupName := "/aws/lambda/" + functionName
+	cloudwatchlogsInput := &cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String(logGroupName),
+	}
+
+	// Verify resources exist
+	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
+	if err != nil {
+		t.Fatalf("failed to get  Lambda function %s: %v", *lambdaInput.FunctionName, err)
+	}
+
+	_, err = iamClient.GetRole(ctx, iamInput)
+	if err != nil {
+		t.Fatalf("failed to get IAM role %s: %v", *iamInput.RoleName, err)
+	}
+
+	resp, err := cloudwatchlogsClient.DescribeLogGroups(context.TODO(), cloudwatchlogsInput)
+	if err != nil {
+		log.Fatalf("failed to describe log group, %v", err)
+	}
+	require.Truef(t, len(resp.LogGroups) > 0, "log group %s not found.", logGroupName)
+
+	integrationTest.Destroy(t)
+
+	// Rerun the AWS calls from above to see if Delete worked. We should see NotFound errors.
+	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
+	if err == nil {
+		//nolint:lll
+		t.Fatalf("delete verification failed: found a Lambda function that should have been deleted: %s", *lambdaInput.FunctionName)
+	} else {
+		// ResourceNotFoundException is the expected response after Delete
+		var resourceNotFoundError *lambdatypes.ResourceNotFoundException
+		if !errors.As(err, &resourceNotFoundError) {
+			t.Fatalf("encountered unexpected error verifying Lambda function was deleted: %v ", err)
+		}
+	}
+
+	// Verify IAM was deleted
+	_, err = iamClient.GetRole(ctx, iamInput)
+	if err == nil {
+		t.Fatalf("found an IAM Role that should have been deleted: %s", *iamInput.RoleName)
+	} else {
+		// No Such Entity Exception is the expected response after Delete.
+		var noSuchEntityError *iamtypes.NoSuchEntityException
+		if !errors.As(err, &noSuchEntityError) {
+			t.Fatalf("encountered unexpected error verifying IAM role was deleted: %v ", err)
+		}
+	}
+
+	// Verify CloudWatch log group was deleted
+	resp, err = cloudwatchlogsClient.DescribeLogGroups(ctx, cloudwatchlogsInput)
+	if err == nil {
+		if len(resp.LogGroups) > 0 {
+			//nolint:lll
+			log.Fatalf("found a log group that should have been deleted, %s", *cloudwatchlogsInput.LogGroupNamePrefix)
+		}
+	} else {
+		t.Fatalf("encountered unexpected error verifying log group was deleted: %v ", err)
 	}
 
 }

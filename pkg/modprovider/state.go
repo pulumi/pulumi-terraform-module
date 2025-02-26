@@ -109,6 +109,7 @@ func newModuleStateResource(
 	pkgName packageName,
 	modUrn resource.URN,
 	packageRef string,
+	args resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
 	contract.Assertf(modUrn != "", "modUrn cannot be empty")
@@ -117,6 +118,7 @@ func newModuleStateResource(
 
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
 		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
+		"args":            resource.NewObjectProperty(args),
 	})
 
 	err := ctx.RegisterPackageResource(string(tok), name, inputsMap, &res, packageRef, opts...)
@@ -193,9 +195,11 @@ func (h *moduleStateHandler) Create(
 	modUrn := h.mustParseModURN(req.Properties)
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
+	props := newState.Marshal()
+	props.Fields["args"] = req.Properties.Fields["args"]
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
-		Properties: newState.Marshal(),
+		Properties: props,
 	}, nil
 }
 
@@ -210,7 +214,7 @@ func (h *moduleStateHandler) Update(
 	}, nil
 }
 
-// Delete does not do anything. This could be reused to trigger deletion support in the future
+// Delete calls TF Destroy on the module's resources
 func (h *moduleStateHandler) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
@@ -228,11 +232,24 @@ func (h *moduleStateHandler) Delete(
 	urn := h.mustParseModURN(req.OldInputs)
 	tfName := getModuleName(urn)
 
+	olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
+		KeepOutputValues: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
+	}
+
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
-		resource.PropertyMap{}, /*inputs*/
-		[]tfsandbox.TFOutputSpec{} /*outputs*/)
+		olds["args"].ObjectValue(), /*inputs*/
+		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+	)
+
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
