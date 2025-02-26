@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	tfjson "github.com/hashicorp/terraform-json"
-	"github.com/pulumi/pulumi-terraform-module-provider/tests"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	"github.com/pulumi/pulumi-terraform-module/tests"
 )
 
 // The purpose of this test is to see how the plan is generated for different schema types
@@ -24,7 +26,11 @@ provider "aws" {
   region = "us-east-2"
 }
 	`
-	err = os.WriteFile(path.Join(tofu.WorkingDir(), "main.tf"), []byte(tfFile), 0644)
+	err = os.WriteFile(
+		path.Join(tofu.WorkingDir(), "main.tf"),
+		[]byte(tfFile),
+		0600,
+	)
 	assert.NoError(t, err)
 	err = tofu.Init(ctx)
 	assert.NoError(t, err)
@@ -348,7 +354,9 @@ resource "aws_s3_object_copy" "this" {
 
 		assertResourceChangeForAddress(t, "aws_s3_object_copy.this", "metadata", *plan, true)
 
-		assertPlanForAddress(t, "aws_s3_object_copy.this", "metadata", plan, resource.Computed{Element: resource.PropertyValue{V: ""}})
+		assertPlanForAddress(t, "aws_s3_object_copy.this", "metadata", plan, resource.Computed{
+			Element: resource.PropertyValue{V: ""},
+		})
 	})
 
 	t.Run("PF_ListNestedBlock", func(t *testing.T) {
@@ -459,7 +467,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 }
 
 func runPlan(t *testing.T, tofu *Tofu, tfFile string) *tfjson.Plan {
-	err := os.WriteFile(path.Join(tofu.WorkingDir(), "main.tf"), []byte(tfFile), 0644)
+	err := os.WriteFile(
+		path.Join(tofu.WorkingDir(), "main.tf"),
+		[]byte(tfFile),
+		0600,
+	)
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -478,7 +490,13 @@ func assertPlanForAddress(t *testing.T, address string, property string, rawPlan
 	assert.Equal(t, expected, resourcePlan.props[resource.PropertyKey(property)].V)
 }
 
-func assertAttributeValuesForAddress(t *testing.T, address string, property string, plan tfjson.Plan, expectedValue interface{}) bool {
+func assertAttributeValuesForAddress(
+	t *testing.T,
+	address string,
+	property string,
+	plan tfjson.Plan,
+	expectedValue interface{},
+) bool {
 	t.Helper()
 	attributeValues := findAttributeValuesForAddress(t, address, plan)
 	if value, ok := attributeValues[property]; ok {
@@ -489,7 +507,13 @@ func assertAttributeValuesForAddress(t *testing.T, address string, property stri
 	return false
 }
 
-func assertResourceChangeForAddress(t *testing.T, address string, property string, plan tfjson.Plan, expectedValue interface{}) {
+func assertResourceChangeForAddress(
+	t *testing.T,
+	address string,
+	property string,
+	plan tfjson.Plan,
+	expectedValue interface{},
+) {
 	t.Helper()
 	attributeValues := findResourceChangeForAddress(t, address, plan)
 	assert.Containsf(t, attributeValues, property, "property %s not found", property)
