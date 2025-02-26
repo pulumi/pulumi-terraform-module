@@ -217,7 +217,7 @@ func (*server) Configure(
 
 // acquirePackageReference registers the parameterized package in the engine and returns
 // a self reference. This reference is then used when registering child resources in the module
-// that are wrapping. This is necessary so that the engine understand that child resources created
+// that we are wrapping. This is necessary so that the engine understands that child resources created
 // from the terraform module are part of this package, hence the self reference.
 func (s *server) acquirePackageReference(
 	ctx context.Context,
