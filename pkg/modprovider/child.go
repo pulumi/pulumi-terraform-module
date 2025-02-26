@@ -60,6 +60,7 @@ func newChildResource(
 	modUrn resource.URN,
 	pkgName packageName,
 	sop ResourceStateOrPlan,
+	packageRef string,
 	opts ...pulumi.ResourceOption,
 ) (*childResource, error) {
 	contract.Assertf(ctx != nil, "ctx must not be nil")
@@ -68,9 +69,8 @@ func newChildResource(
 	inputs := childResourceInputs(modUrn, sop.Address(), sop.Values())
 	t := childResourceTypeToken(pkgName, sop.Type())
 	name := childResourceName(sop)
-	// TODO[pulumi/pulumi-terraform-module-protovider#56] Use RegisterPackageResource
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, inputs)
-	err := ctx.RegisterResource(string(t), name, inputsMap, &resource, opts...)
+	err := ctx.RegisterPackageResource(string(t), name, inputsMap, &resource, packageRef, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for a child resource: %w", err)
 	}

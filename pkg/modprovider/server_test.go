@@ -279,6 +279,15 @@ func (s *testResourceMonitorServer) RegisterResource(
 	}
 }
 
+func (s *testResourceMonitorServer) RegisterPackage(
+	context.Context,
+	*pulumirpc.RegisterPackageRequest,
+) (*pulumirpc.RegisterPackageResponse, error) {
+	return &pulumirpc.RegisterPackageResponse{
+		Ref: "test-reference",
+	}, nil
+}
+
 func (s *testResourceMonitorServer) RegisterResourceOutputs(
 	context.Context,
 	*pulumirpc.RegisterResourceOutputsRequest,

@@ -108,6 +108,7 @@ func newModuleStateResource(
 	name string,
 	pkgName packageName,
 	modUrn resource.URN,
+	packageRef string,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
 	contract.Assertf(modUrn != "", "modUrn cannot be empty")
@@ -118,8 +119,7 @@ func newModuleStateResource(
 		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
 	})
 
-	// TODO[pulumi/pulumi-terraform-module-protovider#56] use RegisterPackageResource
-	err := ctx.RegisterResource(string(tok), name, inputsMap, &res, opts...)
+	err := ctx.RegisterPackageResource(string(tok), name, inputsMap, &res, packageRef, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)
 	}

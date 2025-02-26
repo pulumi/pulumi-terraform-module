@@ -57,13 +57,13 @@ func NewModuleComponentResource(
 	stateStore moduleStateStore,
 	planStore *planStore,
 	pkgName packageName,
-	pkgVer packageVersion,
 	compTypeName componentTypeName,
 	tfModuleSource TFModuleSource,
 	tfModuleVersion TFModuleVersion,
 	name string,
 	args resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
+	packageRef string,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, outputs pulumi.Input, finalError error) {
 	component := ModuleComponentResource{}
@@ -90,11 +90,8 @@ func NewModuleComponentResource(
 			fmt.Sprintf("%s-state", name),
 			pkgName,
 			urn,
+			packageRef,
 			pulumi.Parent(&component),
-
-			// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
-			// RegisterPackageResource ideally
-			pulumi.Version(string(pkgVer)),
 		)
 
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
@@ -170,12 +167,11 @@ func NewModuleComponentResource(
 				return
 			}
 
-			cr, err := newChildResource(ctx, urn, pkgName, rp,
-				pulumi.Parent(&component),
+			cr, err := newChildResource(ctx, urn, pkgName,
+				rp,
+				packageRef,
+				pulumi.Parent(&component))
 
-				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
-				// RegisterPackageResource ideally
-				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
@@ -213,12 +209,11 @@ func NewModuleComponentResource(
 				// so that we propagate outputs from module
 				return
 			}
-			cr, err := newChildResource(ctx, urn, pkgName, rp,
-				pulumi.Parent(&component),
+			cr, err := newChildResource(ctx, urn, pkgName,
+				rp,
+				packageRef,
+				pulumi.Parent(&component))
 
-				// TODO[pulumi/pulumi-terraform-module-protovider#56] no Version needed with
-				// RegisterPackageResource ideally
-				pulumi.Version(string(pkgVer)))
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
