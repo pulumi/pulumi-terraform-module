@@ -253,7 +253,7 @@ func (s *server) acquirePackageReference(
 		Parameterization: &pulumirpc.Parameterization{
 			Name:    string(s.packageName),
 			Version: string(s.packageVersion),
-			Value:   parameter,
+			Value:   parameters,
 		},
 	})
 
