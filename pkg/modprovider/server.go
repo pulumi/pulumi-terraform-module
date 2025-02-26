@@ -242,7 +242,7 @@ func (s *server) acquirePackageReference(
 	defer conn.Close()
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
-	parameter, err := json.Marshal(s.params)
+	parameters, err := json.Marshal(s.params)
 	if err != nil {
 		return "", fmt.Errorf("json.Marshal failed to serialize parameter: %w", err)
 	}
