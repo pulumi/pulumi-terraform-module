@@ -295,7 +295,6 @@ func (s *server) Construct(
 				s.stateStore,
 				s.planStore,
 				s.packageName,
-				s.packageVersion,
 				s.componentTypeName,
 				s.params.TFModuleSource,
 				s.params.TFModuleVersion,

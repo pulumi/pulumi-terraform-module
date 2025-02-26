@@ -57,7 +57,6 @@ func NewModuleComponentResource(
 	stateStore moduleStateStore,
 	planStore *planStore,
 	pkgName packageName,
-	pkgVer packageVersion,
 	compTypeName componentTypeName,
 	tfModuleSource TFModuleSource,
 	tfModuleVersion TFModuleVersion,
