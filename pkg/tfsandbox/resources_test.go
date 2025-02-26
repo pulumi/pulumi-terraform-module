@@ -17,6 +17,7 @@ import (
 // The purpose of this test is to see how the plan is generated for different schema types
 // and how we translate that plan to a resource.PropertyValue.
 func TestUnknownsInCreatePlanBySchemaType(t *testing.T) {
+	t.Parallel()
 	tests.SkipLocalRunsWithoutCreds(t)
 	ctx := context.Background()
 	tofu, err := NewTofu(ctx)
