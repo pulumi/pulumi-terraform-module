@@ -248,7 +248,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	pt.CopyToTempDir(t)
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		SkipLocalRunsWithoutCreds(t)
+		skipLocalRunsWithoutCreds(t)
 
 		pt.Preview(t,
 			optpreview.Diff(),
@@ -258,7 +258,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
-		SkipLocalRunsWithoutCreds(t)
+		skipLocalRunsWithoutCreds(t)
 
 		res := pt.Up(t,
 			optup.ErrorProgressStreams(os.Stderr),
@@ -305,7 +305,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 func TestS3BucketModSecret(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	SkipLocalRunsWithoutCreds(t)
+	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
@@ -393,7 +393,7 @@ func TestIntegration(t *testing.T) {
 	for _, tc := range testcases {
 		tc := tc
 		localProviderBinPath := ensureCompiledProvider(t)
-		SkipLocalRunsWithoutCreds(t)
+		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
@@ -427,7 +427,7 @@ func TestIntegration(t *testing.T) {
 func TestDeleteLambda(t *testing.T) {
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
 	localProviderBinPath := ensureCompiledProvider(t)
-	SkipLocalRunsWithoutCreds(t)
+	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "awslambdamod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)

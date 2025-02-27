@@ -148,6 +148,7 @@ func (s *ResourceState) Values() resource.PropertyMap { return s.AttributeValues
 
 type Plan struct {
 	Resources[*ResourcePlan]
+	rawPlan *tfjson.Plan
 }
 
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
@@ -162,6 +163,7 @@ func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 		return nil, err
 	}
 	return &Plan{
+		rawPlan: rawPlan,
 		Resources: Resources[*ResourcePlan]{
 			resources: resources,
 			newT: func(resource tfjson.StateResource) *ResourcePlan {
@@ -224,6 +226,12 @@ func (p *Plan) Outputs() resource.PropertyMap {
 		}
 	})
 	return outputs
+}
+
+// RawPlan returns the raw tfjson.Plan
+// NOTE: this is exposed for testing purposes only
+func (p *Plan) RawPlan() *tfjson.Plan {
+	return p.rawPlan
 }
 
 type State struct {

@@ -7,7 +7,7 @@ import (
 )
 
 // Skip the test if it is being run locally without cloud credentials being configured.
-func SkipLocalRunsWithoutCreds(t *testing.T) {
+func skipLocalRunsWithoutCreds(t *testing.T) {
 	if _, ci := os.LookupEnv("CI"); ci {
 		return // never skip when in CI
 	}
