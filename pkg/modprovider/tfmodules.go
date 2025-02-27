@@ -33,11 +33,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/opentofu/addrs"
+	"github.com/pulumi/opentofu/configs"
+	"github.com/pulumi/opentofu/registry"
+	"github.com/pulumi/opentofu/registry/regsrc"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/addrs"
-	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/configs"
-	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry"
-	"github.com/pulumi/pulumi-terraform-module/pkg/vendored/opentofu/registry/regsrc"
 )
 
 type InferredModuleSchema struct {
@@ -315,7 +315,13 @@ func extractModuleContent(
 
 	fs := afero.NewBasePathFs(afero.NewOsFs(), modDir)
 	parser := configs.NewParser(fs)
-	module, diagnostics := parser.LoadConfigDir("/", configs.StaticModuleCall{})
+	smc := configs.NewStaticModuleCall(
+		nil, /* addr */
+		nil, /* vars */
+		"",  /* rootPath */
+		"",  /* workspace */
+	)
+	module, diagnostics := parser.LoadConfigDir(modDir, smc)
 	if diagnostics.HasErrors() {
 		return nil, fmt.Errorf("error while loading module %s: %w", source, diagnostics)
 	}
