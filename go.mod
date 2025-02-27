@@ -4,7 +4,7 @@ go 1.24.0
 
 replace (
 	github.com/hashicorp/hcl/v2 => github.com/opentofu/hcl/v2 v2.0.0-20240814143621-8048794c5c52
-	github.com/pulumi/opentofu => github.com/pulumi/opentofu v0.0.0-20250227010730-55f2e368bfcc
+	github.com/pulumi/opentofu => github.com/pulumi/opentofu v0.0.0-20250227012722-449d65590d90
 )
 
 require (
@@ -27,7 +27,6 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.103.0
 	github.com/pulumi/pulumi/pkg/v3 v3.152.0
 	github.com/pulumi/pulumi/sdk/v3 v3.152.0
-	github.com/spf13/afero v1.12.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zclconf/go-cty v1.16.2
 	google.golang.org/grpc v1.70.0
@@ -165,6 +164,7 @@ require (
 	github.com/segmentio/encoding v0.3.5 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.0 // indirect
+	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
