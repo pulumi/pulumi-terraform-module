@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/terraform-svchost/disco"
-	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -313,8 +312,7 @@ func extractModuleContent(
 		return nil, err
 	}
 
-	fs := afero.NewBasePathFs(afero.NewOsFs(), modDir)
-	parser := configs.NewParser(fs)
+	parser := configs.NewParser(nil)
 	smc := configs.NewStaticModuleCall(
 		nil, /* addr */
 		nil, /* vars */
