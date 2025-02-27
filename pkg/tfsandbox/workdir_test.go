@@ -23,14 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_StackWorkdir(t *testing.T) {
-	// This is just a convention, testing to illustrate.
-
-	assert.Equal(t, filepath.Join(os.TempDir(), "pulumi-terraform-module",
-		"workdirs", "by-project-and-stack", "my-project", "my-stack"),
-		workdirPath(StackWorkdir("my-project", "my-stack")))
-}
-
 func Test_ModuleWorkdir(t *testing.T) {
 	// This is just a convention, testing to illustrate.
 
@@ -45,7 +37,7 @@ func Test_ModuleWorkdir(t *testing.T) {
 }
 
 func Test_workdirGetOrCreate(t *testing.T) {
-	wd := StackWorkdir("my-project", "my-stack")
+	wd := ModuleWorkdir("my-module", "")
 
 	err := os.RemoveAll(workdirPath(wd))
 	require.NoError(t, err)

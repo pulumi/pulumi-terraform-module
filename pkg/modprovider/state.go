@@ -226,7 +226,7 @@ func (h *moduleStateHandler) Delete(
 
 	urn := h.mustParseModURN(req.OldInputs)
 
-	wd := tfsandbox.StackWorkdir(string(urn.Project()), string(urn.Stack()))
+	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 
 	tf, err := tfsandbox.NewTofu(ctx, wd)
 	if err != nil {

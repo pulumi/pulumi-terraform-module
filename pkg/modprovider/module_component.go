@@ -108,7 +108,7 @@ func NewModuleComponentResource(
 		}
 	}()
 
-	wd := tfsandbox.StackWorkdir(urn.Project().String(), string(urn.Stack()))
+	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 	tf, err := tfsandbox.NewTofu(ctx.Context(), wd)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)

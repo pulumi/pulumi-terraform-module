@@ -20,16 +20,16 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Location hint for the working directory for Tofu operations.
 type Workdir []string
 
-// This workdir will be used for a given stack operations.
-func StackWorkdir(project, stack string) Workdir {
-	p, s := url.PathEscape(project), url.PathEscape(stack)
-	return Workdir([]string{"by-project-and-stack", p, s})
+// This workdir dedicated to given module URN.
+func ModuleInstanceWorkdir(modUrn urn.URN) Workdir {
+	return Workdir([]string{"by-urn", url.PathEscape(string(modUrn))})
 }
 
 // This workdir will be used for generic operations such as module schema inference.
