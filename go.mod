@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-module
 
-go 1.24.0
+go 1.23.0
 
 replace (
 	github.com/hashicorp/hcl/v2 => github.com/opentofu/hcl/v2 v2.0.0-20240814143621-8048794c5c52
