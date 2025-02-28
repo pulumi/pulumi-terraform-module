@@ -27,6 +27,7 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,16 +52,17 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	planStore            *planStore
-	params               *ParameterizeArgs
-	hostClient           *provider.HostClient
-	stateStore           moduleStateStore
-	moduleStateHandler   *moduleStateHandler
-	childHandler         *childHandler
-	packageName          packageName
-	packageVersion       packageVersion
-	componentTypeName    componentTypeName
-	inferredModuleSchema *InferredModuleSchema
+	planStore                  *planStore
+	params                     *ParameterizeArgs
+	hostClient                 *provider.HostClient
+	stateStore                 moduleStateStore
+	moduleStateHandler         *moduleStateHandler
+	childHandler               *childHandler
+	packageName                packageName
+	packageVersion             packageVersion
+	componentTypeName          componentTypeName
+	inferredModuleSchema       *InferredModuleSchema
+	providerConfigurationByURN map[string]resource.PropertyMap
 }
 
 func (s *server) Parameterize(
@@ -275,6 +277,7 @@ func (s *server) Construct(
 		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
 		KeepOutputValues: false,
 	})
+
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
@@ -328,8 +331,36 @@ func (s *server) Check(
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Check(ctx, req)
 	default:
-		return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
+		return &pulumirpc.CheckResponse{Inputs: req.News}, nil
 	}
+}
+
+func (s *server) CheckConfig(
+	ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	if s.providerConfigurationByURN == nil {
+		s.providerConfigurationByURN = make(map[string]resource.PropertyMap)
+	}
+
+	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+		KeepUnknowns:     false,
+		KeepSecrets:      false,
+		KeepResources:    false,
+		KeepOutputValues: false,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("CheckConfig failed to parse inputs: %w", err)
+	}
+
+	if len(config) > 0 {
+		s.providerConfigurationByURN[req.Urn] = config
+	}
+
+	return &pulumirpc.CheckResponse{
+		Inputs: req.News,
+	}, nil
 }
 
 func (s *server) Diff(

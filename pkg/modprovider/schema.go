@@ -41,6 +41,9 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		Name:    string(packageName),
 		Version: string(pkgVer),
 		Types:   inferredModule.SupportingTypes,
+		Provider: schema.ResourceSpec{
+			InputProperties: inferredModule.ProvidersConfig.Variables,
+		},
 		Resources: map[string]schema.ResourceSpec{
 			mainResourceToken: {
 				IsComponent:     true,

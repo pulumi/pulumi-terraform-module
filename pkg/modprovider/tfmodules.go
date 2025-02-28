@@ -45,6 +45,7 @@ type InferredModuleSchema struct {
 	Outputs         map[string]schema.PropertySpec
 	SupportingTypes map[string]schema.ComplexTypeSpec
 	RequiredInputs  []string
+	ProvidersConfig schema.ConfigSpec
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
@@ -269,6 +270,18 @@ func InferModuleSchema(
 		Outputs:         make(map[string]schema.PropertySpec),
 		RequiredInputs:  []string{},
 		SupportingTypes: map[string]schema.ComplexTypeSpec{},
+		ProvidersConfig: schema.ConfigSpec{
+			Variables: map[string]schema.PropertySpec{},
+		},
+	}
+
+	if module.ProviderRequirements != nil {
+		for providerName, _ := range module.ProviderRequirements.RequiredProviders {
+			inferredModuleSchema.ProvidersConfig.Variables[providerName] = schema.PropertySpec{
+				Description: "provider configuration for " + providerName,
+				TypeSpec:    mapType(anyType),
+			}
+		}
 	}
 
 	for variableName, variable := range module.Variables {

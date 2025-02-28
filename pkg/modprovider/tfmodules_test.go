@@ -139,6 +139,16 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "output %s type is incorrect", name)
 	}
 
+	expectedConfigVariables := map[string]schema.PropertySpec{
+		"aws": {
+			TypeSpec:    mapType(anyType),
+			Description: "provider configuration for aws",
+		},
+	}
+	assert.Equal(t,
+		expectedConfigVariables,
+		awsVpcSchema.ProvidersConfig.Variables,
+		"required provider variables are incorrect")
 }
 
 func TestResolveModuleSources(t *testing.T) {
