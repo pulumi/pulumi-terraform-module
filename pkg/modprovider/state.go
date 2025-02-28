@@ -249,8 +249,9 @@ func (h *moduleStateHandler) Delete(
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
-		olds["args"].ObjectValue(), /*inputs*/
-		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+		olds["args"].ObjectValue(),        /*inputs*/
+		[]tfsandbox.TFOutputSpec{},        /*outputs*/
+		map[string]resource.PropertyMap{}, /*providerConfig*/
 	)
 
 	if err != nil {

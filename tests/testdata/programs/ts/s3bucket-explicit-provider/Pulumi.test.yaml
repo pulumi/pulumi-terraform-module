@@ -1,4 +1,0 @@
-encryptionsalt: v1:AGXWldsKdOI=:v1:zHGh+t65ypGRMolQ:5r9m5W57yiKIC7je9ShwDr0ahl1owg==
-config:
-  ts-s3bucketmod-program:prefix: "207830"
-  ts-s3bucketmod-program:region: us-east-1

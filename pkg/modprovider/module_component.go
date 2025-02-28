@@ -64,6 +64,7 @@ func NewModuleComponentResource(
 	args resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
 	packageRef string,
+	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, outputs pulumi.Input, finalError error) {
 	component := ModuleComponentResource{}
@@ -127,7 +128,10 @@ func NewModuleComponentResource(
 			Name: outputName,
 		})
 	}
-	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), args, outputSpecs)
+	err = tfsandbox.CreateTFFile(tfName, tfModuleSource,
+		tfModuleVersion, tf.WorkingDir(),
+		args, outputSpecs, providersConfig)
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}

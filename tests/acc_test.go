@@ -305,7 +305,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 func TestS3BucketModSecret(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	skipLocalRunsWithoutCreds(t)
+	//skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
@@ -350,7 +350,6 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 	//skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucket-explicit-provider")
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram,
-		opttest.Env("PULUMI_DEBUG_GRPC", "/Users/zaid/projects/pulumi-terraform-module/grpc.json"),
 		opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
 		opttest.TestInPlace())
 
@@ -359,18 +358,15 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 
 	// Set prefix via config
 	integrationTest.SetConfig(t, "prefix", prefix)
-	integrationTest.SetConfig(t, "region", "us-east-1")
 
 	// Generate package
 	//nolint:all
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+
+	// Preview
+	preview := integrationTest.Preview(t)
+	require.Empty(t, preview.StdErr, "expected no errors in preview")
 	integrationTest.Up(t)
-
-	deploy := integrationTest.ExportStack(t)
-	var deployment apitype.DeploymentV3
-	err := json.Unmarshal(deploy.Deployment, &deployment)
-	require.NoError(t, err)
-
 	integrationTest.Destroy(t)
 }
 

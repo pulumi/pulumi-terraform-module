@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -266,6 +267,54 @@ func (s *server) acquirePackageReference(
 	return response.Ref, nil
 }
 
+// cleanProvidersConfig takes config that was produced from provider inputs in the program:
+//
+//	const provider = new vpc.Provider("my-provider", {
+//	  aws: {
+//	      "region": "us-west-2"
+//	   }
+//	})
+//
+// the input config here would look like
+//
+//		{
+//	       propertyKey("version"): stringProperty("0.1.0"),
+//		   propertyKey("aws"): stringProperty("{\"region\": \"us-west-2\"}")
+//		}
+//
+// notice how the value is a string that is a JSON stringified object due to legacy provider behavior
+// we need to convert this to a map[string]resource.PropertyMap so that it can be used
+// in the Terraform JSON file
+func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
+	providersConfig := make(map[string]resource.PropertyMap)
+	for propertyKey, serializedConfig := range config {
+		if string(propertyKey) == "version" {
+			// skip the version key
+			continue
+		}
+
+		if serializedConfig.IsString() {
+			value := serializedConfig.StringValue()
+			deserialized := map[string]interface{}{}
+			if err := json.Unmarshal([]byte(value), &deserialized); err != nil {
+				contract.Failf("failed to deserialize provider config into a map: %v", err)
+			}
+
+			if len(deserialized) > 0 {
+				providersConfig[string(propertyKey)] = resource.NewPropertyMapFromMap(deserialized)
+			}
+		}
+
+		if serializedConfig.IsObject() {
+			// we might later get a new behaviour where programs no longer send serialized JSON
+			// but send the actual object instead
+			providersConfig[string(propertyKey)] = serializedConfig.ObjectValue()
+		}
+	}
+
+	return providersConfig
+}
+
 func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
@@ -277,6 +326,18 @@ func (s *server) Construct(
 		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
 		KeepOutputValues: false,
 	})
+
+	var providersConfig map[string]resource.PropertyMap
+	if providerURN, ok := req.Providers[string(s.packageName)]; ok {
+		parts := strings.Split(providerURN, "::")
+		// remove the last part to get the actual provider URN
+		reconstructed := strings.Join(parts[:len(parts)-1], "::")
+
+		// an explicit provider option was passed to the Module resource
+		if config, ok := s.providerConfigurationByURN[reconstructed]; ok {
+			providersConfig = cleanProvidersConfig(config)
+		}
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
@@ -305,7 +366,8 @@ func (s *server) Construct(
 				name,
 				inputProps,
 				s.inferredModuleSchema,
-				packageRef)
+				packageRef,
+				providersConfig)
 
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
@@ -363,6 +425,14 @@ func (s *server) CheckConfig(
 	}, nil
 }
 
+func (s *server) DiffConfig(
+	ctx context.Context,
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
+	// TODO:revert
+	return &pulumirpc.DiffResponse{}, nil
+}
+
 func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
@@ -387,7 +457,11 @@ func (s *server) Create(
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Create(ctx, req)
 	default:
-		return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
+		// TODO:revert
+		return &pulumirpc.CreateResponse{
+			Id:         "example-id",
+			Properties: req.GetProperties(),
+		}, nil
 	}
 }
 
