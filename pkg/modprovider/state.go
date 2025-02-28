@@ -48,7 +48,7 @@ type moduleState struct {
 }
 
 func (ms *moduleState) Equal(other moduleState) bool {
-	return bytes.Equal(ms.rawState, other.rawState) && ms.moduleInputs.DeepEquals(other.moduleInputs)
+	return bytes.Equal(ms.rawState, other.rawState)
 }
 
 func (ms *moduleState) Unmarshal(s *structpb.Struct) {
@@ -63,20 +63,14 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 	if !ok {
 		return // empty
 	}
-	moduleInputs, ok := props["moduleInputs"]
-	if !ok {
-		return // empty
-	}
 	stateString := state.StringValue()
 	ms.rawState = []byte(stateString)
-	ms.moduleInputs = moduleInputs.ObjectValue()
 }
 
 func (ms *moduleState) Marshal() *structpb.Struct {
 	state := resource.PropertyMap{
 		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
-		"state":        resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
-		"moduleInputs": resource.NewObjectProperty(ms.moduleInputs),
+		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
 	}
 
 	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
@@ -183,9 +177,32 @@ func (h *moduleStateHandler) Diff(
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	changes := pulumirpc.DiffResponse_DIFF_NONE
-	if !newState.Equal(oldState) {
+
+	oldProps := req.OldInputs
+	newProps := req.News
+
+	opts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+
+	oldInputs, err := plugin.UnmarshalProperties(oldProps, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	newInputs, err := plugin.UnmarshalProperties(newProps, opts)
+	if err != nil {
+		return nil, err
+	}
+	moduleInputDiff := !oldInputs["moduleInputs"].DeepEquals(newInputs["moduleiNputs"])
+
+	if !newState.Equal(oldState) || moduleInputDiff {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
+
 	return &pulumirpc.DiffResponse{Changes: changes}, nil
 }
 
@@ -237,7 +254,7 @@ func (h *moduleStateHandler) Delete(
 
 	tfName := getModuleName(urn)
 
-	olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+	olds, err := plugin.UnmarshalProperties(req.GetOldInputs(), plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,

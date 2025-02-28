@@ -416,6 +416,10 @@ func TestIntegration(t *testing.T) {
 			upResult := integrationTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t)
+			t.Log(previewResult.StdOut)
+
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
