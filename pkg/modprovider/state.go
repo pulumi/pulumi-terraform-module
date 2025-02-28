@@ -43,7 +43,8 @@ const (
 // Represents state stored in Pulumi for a TF module.
 type moduleState struct {
 	// Intended to store contents of TF state exactly.
-	rawState []byte
+	rawState     []byte
+	moduleInputs resource.PropertyMap
 }
 
 func (ms *moduleState) IsEmpty() bool {
@@ -51,7 +52,7 @@ func (ms *moduleState) IsEmpty() bool {
 }
 
 func (ms *moduleState) Equal(other moduleState) bool {
-	return bytes.Equal(ms.rawState, other.rawState)
+	return bytes.Equal(ms.rawState, other.rawState) && ms.moduleInputs.DeepEquals(other.moduleInputs)
 }
 
 func (ms *moduleState) Unmarshal(s *structpb.Struct) {
@@ -66,14 +67,20 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 	if !ok {
 		return // empty
 	}
+	moduleInputs, ok := props["moduleInputs"]
+	if !ok {
+		return // empty
+	}
 	stateString := state.StringValue()
 	ms.rawState = []byte(stateString)
+	ms.moduleInputs = moduleInputs.ObjectValue()
 }
 
 func (ms *moduleState) Marshal() *structpb.Struct {
 	state := resource.PropertyMap{
 		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
-		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
+		"state":        resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
+		"moduleInputs": resource.NewObjectProperty(ms.moduleInputs),
 	}
 
 	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
@@ -109,7 +116,7 @@ func newModuleStateResource(
 	pkgName packageName,
 	modUrn resource.URN,
 	packageRef string,
-	args resource.PropertyMap,
+	moduleInputs resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
 	contract.Assertf(modUrn != "", "modUrn cannot be empty")
@@ -118,7 +125,7 @@ func newModuleStateResource(
 
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
 		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
-		"args":            resource.NewObjectProperty(args),
+		"moduleInputs":    resource.NewObjectProperty(moduleInputs),
 	})
 
 	err := ctx.RegisterPackageResource(string(tok), name, inputsMap, &res, packageRef, opts...)
@@ -196,7 +203,6 @@ func (h *moduleStateHandler) Create(
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	props := newState.Marshal()
-	props.Fields["args"] = req.Properties.Fields["args"]
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
 		Properties: props,
@@ -249,8 +255,8 @@ func (h *moduleStateHandler) Delete(
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
-		olds["args"].ObjectValue(), /*inputs*/
-		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+		olds["moduleInputs"].ObjectValue(), /*inputs*/
+		[]tfsandbox.TFOutputSpec{},         /*outputs*/
 	)
 
 	if err != nil {
