@@ -174,13 +174,36 @@ func (h *moduleStateHandler) Diff(
 	_ context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+
 	modUrn := h.mustParseModURN(req.News)
 	oldState := moduleState{}
 	oldState.Unmarshal(req.Olds)
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	changes := pulumirpc.DiffResponse_DIFF_NONE
-	if !newState.Equal(oldState) {
+
+	oldInputs := req.OldInputs
+	newInputs := req.News
+
+	opts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+
+	oldInputsPM, err := plugin.UnmarshalProperties(oldInputs, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	newInputsPM, err := plugin.UnmarshalProperties(newInputs, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if !newState.Equal(oldState) || !oldInputsPM["args"].DeepEquals(newInputsPM["args"]) {
+
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 	return &pulumirpc.DiffResponse{Changes: changes}, nil
