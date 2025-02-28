@@ -47,10 +47,6 @@ type moduleState struct {
 	moduleInputs resource.PropertyMap
 }
 
-func (ms *moduleState) IsEmpty() bool {
-	return len(ms.rawState) == 0
-}
-
 func (ms *moduleState) Equal(other moduleState) bool {
 	return bytes.Equal(ms.rawState, other.rawState) && ms.moduleInputs.DeepEquals(other.moduleInputs)
 }
