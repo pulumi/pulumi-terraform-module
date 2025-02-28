@@ -98,7 +98,7 @@ func getTofuExecutable(ctx context.Context, version *semver.Version) (string, er
 	return path, err
 }
 
-// Like [getTofuExecutable] but returns a boolean indicating whether an already installed binary was
+// Like [getTofuExecutable] but additionally returns a boolean indicating whether an already installed binary was
 // located or not.
 func tryGetTofuExecutable(ctx context.Context, version *semver.Version) (string, bool, error) {
 	pulumiPath, err := workspace.GetPulumiPath("tf-modules")
