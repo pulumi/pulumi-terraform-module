@@ -6,7 +6,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@pulumi/aws": "^6.0.0",
     "@pulumi/bucket": "file:sdks/bucket",
     "@pulumi/pulumi": "^3.113.0"
   }

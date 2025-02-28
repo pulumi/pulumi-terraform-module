@@ -3,7 +3,3 @@ runtime:
   name: nodejs
   options:
     packagemanager: npm
-plugins:
-  providers:
-    - name: terraform-module
-      path: /Users/zaid/projects/pulumi-terraform-module/bin
