@@ -196,7 +196,7 @@ func (h *moduleStateHandler) Create(
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	props := newState.Marshal()
-	props.Fields["args"] = req.Properties.Fields["args"]
+	//props.Fields["args"] = req.Properties.Fields["args"]
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
 		Properties: props,
@@ -235,7 +235,7 @@ func (h *moduleStateHandler) Delete(
 
 	tfName := getModuleName(urn)
 
-	olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -243,14 +243,25 @@ func (h *moduleStateHandler) Delete(
 		KeepOutputValues: false,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
+		return nil, fmt.Errorf("Delete failed to unmarshal oldInputs: %s", err)
 	}
+
+	// olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+	// 	KeepUnknowns:  true,
+	// 	KeepSecrets:   true,
+	// 	KeepResources: true,
+	// 	// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
+	// 	KeepOutputValues: false,
+	// })
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
+	// }
 
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
-		olds["args"].ObjectValue(), /*inputs*/
-		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+		oldInputs["args"].ObjectValue(), /*inputs*/
+		[]tfsandbox.TFOutputSpec{},      /*outputs*/
 	)
 
 	if err != nil {
