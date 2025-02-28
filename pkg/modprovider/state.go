@@ -72,7 +72,7 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 
 func (ms *moduleState) Marshal() *structpb.Struct {
 	state := resource.PropertyMap{
-		// TODO: [pulumi/pulumi-terraform-module#148] store as JSON-y map
+		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
 		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
 	}
 
@@ -224,12 +224,15 @@ func (h *moduleStateHandler) Delete(
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
 
-	tf, err := tfsandbox.NewTofu(ctx)
+	urn := h.mustParseModURN(req.OldInputs)
+
+	wd := tfsandbox.ModuleInstanceWorkdir(urn)
+
+	tf, err := tfsandbox.NewTofu(ctx, wd)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	urn := h.mustParseModURN(req.OldInputs)
 	tfName := getModuleName(urn)
 
 	olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
