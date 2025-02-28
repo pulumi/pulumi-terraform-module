@@ -275,7 +275,7 @@ func InferModuleSchema(
 	}
 
 	if module.ProviderRequirements != nil {
-		for providerName, _ := range module.ProviderRequirements.RequiredProviders {
+		for providerName := range module.ProviderRequirements.RequiredProviders {
 			inferredModuleSchema.ProvidersConfig.Variables[providerName] = schema.PropertySpec{
 				Description: "provider configuration for " + providerName,
 				TypeSpec:    mapType(anyType),

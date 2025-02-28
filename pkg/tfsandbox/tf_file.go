@@ -175,7 +175,7 @@ func CreateTFFile(
 
 	if len(providers) > 0 {
 		providersField := map[string]string{}
-		for providerName, _ := range providers {
+		for providerName := range providers {
 			providersField[providerName] = providerName
 		}
 

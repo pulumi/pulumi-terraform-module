@@ -398,7 +398,7 @@ func (s *server) Check(
 }
 
 func (s *server) CheckConfig(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	if s.providerConfigurationByURN == nil {
@@ -426,8 +426,8 @@ func (s *server) CheckConfig(
 }
 
 func (s *server) DiffConfig(
-	ctx context.Context,
-	req *pulumirpc.DiffRequest,
+	_ context.Context,
+	_ *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
 	// TODO:revert
 	return &pulumirpc.DiffResponse{}, nil
