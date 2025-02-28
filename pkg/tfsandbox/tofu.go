@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"path"
+	"path/filepath"
 	"runtime"
 
 	"github.com/blang/semver"
@@ -93,9 +94,16 @@ func findExistingTofu(ctx context.Context, extraPaths []string) (string, bool) {
 // it will first check if tofu is already installed, if not it will
 // download and install tofu
 func getTofuExecutable(ctx context.Context, version *semver.Version) (string, error) {
+	path, _, err := tryGetTofuExecutable(ctx, version)
+	return path, err
+}
+
+// Like [getTofuExecutable] but returns a boolean indicating whether an already installed binary was
+// located or not.
+func tryGetTofuExecutable(ctx context.Context, version *semver.Version) (string, bool, error) {
 	pulumiPath, err := workspace.GetPulumiPath("tf-modules")
 	if err != nil {
-		return "", fmt.Errorf("could not find pulumi path: %w", err)
+		return "", false, fmt.Errorf("could not find pulumi path: %w", err)
 	}
 	installDir := "tofu"
 	if version != nil {
@@ -108,14 +116,14 @@ func getTofuExecutable(ctx context.Context, version *semver.Version) (string, er
 	}
 
 	// first check if we already have tofu installed
-	if found, ok := findExistingTofu(ctx, []string{binaryPath}); ok {
-		return found, nil
+	if found, ok := findExistingTofu(ctx, []string{filepath.Dir(binaryPath)}); ok {
+		return found, true, nil
 	}
 
 	err = installTool(ctx, finalDir, binaryPath, false)
 	if err != nil {
-		return "", fmt.Errorf("error installing tofu: %w", err)
+		return "", false, fmt.Errorf("error installing tofu: %w", err)
 	}
 
-	return binaryPath, nil
+	return binaryPath, false, nil
 }
