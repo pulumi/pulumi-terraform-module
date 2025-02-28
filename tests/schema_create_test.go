@@ -27,13 +27,19 @@ func TestUnknownsInCreatePlanBySchemaType(t *testing.T) {
 provider "aws" {
   region = "us-east-2"
 }
-	`
+module "local" {
+  source = "./local_module"
+}`
+
 	err = os.WriteFile(
 		path.Join(tofu.WorkingDir(), "main.tf"),
 		[]byte(tfFile),
 		0600,
 	)
 	assert.NoError(t, err)
+	err = os.MkdirAll(path.Join(tofu.WorkingDir(), "local_module"), 0700)
+	assert.NoError(t, err)
+
 	err = tofu.Init(ctx)
 	assert.NoError(t, err)
 
@@ -53,50 +59,53 @@ resource "aws_s3_bucket" "this" {
 
 		plan := runPlan(t, tofu, tfFile)
 
-		assertAttributeValuesForAddress(t, "aws_s3_bucket.this", "lifecycle_rule", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"abort_incomplete_multipart_upload_days": nil,
-					"enabled":                                true,
-					"expiration":                             []interface{}{},
-					"id":                                     "rule_id",
-					"noncurrent_version_expiration":          []interface{}{},
-					"noncurrent_version_transition":          []interface{}{},
-					"prefix":                                 "/abc",
-					"tags":                                   nil,
-					"transition":                             []interface{}{},
-				},
-				map[string]interface{}{
-					"abort_incomplete_multipart_upload_days": nil,
-					"enabled":                                true,
-					"expiration":                             []interface{}{},
-					"noncurrent_version_expiration":          []interface{}{},
-					"noncurrent_version_transition":          []interface{}{},
-					"prefix":                                 nil,
-					"tags":                                   nil,
-					"transition":                             []interface{}{},
-				},
+		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket.this", "lifecycle_rule", *plan.RawPlan(),
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"abort_incomplete_multipart_upload_days": nil,
+						"enabled":                                true,
+						"expiration":                             []interface{}{},
+						"id":                                     "rule_id",
+						"noncurrent_version_expiration":          []interface{}{},
+						"noncurrent_version_transition":          []interface{}{},
+						"prefix":                                 "/abc",
+						"tags":                                   nil,
+						"transition":                             []interface{}{},
+					},
+					map[string]interface{}{
+						"abort_incomplete_multipart_upload_days": nil,
+						"enabled":                                true,
+						"expiration":                             []interface{}{},
+						"noncurrent_version_expiration":          []interface{}{},
+						"noncurrent_version_transition":          []interface{}{},
+						"prefix":                                 nil,
+						"tags":                                   nil,
+						"transition":                             []interface{}{},
+					},
+				}).Equal(t, actual)
 			})
-		})
-		assertResourceChangeForAddress(t, "aws_s3_bucket.this", "lifecycle_rule", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"expiration":                    []interface{}{},
-					"noncurrent_version_expiration": []interface{}{},
-					"noncurrent_version_transition": []interface{}{},
-					"transition":                    []interface{}{},
-				},
-				map[string]interface{}{
-					"expiration":                    []interface{}{},
-					"noncurrent_version_expiration": []interface{}{},
-					"noncurrent_version_transition": []interface{}{},
-					"id":                            true,
-					"transition":                    []interface{}{},
-				},
+		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket.this", "lifecycle_rule", *plan.RawPlan(),
+			findUnknownChange,
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"expiration":                    []interface{}{},
+						"noncurrent_version_expiration": []interface{}{},
+						"noncurrent_version_transition": []interface{}{},
+						"transition":                    []interface{}{},
+					},
+					map[string]interface{}{
+						"expiration":                    []interface{}{},
+						"noncurrent_version_expiration": []interface{}{},
+						"noncurrent_version_transition": []interface{}{},
+						"id":                            true,
+						"transition":                    []interface{}{},
+					},
+				}).Equal(t, actual)
 			})
-		})
-		assertPlanForAddress(t, "aws_s3_bucket.this", "lifecycle_rule", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []resource.PropertyValue{
+		assertPlanForAddress(t, "module.local.aws_s3_bucket.this", "lifecycle_rule", plan, func(actual interface{}) {
+			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
 						"enabled":                                resource.NewBoolProperty(true),
@@ -121,7 +130,7 @@ resource "aws_s3_bucket" "this" {
 						"tags":                                   resource.NewNullProperty(),
 						"transition":                             resource.NewArrayProperty([]resource.PropertyValue{}),
 					}),
-			})
+			}).Equal(t, actual)
 		})
 	})
 
@@ -142,28 +151,31 @@ resource "aws_s3_bucket" "this" {
 
 		plan := runPlan(t, tofu, tfFile)
 
-		assertAttributeValuesForAddress(t, "aws_s3_bucket.this", "grant", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"permissions": []interface{}{"FULL_CONTROL"},
-					"type":        "CanonicalUser",
-					"uri":         "",
-				},
-			})
-		})
-		assertResourceChangeForAddress(t, "aws_s3_bucket.this", "grant", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"id": true,
-					"permissions": []interface{}{
-						false,
+		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket.this", "grant", *plan.RawPlan(),
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"permissions": []interface{}{"FULL_CONTROL"},
+						"type":        "CanonicalUser",
+						"uri":         "",
 					},
-				},
+				}).Equal(t, actual)
 			})
-		})
+		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket.this", "grant", *plan.RawPlan(),
+			findUnknownChange,
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"id": true,
+						"permissions": []interface{}{
+							false,
+						},
+					},
+				}).Equal(t, actual)
+			})
 
-		assertPlanForAddress(t, "aws_s3_bucket.this", "grant", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []resource.PropertyValue{
+		assertPlanForAddress(t, "module.local.aws_s3_bucket.this", "grant", plan, func(actual interface{}) {
+			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
 						"id":          resource.MakeComputed(resource.NewStringProperty("")),
@@ -171,7 +183,7 @@ resource "aws_s3_bucket" "this" {
 						"type":        resource.NewStringProperty("CanonicalUser"),
 						"uri":         resource.NewStringProperty(""),
 					}),
-			})
+			}).Equal(t, actual)
 		})
 
 	})
@@ -192,34 +204,36 @@ resource "aws_instance" "this" {
 }
 `
 		plan := runPlan(t, tofu, tfFile)
-		assertAttributeValuesForAddress(t, "aws_instance.this", "ebs_block_device", *plan.RawPlan(),
+		assertAttributeValuesForAddress(t, "module.local.aws_instance.this", "ebs_block_device", *plan.RawPlan(),
 			func(actual interface{}) {
-				autogold.Expect(actual).Equal(t, []interface{}{
+				autogold.Expect([]interface{}{
 					map[string]interface{}{
 						"delete_on_termination": true,
 						"tags":                  nil,
 						"volume_size":           float64(8),
 						"volume_type":           "gp2",
 					},
-				})
+				}).Equal(t, actual)
 			})
-		assertResourceChangeForAddress(t, "aws_instance.this", "ebs_block_device", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"device_name": true,
-					"encrypted":   true,
-					"iops":        true,
-					"kms_key_id":  true,
-					"snapshot_id": true,
-					"tags_all":    true,
-					"throughput":  true,
-					"volume_id":   true,
-				},
+		assertResourceChangeForAddress(t, "module.local.aws_instance.this", "ebs_block_device", *plan.RawPlan(),
+			findUnknownChange,
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"device_name": true,
+						"encrypted":   true,
+						"iops":        true,
+						"kms_key_id":  true,
+						"snapshot_id": true,
+						"tags_all":    true,
+						"throughput":  true,
+						"volume_id":   true,
+					},
+				}).Equal(t, actual)
 			})
-		})
 
-		assertPlanForAddress(t, "aws_instance.this", "ebs_block_device", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []resource.PropertyValue{
+		assertPlanForAddress(t, "module.local.aws_instance.this", "ebs_block_device", plan, func(actual interface{}) {
+			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
 						"delete_on_termination": resource.NewBoolProperty(true),
@@ -235,7 +249,7 @@ resource "aws_instance" "this" {
 						"throughput":            resource.MakeComputed(resource.NewStringProperty("")),
 						"volume_id":             resource.MakeComputed(resource.NewStringProperty("")),
 					}),
-			})
+			}).Equal(t, actual)
 		})
 	})
 
@@ -272,9 +286,9 @@ resource "aws_instance" "this" {
 }
 `
 		plan := runPlan(t, tofu, tfFile)
-		assertAttributeValuesForAddress(t, "aws_instance.this", "ebs_block_device", *plan.RawPlan(),
+		assertAttributeValuesForAddress(t, "module.local.aws_instance.this", "ebs_block_device", *plan.RawPlan(),
 			func(actual interface{}) {
-				autogold.Expect(actual).Equal(t, []interface{}{
+				autogold.Expect([]interface{}{
 					map[string]interface{}{
 						"delete_on_termination": true,
 						"tags":                  nil,
@@ -286,36 +300,38 @@ resource "aws_instance" "this" {
 						"tags":                  nil,
 						"volume_size":           float64(8),
 					},
-				})
+				}).Equal(t, actual)
 			})
-		assertResourceChangeForAddress(t, "aws_instance.this", "ebs_block_device", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"device_name": true,
-					"encrypted":   true,
-					"iops":        true,
-					"kms_key_id":  true,
-					"snapshot_id": true,
-					"tags_all":    true,
-					"throughput":  true,
-					"volume_id":   true,
-				},
-				map[string]interface{}{
-					"device_name": true,
-					"volume_type": true,
-					"encrypted":   true,
-					"iops":        true,
-					"kms_key_id":  true,
-					"snapshot_id": true,
-					"tags_all":    true,
-					"throughput":  true,
-					"volume_id":   true,
-				},
+		assertResourceChangeForAddress(t, "module.local.aws_instance.this", "ebs_block_device", *plan.RawPlan(),
+			findUnknownChange,
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"device_name": true,
+						"encrypted":   true,
+						"iops":        true,
+						"kms_key_id":  true,
+						"snapshot_id": true,
+						"tags_all":    true,
+						"throughput":  true,
+						"volume_id":   true,
+					},
+					map[string]interface{}{
+						"device_name": true,
+						"volume_type": true,
+						"encrypted":   true,
+						"iops":        true,
+						"kms_key_id":  true,
+						"snapshot_id": true,
+						"tags_all":    true,
+						"throughput":  true,
+						"volume_id":   true,
+					},
+				}).Equal(t, actual)
 			})
-		})
 
-		assertPlanForAddress(t, "aws_instance.this", "ebs_block_device", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []resource.PropertyValue{
+		assertPlanForAddress(t, "module.local.aws_instance.this", "ebs_block_device", plan, func(actual interface{}) {
+			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
 						"delete_on_termination": resource.NewBoolProperty(true),
@@ -346,7 +362,7 @@ resource "aws_instance" "this" {
 						"throughput":            resource.MakeComputed(resource.NewStringProperty("")),
 						"volume_id":             resource.MakeComputed(resource.NewStringProperty("")),
 					}),
-			})
+			}).Equal(t, actual)
 		})
 	})
 	t.Run("SDKV2_TypeMap", func(t *testing.T) {
@@ -369,32 +385,36 @@ resource "aws_s3_bucket_metric" "this" {
 }
 `
 		plan := runPlan(t, tofu, tfFile)
-		assertAttributeValuesForAddress(t, "aws_s3_bucket_metric.this", "filter", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"access_point": nil,
-					"prefix":       nil,
-				},
+		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", *plan.RawPlan(),
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"access_point": nil,
+						"prefix":       nil,
+					},
+				}).Equal(t, actual)
 			})
-		})
-		assertResourceChangeForAddress(t, "aws_s3_bucket_metric.this", "filter", *plan.RawPlan(), func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []interface{}{
-				map[string]interface{}{
-					"tags": true,
-				},
+		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", *plan.RawPlan(),
+			findUnknownChange,
+			func(actual interface{}) {
+				autogold.Expect([]interface{}{
+					map[string]interface{}{
+						"tags": true,
+					},
+				}).Equal(t, actual)
 			})
-		})
 
-		assertPlanForAddress(t, "aws_s3_bucket_metric.this", "filter", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []resource.PropertyValue{
-				resource.NewObjectProperty(
-					resource.PropertyMap{
-						"tags":         resource.MakeComputed(resource.NewStringProperty("")),
-						"access_point": resource.NewNullProperty(),
-						"prefix":       resource.NewNullProperty(),
-					}),
+		assertPlanForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", plan,
+			func(actual interface{}) {
+				autogold.Expect([]resource.PropertyValue{
+					resource.NewObjectProperty(
+						resource.PropertyMap{
+							"tags":         resource.MakeComputed(resource.NewStringProperty("")),
+							"access_point": resource.NewNullProperty(),
+							"prefix":       resource.NewNullProperty(),
+						}),
+				}).Equal(t, actual)
 			})
-		})
 	})
 
 	t.Run("SDKV2_TypeMapOptionalComputed", func(t *testing.T) {
@@ -415,20 +435,22 @@ resource "aws_s3_object_copy" "this" {
 `
 		plan := runPlan(t, tofu, tfFile)
 		// TypeMap (optional,computed) will show the entire value as computed if one of the values is computed
-		found := assertAttributeValuesForAddress(t, "aws_s3_object_copy.this", "metadata", *plan.RawPlan(),
+		found := assertAttributeValuesForAddress(t, "module.local.aws_s3_object_copy.this", "metadata", *plan.RawPlan(),
 			func(actual interface{}) {
 				assert.Nilf(t, actual, "Expected metadata to be missing from attribute values")
 			})
 		assert.False(t, found)
 
-		assertResourceChangeForAddress(t, "aws_s3_object_copy.this", "metadata", *plan.RawPlan(), func(actual interface{}) {
-			assert.Equalf(t, true, actual, "expected metadata to be unknown=true")
-		})
-
-		assertPlanForAddress(t, "aws_s3_object_copy.this", "metadata", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, resource.Computed{
-				Element: resource.PropertyValue{V: ""},
+		assertResourceChangeForAddress(t, "module.local.aws_s3_object_copy.this", "metadata", *plan.RawPlan(),
+			findUnknownChange,
+			func(actual interface{}) {
+				assert.Equalf(t, true, actual, "expected metadata to be unknown=true")
 			})
+
+		assertPlanForAddress(t, "module.local.aws_s3_object_copy.this", "metadata", plan, func(actual interface{}) {
+			autogold.Expect(resource.Computed{
+				Element: resource.PropertyValue{V: ""},
+			}).Equal(t, actual)
 		})
 	})
 
@@ -464,9 +486,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 `
 		plan := runPlan(t, tofu, tfFile)
 		// TypeMap (optional,computed) will show the entire value as computed if one of the values is computed
-		assertAttributeValuesForAddress(t, "aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
+		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
 			func(actual interface{}) {
-				autogold.Expect(actual).Equal(t, []interface{}{
+				autogold.Expect([]interface{}{
 					map[string]interface{}{
 						"abort_incomplete_multipart_upload": []interface{}{},
 						"expiration":                        []interface{}{},
@@ -498,12 +520,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 							},
 						},
 					},
-				})
+				}).Equal(t, actual)
 			})
 
-		assertResourceChangeForAddress(t, "aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
+		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
+			findUnknownChange,
 			func(actual interface{}) {
-				autogold.Expect(actual).Equal(t, []interface{}{
+				autogold.Expect([]interface{}{
 					map[string]interface{}{
 						"abort_incomplete_multipart_upload": []interface{}{},
 						"expiration":                        []interface{}{},
@@ -530,69 +553,71 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 							},
 						},
 					},
-				})
+				}).Equal(t, actual)
 			})
 
-		assertPlanForAddress(t, "aws_s3_bucket_lifecycle_configuration.this", "rule", plan, func(actual interface{}) {
-			autogold.Expect(actual).Equal(t, []resource.PropertyValue{
-				resource.NewObjectProperty(
-					resource.PropertyMap{
-						"id":                                resource.NewStringProperty("rule_id"),
-						"status":                            resource.NewStringProperty("Enabled"),
-						"prefix":                            resource.MakeComputed(resource.NewStringProperty("")),
-						"abort_incomplete_multipart_upload": resource.NewArrayProperty([]resource.PropertyValue{}),
-						"expiration":                        resource.NewArrayProperty([]resource.PropertyValue{}),
-						"noncurrent_version_expiration":     resource.NewArrayProperty([]resource.PropertyValue{}),
-						"noncurrent_version_transition":     resource.NewArrayProperty([]resource.PropertyValue{}),
-						"transition": resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewObjectProperty(
-								resource.PropertyMap{
-									"date":          resource.NewNullProperty(),
-									"days":          resource.NewNumberProperty(30),
-									"storage_class": resource.NewStringProperty("GLACIER"),
-								},
-							),
-							resource.NewObjectProperty(
-								resource.PropertyMap{
-									"days":          resource.MakeComputed(resource.NewStringProperty("")),
-									"date":          resource.NewNullProperty(),
-									"storage_class": resource.NewStringProperty("GLACIER"),
-								},
-							),
+		assertPlanForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", plan,
+			func(actual interface{}) {
+				autogold.Expect([]resource.PropertyValue{
+					resource.NewObjectProperty(
+						resource.PropertyMap{
+							"id":                                resource.NewStringProperty("rule_id"),
+							"status":                            resource.NewStringProperty("Enabled"),
+							"prefix":                            resource.MakeComputed(resource.NewStringProperty("")),
+							"abort_incomplete_multipart_upload": resource.NewArrayProperty([]resource.PropertyValue{}),
+							"expiration":                        resource.NewArrayProperty([]resource.PropertyValue{}),
+							"noncurrent_version_expiration":     resource.NewArrayProperty([]resource.PropertyValue{}),
+							"noncurrent_version_transition":     resource.NewArrayProperty([]resource.PropertyValue{}),
+							"transition": resource.NewArrayProperty([]resource.PropertyValue{
+								resource.NewObjectProperty(
+									resource.PropertyMap{
+										"date":          resource.NewNullProperty(),
+										"days":          resource.NewNumberProperty(30),
+										"storage_class": resource.NewStringProperty("GLACIER"),
+									},
+								),
+								resource.NewObjectProperty(
+									resource.PropertyMap{
+										"days":          resource.MakeComputed(resource.NewStringProperty("")),
+										"date":          resource.NewNullProperty(),
+										"storage_class": resource.NewStringProperty("GLACIER"),
+									},
+								),
+							}),
+							"filter": resource.NewArrayProperty([]resource.PropertyValue{
+								resource.NewObjectProperty(
+									resource.PropertyMap{
+										"and": resource.NewArrayProperty([]resource.PropertyValue{
+											resource.NewObjectProperty(
+												resource.PropertyMap{
+													"object_size_greater_than": resource.NewNumberProperty(200),
+													"tags":                     resource.NewNullProperty(),
+													"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
+													"prefix":                   resource.MakeComputed(resource.NewStringProperty("")),
+												},
+											),
+										}),
+										"prefix":                   resource.NewStringProperty("test"),
+										"tag":                      resource.NewArrayProperty([]resource.PropertyValue{}),
+										"object_size_greater_than": resource.MakeComputed(resource.NewStringProperty("")),
+										"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
+									},
+								),
+							}),
 						}),
-						"filter": resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewObjectProperty(
-								resource.PropertyMap{
-									"and": resource.NewArrayProperty([]resource.PropertyValue{
-										resource.NewObjectProperty(
-											resource.PropertyMap{
-												"object_size_greater_than": resource.NewNumberProperty(200),
-												"tags":                     resource.NewNullProperty(),
-												"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
-												"prefix":                   resource.MakeComputed(resource.NewStringProperty("")),
-											},
-										),
-									}),
-									"prefix":                   resource.NewStringProperty("test"),
-									"tag":                      resource.NewArrayProperty([]resource.PropertyValue{}),
-									"object_size_greater_than": resource.MakeComputed(resource.NewStringProperty("")),
-									"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
-								},
-							),
-						}),
-					}),
+				}).Equal(t, actual)
 			})
-		})
 	})
 
 }
 
 func runPlan(t *testing.T, tofu *tfsandbox.Tofu, tfFile string) *tfsandbox.Plan {
 	err := os.WriteFile(
-		path.Join(tofu.WorkingDir(), "main.tf"),
+		path.Join(tofu.WorkingDir(), "local_module", "main.tf"),
 		[]byte(tfFile),
 		0600,
 	)
+
 	assert.NoError(t, err)
 
 	ctx := context.Background()
@@ -612,7 +637,13 @@ func assertPlanForAddress(
 	t.Helper()
 	resourcePlan, ok := plan.FindResource(tfsandbox.ResourceAddress(address))
 	assert.Truef(t, ok, "resource %s not found", address)
-	assertFunc(resourcePlan.PlannedValues()[resource.PropertyKey(property)].V)
+	values := resourcePlan.PlannedValues()
+	propertyPath, err := resource.ParsePropertyPath(property)
+	assert.NoErrorf(t, err, "error parsing property path %s", property)
+	propertyValue, ok := propertyPath.Get(resource.NewObjectProperty(values))
+	assert.Truef(t, ok, "property %s not found", propertyPath.String())
+
+	assertFunc(propertyValue.V)
 }
 
 func assertAttributeValuesForAddress(
@@ -638,10 +669,11 @@ func assertResourceChangeForAddress(
 	address string,
 	property string,
 	plan tfjson.Plan,
+	findResourceChangeFunc func(t *testing.T, address string, plan tfjson.Plan) map[string]interface{},
 	assertFunc func(actual interface{}),
 ) {
 	t.Helper()
-	attributeValues := findResourceChangeForAddress(t, address, plan)
+	attributeValues := findResourceChangeFunc(t, address, plan)
 	assert.Containsf(t, attributeValues, property, "property %s not found", property)
 	assertFunc(attributeValues[property])
 }
@@ -649,7 +681,7 @@ func assertResourceChangeForAddress(
 func findAttributeValuesForAddress(t *testing.T, address string, plan tfjson.Plan) map[string]interface{} {
 	t.Helper()
 	found := map[string]interface{}{}
-	for _, resource := range plan.PlannedValues.RootModule.Resources {
+	for _, resource := range plan.PlannedValues.RootModule.ChildModules[0].Resources {
 		if resource.Address == address {
 			found = resource.AttributeValues
 		}
@@ -658,7 +690,7 @@ func findAttributeValuesForAddress(t *testing.T, address string, plan tfjson.Pla
 	return found
 }
 
-func findResourceChangeForAddress(t *testing.T, address string, plan tfjson.Plan) map[string]interface{} {
+func findUnknownChange(t *testing.T, address string, plan tfjson.Plan) map[string]interface{} {
 	t.Helper()
 	found := map[string]interface{}{}
 	for _, resource := range plan.ResourceChanges {
