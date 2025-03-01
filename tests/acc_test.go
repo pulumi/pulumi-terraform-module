@@ -348,13 +348,14 @@ func TestS3BucketModSecret(t *testing.T) {
 func TestIntegration(t *testing.T) {
 
 	type testCase struct {
-		name            string // Must be same as project folder in testdata/programs/ts
-		moduleName      string
-		moduleVersion   string
-		moduleNamespace string
-		previewExpect   map[apitype.OpType]int
-		upExpect        map[string]int
-		deleteExpect    map[string]int
+		name                string // Must be same as project folder in testdata/programs/ts
+		moduleName          string
+		moduleVersion       string
+		moduleNamespace     string
+		previewExpect       map[apitype.OpType]int
+		upExpect            map[string]int
+		deleteExpect        map[string]int
+		diffNoChangesExpect map[apitype.OpType]int
 	}
 
 	testcases := []testCase{
@@ -372,6 +373,9 @@ func TestIntegration(t *testing.T) {
 			deleteExpect: map[string]int{
 				"delete": 6,
 			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): 6,
+			},
 		},
 		{
 			name:            "awslambdamod",
@@ -386,6 +390,11 @@ func TestIntegration(t *testing.T) {
 			},
 			deleteExpect: map[string]int{
 				"delete": 9,
+			},
+			//TODO: [Fix delete-replace on null_resource](https://github.com/pulumi/pulumi-terraform-module/issues/166)
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("replace"): 1,
+				apitype.OpType("same"):    8,
 			},
 		},
 	}
@@ -419,12 +428,55 @@ func TestIntegration(t *testing.T) {
 			// Preview expect no changes
 			previewResult = integrationTest.Preview(t)
 			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
+}
+
+func TestDiff(t *testing.T) {
+	// Set up a test Bucket
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:lll
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+
+	// Up
+	integrationTest.Up(t)
+
+	//Change program to remove an input
+	integrationTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
+
+	// Up again
+	diffResult := integrationTest.Up(t)
+
+	diffExpect := map[string]int{
+		"delete": 1,
+		"update": 1,
+		"same":   4,
+	}
+
+	assert.Equal(t, &diffExpect, diffResult.Summary.ResourceChanges)
+	//nolint:lll
+	assert.Contains(t, diffResult.StdOut, "bucket:tf:aws_s3_bucket_server_side_encryption_configuration module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0] deleting")
+
+	// Cleanup
+	integrationTest.Destroy(t)
+
 }
 
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example

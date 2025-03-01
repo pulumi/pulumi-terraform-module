@@ -99,7 +99,6 @@ func NewModuleComponentResource(
 	}()
 
 	state := stateStore.AwaitOldState(urn)
-	state.moduleInputs = moduleInputs
 	defer func() {
 		// SetNewState must be called on every possible exit to make sure child resources do
 		// not wait indefinitely for the state. If existing normally, this should have

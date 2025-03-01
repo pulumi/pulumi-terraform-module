@@ -43,8 +43,7 @@ const (
 // Represents state stored in Pulumi for a TF module.
 type moduleState struct {
 	// Intended to store contents of TF state exactly.
-	rawState     []byte
-	moduleInputs resource.PropertyMap
+	rawState []byte
 }
 
 func (ms *moduleState) Equal(other moduleState) bool {
@@ -197,7 +196,7 @@ func (h *moduleStateHandler) Diff(
 	if err != nil {
 		return nil, err
 	}
-	moduleInputDiff := !oldInputs["moduleInputs"].DeepEquals(newInputs["moduleiNputs"])
+	moduleInputDiff := !oldInputs["moduleInputs"].DeepEquals(newInputs["moduleInputs"])
 
 	if !newState.Equal(oldState) || moduleInputDiff {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
