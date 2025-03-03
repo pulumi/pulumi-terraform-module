@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -297,4 +298,24 @@ func (s *testResourceMonitorServer) RegisterResourceOutputs(
 
 func TestIsChildResourceType(t *testing.T) {
 	require.True(t, isChildResourceType("terraform-aws-modules:tf:aws_s3_bucket"))
+}
+
+func Test_cleanProvidersConfig(t *testing.T) {
+	inputConfig := resource.PropertyMap{
+		resource.PropertyKey("version"): resource.NewStringProperty("0.0.1"),
+		resource.PropertyKey("aws"):     resource.NewStringProperty("{\"region\":\"us-west-2\"}"),
+	}
+
+	// cleaning the provider config in the form above is the what we get from Pulumi programs
+	// we clean it such that:
+	// - the version is removed
+	// - the provider configuration is parsed from the JSON string to a PropertyMap
+	cleaned := cleanProvidersConfig(inputConfig)
+	expected := map[string]resource.PropertyMap{
+		"aws": {
+			resource.PropertyKey("region"): resource.NewStringProperty("us-west-2"),
+		},
+	}
+
+	assert.Equal(t, expected, cleaned)
 }
