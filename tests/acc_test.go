@@ -550,6 +550,40 @@ Resources:
 	diffDetailTest.Destroy(t)
 }
 
+// Verify that pulumi refresh detects drift and reflects it in the state.
+func TestRefresh(t *testing.T) {
+	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
+	testMod := filepath.Join("testdata", "modules", "bucketmod")
+
+	localProviderBinPath := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	pulumiPackageAdd(t, it, localProviderBinPath, testMod, "bucketMod")
+
+	it.SetConfig(t, "prefix", generateTestResourcePrefix())
+
+	it.SetConfig(t, "tagvalue", "a")
+	it.Up(t)
+
+	stateA := it.ExportStack(t)
+
+	it.SetConfig(t, "tagvalue", "b")
+	it.Up(t)
+
+	it.ImportStack(t, stateA)
+
+	refreshResult := it.Refresh(t)
+
+	t.Logf("pulumi refresh")
+	t.Logf("%s", refreshResult.StdErr)
+	t.Logf("%s", refreshResult.StdOut)
+
+	autogold.Expect(nil).Equal(t, refreshResult.Summary)
+}
+
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
 func TestDeleteLambda(t *testing.T) {
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
