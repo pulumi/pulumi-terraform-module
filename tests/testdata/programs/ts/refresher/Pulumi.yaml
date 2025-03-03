@@ -1,0 +1,5 @@
+name: ts-refresher
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

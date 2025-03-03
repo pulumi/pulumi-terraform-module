@@ -555,7 +555,8 @@ func TestRefresh(t *testing.T) {
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
-	testMod := filepath.Join("testdata", "modules", "bucketmod")
+	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
+	require.NoError(t, err)
 
 	localProviderBinPath := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
