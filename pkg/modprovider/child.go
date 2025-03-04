@@ -158,12 +158,59 @@ func (h *childHandler) mustParseAddress(pb *structpb.Struct) (resource.URN, Reso
 	return urn, ResourceAddress(v)
 }
 
-func (h *childHandler) Diff(
+// The plan is not found, perhaps this is Diff is part of `pulumi refresh`. We currently do not
+// parse refresh-only diffs, remains to be seen if doing so can improve results here. This is
+// tracked as:
+//
+// TODO[pulumi/pulumi-terraform-module#174] parse refresh-only diffs
+//
+// For now simply compare News vs OldInputs, without any details.
+func (h *childHandler) postRefreshDiff(
 	_ context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+
+	mopts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+	news, err := plugin.UnmarshalProperties(req.News, mopts)
+	if err != nil {
+		return nil, fmt.Errorf("UnmarshalProperties failed on news: %w", err)
+	}
+
+	oldInputs, err := plugin.UnmarshalProperties(req.OldInputs, mopts)
+	if err != nil {
+		return nil, fmt.Errorf("UnmarshalProperties failed on oldInputs: %w", err)
+	}
+
+	oldInputsObj := resource.NewObjectProperty(oldInputs)
+	newsObj := resource.NewObjectProperty(news)
+
+	if !oldInputsObj.DeepEqualsIncludeUnknowns(newsObj) {
+		return &pulumirpc.DiffResponse{
+			Changes: pulumirpc.DiffResponse_DIFF_SOME,
+		}, nil
+	}
+
+	return &pulumirpc.DiffResponse{
+		Changes: pulumirpc.DiffResponse_DIFF_NONE,
+	}, nil
+}
+
+func (h *childHandler) Diff(
+	ctx context.Context,
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
 	modUrn, addr := h.mustParseAddress(req.GetNews())
-	rplan := h.planStore.MustFindResourcePlan(modUrn, addr)
+	rplan, err := h.planStore.FindResourcePlan(modUrn, addr)
+	if err != nil {
+		// If we did not find a plan, this might be a pulumi refresh Diff after Read.
+		return h.postRefreshDiff(ctx, req)
+	}
+
 	resp := &pulumirpc.DiffResponse{}
 	switch rplan.ChangeKind() {
 	case tfsandbox.NoOp:
@@ -222,20 +269,10 @@ func (h *childHandler) Create(
 
 func (h *childHandler) Update(
 	_ context.Context,
-	req *pulumirpc.UpdateRequest,
+	_ *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	modUrn, addr := h.mustParseAddress(req.GetNews())
-
-	if req.Preview {
-		rplan := h.planStore.MustFindResourcePlan(modUrn, addr)
-		return &pulumirpc.UpdateResponse{
-			Properties: h.outputsStruct(rplan.PlannedValues()),
-		}, nil
-	}
-
-	rstate := h.planStore.MustFindResourceState(modUrn, addr)
 	return &pulumirpc.UpdateResponse{
-		Properties: h.outputsStruct(rstate.AttributeValues()),
+		Properties: h.outputsStruct(childResourceOutputs()),
 	}, nil
 }
 
@@ -244,4 +281,29 @@ func (h *childHandler) Delete(
 	_ *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (h *childHandler) Read(
+	_ context.Context,
+	req *pulumirpc.ReadRequest,
+) (*pulumirpc.ReadResponse, error) {
+	if req.Inputs == nil {
+		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
+	}
+
+	modUrn, addr := h.mustParseAddress(req.Inputs)
+	rstate, err := h.planStore.FindResourceState(modUrn, addr)
+	if err != nil {
+		// Refresh has removed the resource to reflect that it can no longer be found.
+		return &pulumirpc.ReadResponse{Id: ""}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("Error during child resource Read: %w", err)
+	}
+	inputs := childResourceInputs(modUrn, rstate.Address(), rstate.AttributeValues())
+	return &pulumirpc.ReadResponse{
+		Id:         childResourceID(rstate),
+		Inputs:     h.outputsStruct(inputs),
+		Properties: h.outputsStruct(childResourceOutputs()),
+	}, nil
 }

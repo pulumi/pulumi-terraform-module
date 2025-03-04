@@ -36,9 +36,30 @@ func (t *Tofu) Plan(ctx context.Context) (*Plan, error) {
 	return p, nil
 }
 
+func (t *Tofu) PlanRefreshOnly(ctx context.Context) (*Plan, error) {
+	plan, err := t.planRefreshOnly(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := newPlan(plan)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 func (t *Tofu) plan(ctx context.Context) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, false /*refreshOnly*/)
+}
+
+func (t *Tofu) planRefreshOnly(ctx context.Context) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, true /*refreshOnly*/)
+}
+
+func (t *Tofu) planWithOptions(ctx context.Context, refreshOnly bool) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), "plan.out")
-	_ /*hasChanges*/, err := t.tf.Plan(ctx, tfexec.Out(planFile))
+	_ /*hasChanges*/, err := t.tf.Plan(ctx, tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))
 	if err != nil {
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}
