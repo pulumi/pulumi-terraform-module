@@ -5,7 +5,9 @@ const cfg = new pulumi.Config();
 const prefix = cfg.require("prefix");
 const tagvalue = cfg.require("tagvalue");
 
-new bucketmod.Module("mybucketmod", {
+const m = new bucketmod.Module("mybucketmod", {
     prefix: prefix,
     tagvalue: tagvalue,
 });
+
+export const tags = m.tags;

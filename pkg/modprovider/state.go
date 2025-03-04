@@ -307,7 +307,7 @@ func (h *moduleStateHandler) Read(
 	if req.Inputs == nil {
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
 	}
-	inputsStruct := req.Inputs.Fields["args"].GetStructValue()
+	inputsStruct := req.Inputs.Fields["moduleInputs"].GetStructValue()
 	inputs, err := plugin.UnmarshalProperties(inputsStruct, plugin.MarshalOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
