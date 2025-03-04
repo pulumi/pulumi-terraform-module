@@ -395,7 +395,7 @@ func (s *server) Check(
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Check(ctx, req)
 	default:
-		return &pulumirpc.CheckResponse{Inputs: req.News}, nil
+		return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
 	}
 }
 
@@ -429,14 +429,6 @@ func (s *server) CheckConfig(
 	}, nil
 }
 
-func (s *server) DiffConfig(
-	_ context.Context,
-	_ *pulumirpc.DiffRequest,
-) (*pulumirpc.DiffResponse, error) {
-	// TODO:revert
-	return &pulumirpc.DiffResponse{}, nil
-}
-
 func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
@@ -461,11 +453,7 @@ func (s *server) Create(
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Create(ctx, req)
 	default:
-		// TODO:revert
-		return &pulumirpc.CreateResponse{
-			Id:         "example-id",
-			Properties: req.GetProperties(),
-		}, nil
+		return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
 	}
 }
 

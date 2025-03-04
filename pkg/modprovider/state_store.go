@@ -49,20 +49,21 @@ func (s *stateStore) Await(modUrn urn.URN) moduleState {
 	if waitTimeout == nil {
 		e.waitGroup.Wait()
 		return e.moduleState
-	} else {
-		ch := make(chan bool)
+	}
 
-		go func() {
-			e.waitGroup.Wait()
-			ch <- true
-		}()
+	ch := make(chan bool)
 
-		select {
-		case <-ch:
-			return e.moduleState
-		case <-time.After(*waitTimeout):
-			panic(fmt.Sprintf("Timeout waiting on %s", modUrn))
-		}
+	go func() {
+		e.waitGroup.Wait()
+		ch <- true
+	}()
+
+	select {
+	case <-ch:
+		return e.moduleState
+	case <-time.After(*waitTimeout):
+		panic(fmt.Sprintf("Timeout waiting on %s", modUrn))
+
 	}
 }
 

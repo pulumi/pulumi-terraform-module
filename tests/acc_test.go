@@ -351,7 +351,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucket-explicit-provider")
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram,
 		opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
-		opttest.TestInPlace())
+		opttest.Env("PULUMI_TERRAFORM_MODULE_WAIT_TIMEOUT", "5m"))
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
