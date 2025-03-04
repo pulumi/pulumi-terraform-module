@@ -10,3 +10,7 @@ output "sensitive_output" {
 output "statically_known" {
   value = "static value"
 }
+
+output "number_output" {
+  value = var.input_number_var
+}
