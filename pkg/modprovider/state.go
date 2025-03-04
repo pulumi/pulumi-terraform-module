@@ -46,10 +46,6 @@ type moduleState struct {
 	rawState []byte
 }
 
-func (ms *moduleState) IsEmpty() bool {
-	return len(ms.rawState) == 0
-}
-
 func (ms *moduleState) Equal(other moduleState) bool {
 	return bytes.Equal(ms.rawState, other.rawState)
 }
@@ -109,7 +105,7 @@ func newModuleStateResource(
 	pkgName packageName,
 	modUrn resource.URN,
 	packageRef string,
-	args resource.PropertyMap,
+	moduleInputs resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (*moduleStateResource, error) {
 	contract.Assertf(modUrn != "", "modUrn cannot be empty")
@@ -118,7 +114,7 @@ func newModuleStateResource(
 
 	inputsMap := property.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
 		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
-		"args":            resource.NewObjectProperty(args),
+		"moduleInputs":    resource.NewObjectProperty(moduleInputs),
 	})
 
 	err := ctx.RegisterPackageResource(string(tok), name, inputsMap, &res, packageRef, opts...)
@@ -180,9 +176,32 @@ func (h *moduleStateHandler) Diff(
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	changes := pulumirpc.DiffResponse_DIFF_NONE
-	if !newState.Equal(oldState) {
+
+	oldProps := req.OldInputs
+	newProps := req.News
+
+	opts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+
+	oldInputs, err := plugin.UnmarshalProperties(oldProps, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	newInputs, err := plugin.UnmarshalProperties(newProps, opts)
+	if err != nil {
+		return nil, err
+	}
+	moduleInputDiff := !oldInputs["moduleInputs"].DeepEquals(newInputs["moduleInputs"])
+
+	if !newState.Equal(oldState) || moduleInputDiff {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
+
 	return &pulumirpc.DiffResponse{Changes: changes}, nil
 }
 
@@ -196,7 +215,6 @@ func (h *moduleStateHandler) Create(
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
 	props := newState.Marshal()
-	props.Fields["args"] = req.Properties.Fields["args"]
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
 		Properties: props,
@@ -235,7 +253,7 @@ func (h *moduleStateHandler) Delete(
 
 	tfName := getModuleName(urn)
 
-	olds, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+	olds, err := plugin.UnmarshalProperties(req.GetOldInputs(), plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -249,8 +267,8 @@ func (h *moduleStateHandler) Delete(
 	// when deleting, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
-		olds["args"].ObjectValue(), /*inputs*/
-		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+		olds["moduleInputs"].ObjectValue(), /*inputs*/
+		[]tfsandbox.TFOutputSpec{},         /*outputs*/
 	)
 
 	if err != nil {
