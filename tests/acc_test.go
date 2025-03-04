@@ -115,8 +115,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		require.Equal(t, 1, randIntFound)
 
 		//nolint:lll
-		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).
-			Equal(t, randInt.URN)
+		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
 		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
 		autogold.Expect(map[string]interface{}{
 			"__address": "module.myrandmod.random_integer.priority",
@@ -606,7 +605,6 @@ func TestDeleteLambda(t *testing.T) {
 	functionName := prefix + "-testlambda"
 
 	// Generate package
-	//nolint:lll
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
 
 	integrationTest.Up(t)
@@ -658,7 +656,6 @@ func TestDeleteLambda(t *testing.T) {
 	// Rerun the AWS calls from above to see if Delete worked. We should see NotFound errors.
 	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
 	if err == nil {
-		//nolint:lll
 		t.Fatalf(
 			"delete verification failed: found a Lambda function that should have been deleted: %s",
 			*lambdaInput.FunctionName,
@@ -687,7 +684,6 @@ func TestDeleteLambda(t *testing.T) {
 	resp, err = cloudwatchlogsClient.DescribeLogGroups(ctx, cloudwatchlogsInput)
 	if err == nil {
 		if len(resp.LogGroups) > 0 {
-			//nolint:lll
 			log.Fatalf("found a log group that should have been deleted, %s", *cloudwatchlogsInput.LogGroupNamePrefix)
 		}
 	} else {
