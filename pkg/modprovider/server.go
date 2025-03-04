@@ -64,6 +64,7 @@ type server struct {
 	componentTypeName          componentTypeName
 	inferredModuleSchema       *InferredModuleSchema
 	providerConfigurationByURN map[string]resource.PropertyMap
+	providerSelfURN            pulumi.URN
 }
 
 func (s *server) Parameterize(
@@ -206,9 +207,9 @@ func (*server) GetPluginInfo(
 	}, nil
 }
 
-func (*server) Configure(
+func (s *server) Configure(
 	_ context.Context,
-	_ *pulumirpc.ConfigureRequest,
+	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
@@ -367,6 +368,7 @@ func (s *server) Construct(
 				inputProps,
 				s.inferredModuleSchema,
 				packageRef,
+				s.providerSelfURN,
 				providersConfig)
 
 			if err != nil {
@@ -401,6 +403,8 @@ func (s *server) CheckConfig(
 	_ context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
+	s.providerSelfURN = pulumi.URN(req.Urn)
+
 	if s.providerConfigurationByURN == nil {
 		s.providerConfigurationByURN = make(map[string]resource.PropertyMap)
 	}

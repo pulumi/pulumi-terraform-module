@@ -64,6 +64,7 @@ func NewModuleComponentResource(
 	args resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
 	packageRef string,
+	providerSelfURN pulumi.URN,
 	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, outputs pulumi.Input, finalError error) {
@@ -94,6 +95,7 @@ func NewModuleComponentResource(
 			packageRef,
 			args,
 			pulumi.Parent(&component),
+			pulumi.Provider(newProviderSelfReference(ctx, providerSelfURN)),
 		)
 
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
@@ -176,7 +178,9 @@ func NewModuleComponentResource(
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
 				packageRef,
-				pulumi.Parent(&component))
+				pulumi.Parent(&component),
+				pulumi.Provider(newProviderSelfReference(ctx, providerSelfURN)),
+			)
 
 			errs = append(errs, err)
 			if err == nil {
@@ -218,6 +222,7 @@ func NewModuleComponentResource(
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
 				packageRef,
+				pulumi.Provider(newProviderSelfReference(ctx, providerSelfURN)),
 				pulumi.Parent(&component))
 
 			errs = append(errs, err)
@@ -245,4 +250,17 @@ func NewModuleComponentResource(
 	}
 
 	return &urn, marshalledOutputs, nil
+}
+
+func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {
+	var prov pulumi.ProviderResourceState
+	err := ctx.RegisterResource(
+		string(urn.URN(urn1).Type()),
+		urn.URN(urn1).Name(),
+		pulumi.Map{},
+		&prov,
+		pulumi.URN_(string(urn1)),
+	)
+	contract.AssertNoErrorf(err, "RegisterResource failed to hydrate a self-reference")
+	return &prov
 }
