@@ -476,12 +476,11 @@ func TestDiffDetail(t *testing.T) {
 	for key, val := range state {
 		if key == "resources" {
 			var resourceList []interface{}
-			switch val.(type) {
+			switch v := val.(type) {
 			case []interface{}:
-				resourceList = val.([]interface{})
+				resourceList = v
 			default:
 				t.Log("schema resources list must be of type []interface{}")
-				break
 			}
 			for _, resEntry := range resourceList {
 				var res map[string]interface{}
@@ -495,7 +494,6 @@ func TestDiffDetail(t *testing.T) {
 					}
 				default:
 					t.Log("a resource must be of type map[string]interface{}")
-					break
 				}
 			}
 		}
