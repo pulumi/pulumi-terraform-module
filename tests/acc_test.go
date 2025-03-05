@@ -559,8 +559,8 @@ func TestRefresh(t *testing.T) {
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
 	require.NoError(t, err)
 
-	localProviderBinPath := ensureCompiledProvider(t)
-	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	localBin := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
 	expectBucketTag := func(tagvalue string) {
@@ -583,7 +583,7 @@ func TestRefresh(t *testing.T) {
 		require.Equal(t, map[string]interface{}{"TestTag": tagvalue}, tags)
 	}
 
-	pulumiPackageAdd(t, it, localProviderBinPath, testMod, "bucketMod")
+	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
 
 	// First provision a bucket with TestTag=a and remember this state.
