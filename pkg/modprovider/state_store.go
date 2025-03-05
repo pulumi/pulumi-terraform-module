@@ -50,7 +50,6 @@ func (s *stateStore) Await(modUrn urn.URN) moduleState {
 		e.waitGroup.Wait()
 		return e.moduleState
 	}
-
 	ch := make(chan bool)
 
 	go func() {
@@ -63,7 +62,6 @@ func (s *stateStore) Await(modUrn urn.URN) moduleState {
 		return e.moduleState
 	case <-time.After(*waitTimeout):
 		panic(fmt.Sprintf("Timeout waiting on %s", modUrn))
-
 	}
 }
 

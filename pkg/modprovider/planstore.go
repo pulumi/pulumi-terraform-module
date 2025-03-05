@@ -17,6 +17,7 @@ package modprovider
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -30,15 +31,105 @@ import (
 //
 // The provider will have a single planStore instance that stores the information indexed by URNs.
 type planStore struct {
-	mu     sync.Mutex
-	plans  map[urn.URN]Plan
-	states map[urn.URN]State
+	mutex  sync.Mutex
+	plans  map[urn.URN]*planEntry
+	states map[urn.URN]*stateEntry
+}
+
+func (s *planStore) getOrCreatePlanEntry(u urn.URN) *planEntry {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.plans == nil {
+		s.plans = map[urn.URN]*planEntry{}
+	}
+	if _, ok := s.plans[u]; !ok {
+		e := &planEntry{}
+		e.waitGroup.Add(1)
+		s.plans[u] = e
+	}
+	return s.plans[u]
+}
+
+func (s *planStore) getOrCreateStateEntry(u urn.URN) *stateEntry {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.states == nil {
+		s.states = map[urn.URN]*stateEntry{}
+	}
+	if _, ok := s.states[u]; !ok {
+		e := &stateEntry{}
+		e.waitGroup.Add(1)
+		s.states[u] = e
+	}
+	return s.states[u]
+}
+
+// See [planStore].
+type planEntry struct {
+	waitGroup sync.WaitGroup
+	plan      Plan
+}
+
+func (e *planEntry) Await() Plan {
+	if waitTimeout == nil {
+		e.waitGroup.Wait()
+		return e.plan
+	}
+	ch := make(chan bool)
+
+	go func() {
+		e.waitGroup.Wait()
+		ch <- true
+	}()
+
+	select {
+	case <-ch:
+		return e.plan
+	case <-time.After(*waitTimeout):
+		panic("Timeout waiting on planEntry")
+	}
+}
+
+func (e *planEntry) Set(plan Plan) {
+	e.plan = plan
+	e.waitGroup.Done()
+}
+
+// See [planStore].
+type stateEntry struct {
+	waitGroup sync.WaitGroup
+	state     State
+}
+
+func (e *stateEntry) Await() State {
+	if waitTimeout == nil {
+		e.waitGroup.Wait()
+		return e.state
+	}
+	ch := make(chan bool)
+
+	go func() {
+		e.waitGroup.Wait()
+		ch <- true
+	}()
+
+	select {
+	case <-ch:
+		return e.state
+	case <-time.After(*waitTimeout):
+		panic("Timeout waiting on planEntry")
+	}
+}
+
+func (e *stateEntry) Set(state State) {
+	e.state = state
+	e.waitGroup.Done()
 }
 
 // Avoid memory leaks and clean the state when done.
 func (s *planStore) Forget(modUrn urn.URN) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.plans != nil {
 		delete(s.plans, modUrn)
 	}
@@ -48,43 +139,31 @@ func (s *planStore) Forget(modUrn urn.URN) {
 }
 
 func (s *planStore) SetPlan(modUrn urn.URN, plan Plan) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.plans == nil {
-		s.plans = map[urn.URN]Plan{}
-	}
-	_, exists := s.plans[modUrn]
-	contract.Assertf(!exists, "SetPlan was already called for %q", modUrn)
-	s.plans[modUrn] = plan
+	entry := s.getOrCreatePlanEntry(modUrn)
+	entry.Set(plan)
 }
 
 func (s *planStore) SetState(modUrn urn.URN, state State) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.states == nil {
-		s.states = map[urn.URN]State{}
-	}
-	_, exists := s.states[modUrn]
-	contract.Assertf(!exists, "SetState was already called for %q", modUrn)
-	s.states[modUrn] = state
+	entry := s.getOrCreateStateEntry(modUrn)
+	entry.Set(state)
+}
+
+type unknownAddressError struct {
+	addr ResourceAddress
+}
+
+func (e unknownAddressError) Error() string {
+	return fmt.Sprintf("unknown address: %q", e.addr)
 }
 
 func (s *planStore) FindResourceState(
 	modUrn urn.URN,
 	addr ResourceAddress,
 ) (ResourceState, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.states == nil {
-		return nil, fmt.Errorf("No module states yet")
-	}
-	modState, ok := s.states[modUrn]
-	if !ok {
-		return nil, fmt.Errorf("ModuleState is not yet known for %q", modUrn)
-	}
+	modState := s.getOrCreateStateEntry(modUrn).Await()
 	sop, ok := modState.FindResourceStateOrPlan(addr)
 	if !ok {
-		return nil, fmt.Errorf("FindResourceState: unknown address %q", addr)
+		return nil, fmt.Errorf("FindResourceState: %w", unknownAddressError{addr})
 	}
 	st, ok := sop.(ResourceState)
 	contract.Assertf(ok, "FindResourceState: ResourceState cast must not fail")
@@ -95,21 +174,13 @@ func (s *planStore) FindResourcePlan(
 	modUrn urn.URN,
 	addr ResourceAddress,
 ) (ResourcePlan, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.plans == nil {
-		return nil, fmt.Errorf("No module plans yet")
-	}
-	modPlan, ok := s.plans[modUrn]
-	if !ok {
-		return nil, fmt.Errorf("ModulePlan is not yet known for %q", modUrn)
-	}
+	modPlan := s.getOrCreatePlanEntry(modUrn).Await()
 	sop, ok := modPlan.FindResourceStateOrPlan(addr)
 	if !ok {
-		return nil, fmt.Errorf("FindResourcePlan: unknown address %q", addr)
+		return nil, fmt.Errorf("FindResourcePlan: %w", unknownAddressError{addr})
 	}
 	st, ok := sop.(ResourcePlan)
-	contract.Assertf(ok, "FindResourceState: ResourcePlan cast must not fail")
+	contract.Assertf(ok, "FindResourcePlan: ResourcePlan cast must not fail")
 	return st, nil
 }
 

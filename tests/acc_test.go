@@ -669,6 +669,157 @@ Resources:
 	diffDetailTest.Destroy(t)
 }
 
+// Verify that pulumi refresh detects drift and reflects it in the state.
+func TestRefresh(t *testing.T) {
+	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+	ctx := context.Background()
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
+	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
+	require.NoError(t, err)
+
+	localBin := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
+	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	expectBucketTag := func(tagvalue string) {
+		stateR := it.ExportStack(t)
+
+		var deployment apitype.DeploymentV3
+		err := json.Unmarshal(stateR.Deployment, &deployment)
+		require.NoError(t, err)
+
+		var bucket apitype.ResourceV3
+		bucketFound := 0
+		for _, r := range deployment.Resources {
+			if r.Type == "bucketmod:tf:aws_s3_bucket" {
+				bucket = r
+				bucketFound++
+			}
+		}
+		require.Equal(t, 1, bucketFound)
+		tags := bucket.Inputs["tags"]
+		require.Equal(t, map[string]interface{}{"TestTag": tagvalue}, tags)
+	}
+
+	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
+	it.SetConfig(t, "prefix", generateTestResourcePrefix())
+
+	// First provision a bucket with TestTag=a and remember this state.
+	it.SetConfig(t, "tagvalue", "a")
+	it.Up(t)
+	stateA := it.ExportStack(t)
+
+	// Then provision the bucket with TestTag=b so the bucket in the cloud is tagged with b.
+	it.SetConfig(t, "tagvalue", "b")
+	it.Up(t)
+	outMapB, err := it.CurrentStack().Outputs(ctx)
+	require.NoError(t, err)
+	autogold.Expect(map[string]interface{}{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
+
+	// Now reset Pulumi state so it expects the bucket to have tag "a".
+	it.ImportStack(t, stateA)
+	expectBucketTag("a")
+
+	// Now perform a refresh.
+	refreshResult := it.Refresh(t)
+	t.Logf("pulumi refresh")
+	t.Logf("%s", refreshResult.StdErr)
+	t.Logf("%s", refreshResult.StdOut)
+	rc := refreshResult.Summary.ResourceChanges
+	autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
+
+	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
+	expectBucketTag("b")
+
+	// Side note: logically we should be getting "b" from the refreshed state. However Pulumi
+	// currently cannot refresh stack outputs when resources are changing.
+	//
+	// TODO[github.com/pulumi/pulumi#2710] Refresh does not update stack outputs
+	outMap, err := it.CurrentStack().Outputs(ctx)
+	require.NoError(t, err)
+	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+}
+
+// Verify that pulumi refresh detects deleted resources.
+func TestRefreshDeleted(t *testing.T) {
+	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
+	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
+	require.NoError(t, err)
+
+	localBin := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
+	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
+	it.SetConfig(t, "prefix", generateTestResourcePrefix())
+
+	// First provision a bucket.
+	it.SetConfig(t, "tagvalue", "a")
+	it.Up(t)
+	stateA := it.ExportStack(t)
+
+	// Then destroy the stack so that the bucket is removed from the cloud.
+	it.Destroy(t)
+
+	// Now reset Pulumi state so Pului thinks that the bucket exists.
+	it.ImportStack(t, stateA)
+
+	// Now perform a refresh.
+	refreshResult := it.Refresh(t)
+	t.Logf("pulumi refresh")
+	t.Logf("%s", refreshResult.StdErr)
+	t.Logf("%s", refreshResult.StdOut)
+
+	rc := refreshResult.Summary.ResourceChanges
+	autogold.Expect(&map[string]int{"delete": 1, "same": 3}).Equal(t, rc)
+
+	stateR := it.ExportStack(t)
+
+	var deployment apitype.DeploymentV3
+	err = json.Unmarshal(stateR.Deployment, &deployment)
+	require.NoError(t, err)
+
+	bucketFound := 0
+	for _, r := range deployment.Resources {
+		if r.Type == "bucketmod:tf:aws_s3_bucket" {
+			bucketFound++
+		}
+	}
+	require.Equal(t, 0, bucketFound)
+}
+
+// Verify that when there is no drift, refresh works without any changes.
+func TestRefreshNoChanges(t *testing.T) {
+	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
+	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
+	require.NoError(t, err)
+
+	localBin := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
+	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
+	it.SetConfig(t, "prefix", generateTestResourcePrefix())
+
+	// First provision a bucket.
+	it.SetConfig(t, "tagvalue", "a")
+	it.Up(t)
+
+	// Now perform a refresh.
+	refreshResult := it.Refresh(t)
+	t.Logf("pulumi refresh")
+	t.Logf("%s", refreshResult.StdErr)
+	t.Logf("%s", refreshResult.StdOut)
+
+	rc := refreshResult.Summary.ResourceChanges
+	autogold.Expect(&map[string]int{"same": 4}).Equal(t, rc)
+}
+
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
 func TestDeleteLambda(t *testing.T) {
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module

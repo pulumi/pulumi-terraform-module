@@ -39,8 +39,8 @@ import (
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-	moduleStateHandler := newModuleStateHandler(hostClient)
 	planStore := planStore{}
+	moduleStateHandler := newModuleStateHandler(hostClient, &planStore)
 	srv := &server{
 		planStore:          &planStore,
 		hostClient:         hostClient,
@@ -492,6 +492,20 @@ func (s *server) Attach(_ context.Context, req *pulumirpc.PluginAttach) (*emptyp
 	}
 	s.hostClient = host
 	return &emptypb.Empty{}, nil
+}
+
+func (s *server) Read(
+	ctx context.Context,
+	req *pulumirpc.ReadRequest,
+) (*pulumirpc.ReadResponse, error) {
+	switch {
+	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+	case isChildResourceType(req.GetType()):
+		return s.childHandler.Read(ctx, req)
+	default:
+		return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
+	}
 }
 
 func isChildResourceType(rawType string) bool {

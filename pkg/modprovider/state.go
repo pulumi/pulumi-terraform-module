@@ -17,6 +17,7 @@ package modprovider
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -126,18 +127,20 @@ func newModuleStateResource(
 
 // The implementation of the ModuleComponentResource life-cycle.
 type moduleStateHandler struct {
-	oldState stateStore
-	newState stateStore
-	hc       *provider.HostClient
+	planStore *planStore
+	oldState  stateStore
+	newState  stateStore
+	hc        *provider.HostClient
 }
 
 var _ moduleStateStore = (*moduleStateHandler)(nil)
 
-func newModuleStateHandler(hc *provider.HostClient) *moduleStateHandler {
+func newModuleStateHandler(hc *provider.HostClient, planStore *planStore) *moduleStateHandler {
 	return &moduleStateHandler{
-		oldState: stateStore{},
-		newState: stateStore{},
-		hc:       hc,
+		oldState:  stateStore{},
+		newState:  stateStore{},
+		hc:        hc,
+		planStore: planStore,
 	}
 }
 
@@ -175,6 +178,7 @@ func (h *moduleStateHandler) Diff(
 	oldState.Unmarshal(req.Olds)
 	h.oldState.Put(modUrn, oldState)
 	newState := h.newState.Await(modUrn)
+
 	changes := pulumirpc.DiffResponse_DIFF_NONE
 
 	oldProps := req.OldInputs
@@ -257,7 +261,7 @@ func (h *moduleStateHandler) Delete(
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
-		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
+		// TODO[pulumi/pulumi-terraform-module#151] support Outputs in Unmarshal
 		KeepOutputValues: false,
 	})
 	if err != nil {
@@ -293,6 +297,92 @@ func (h *moduleStateHandler) Delete(
 
 	// Send back empty pb if no error.
 	return &emptypb.Empty{}, nil
+}
+
+func (h *moduleStateHandler) Read(
+	ctx context.Context,
+	req *pulumirpc.ReadRequest,
+	moduleSource TFModuleSource,
+	moduleVersion TFModuleVersion,
+) (*pulumirpc.ReadResponse, error) {
+	if req.Inputs == nil {
+		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
+	}
+	inputsStruct := req.Inputs.Fields["moduleInputs"].GetStructValue()
+	inputs, err := plugin.UnmarshalProperties(inputsStruct, plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	modUrn := h.mustParseModURN(req.Inputs)
+	tfName := getModuleName(modUrn)
+	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
+
+	tf, err := tfsandbox.NewTofu(ctx, wd)
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
+
+	// when refreshing, we do not require outputs to be exposed
+	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
+		tf.WorkingDir(),
+		inputs,                     /*inputs*/
+		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+	}
+
+	oldState := moduleState{}
+	oldState.Unmarshal(req.GetProperties())
+
+	err = tf.PushState(ctx, oldState.rawState)
+	if err != nil {
+		return nil, fmt.Errorf("PushState failed: %w", err)
+	}
+
+	plan, err := tf.PlanRefreshOnly(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Planning module refresh failed: %w", err)
+	}
+
+	// Child resources will need the plan to figure out their diffs.
+	h.planStore.SetPlan(modUrn, plan)
+
+	// Now actually apply the refresh.
+	state, err := tf.Refresh(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Module refresh failed: %w", err)
+	}
+
+	// Child resources need to access the state in their Read() implementation.
+	h.planStore.SetState(modUrn, state)
+
+	rawState, ok, err := tf.PullState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("PullState failed: %w", err)
+	}
+	if !ok {
+		return nil, errors.New("PullState did not find state")
+	}
+
+	refreshedModuleState := moduleState{
+		rawState: rawState,
+	}
+
+	// The engine will call Diff() after Read(), and it would expect this to be populated.
+	h.newState.Put(modUrn, refreshedModuleState)
+
+	return &pulumirpc.ReadResponse{
+		Id:         moduleStateResourceID,
+		Properties: refreshedModuleState.Marshal(),
+		Inputs:     req.Inputs, // inputs never change
+	}, nil
 }
 
 func (*moduleStateHandler) mustParseModURN(pb *structpb.Struct) urn.URN {
