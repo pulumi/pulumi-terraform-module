@@ -573,7 +573,7 @@ func TestRefresh(t *testing.T) {
 		var bucket apitype.ResourceV3
 		bucketFound := 0
 		for _, r := range deployment.Resources {
-			if r.Type == "bucketMod:tf:aws_s3_bucket" {
+			if r.Type == "bucketmod:tf:aws_s3_bucket" {
 				bucket = r
 				bucketFound++
 			}
@@ -665,7 +665,7 @@ func TestRefreshDeleted(t *testing.T) {
 
 	bucketFound := 0
 	for _, r := range deployment.Resources {
-		if r.Type == "bucketMod:tf:aws_s3_bucket" {
+		if r.Type == "bucketmod:tf:aws_s3_bucket" {
 			bucketFound++
 		}
 	}
