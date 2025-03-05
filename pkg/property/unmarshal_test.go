@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -34,6 +35,9 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 	type testCase struct {
 		name   string
 		inputs resource.PropertyMap
+
+		// Only needed if turnaround value is a normalized form of the original value.
+		inputsReceived resource.PropertyMap
 	}
 
 	testCases := []testCase{
@@ -62,11 +66,23 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 					Element: resource.NewStringProperty(""),
 				}),
 			},
+			inputsReceived: resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{
+					Known: false,
+				}),
+			},
 		},
 		{
 			name: "secret",
 			inputs: resource.PropertyMap{
 				"foo": resource.NewSecretProperty(&resource.Secret{
+					Element: resource.NewStringProperty("SECRET"),
+				}),
+			},
+			inputsReceived: resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{
+					Known:   true,
+					Secret:  true,
 					Element: resource.NewStringProperty("SECRET"),
 				}),
 			},
@@ -76,9 +92,7 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 			inputs: resource.PropertyMap{
 				"foo": resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewStringProperty("foo"),
-					resource.NewSecretProperty(&resource.Secret{
-						Element: resource.NewStringProperty("SECRET"),
-					}),
+					resource.NewNumberProperty(42.0),
 				}),
 			},
 		},
@@ -87,9 +101,74 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 			inputs: resource.PropertyMap{
 				"foo": resource.NewObjectProperty(resource.PropertyMap{
 					"p1": resource.NewStringProperty("foo"),
-					"p2": resource.NewSecretProperty(&resource.Secret{
-						Element: resource.NewStringProperty("SECRET"),
-					}),
+					"p2": resource.NewNumberProperty(42.0),
+				}),
+			},
+		},
+		{
+			name: "output-known",
+			inputs: resource.PropertyMap{
+				"x": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("value"),
+					Known:   true,
+				}),
+			},
+			inputsReceived: resource.PropertyMap{
+				"x": resource.NewStringProperty("value"),
+			},
+		},
+		{
+			name: "output-unknown",
+			inputs: resource.PropertyMap{
+				"x": resource.NewOutputProperty(resource.Output{
+					Known: false,
+				}),
+			},
+		},
+		{
+			name: "output-secret",
+			inputs: resource.PropertyMap{
+				"x": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("value"),
+					Known:   true,
+					Secret:  true,
+				}),
+			},
+		},
+		{
+			name: "output-known-with-deps",
+			inputs: resource.PropertyMap{
+				"x": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("value"),
+					Known:   true,
+					Dependencies: []urn.URN{
+						"urn:pulumi:test::prog::randmod:index:Module::mymod",
+					},
+				}),
+			},
+		},
+		{
+			name: "output-unknown-with-deps",
+			inputs: resource.PropertyMap{
+				"x": resource.NewOutputProperty(resource.Output{
+					Known: false,
+					Dependencies: []urn.URN{
+						"urn:pulumi:test::prog::randmod:index:Module::mymod",
+					},
+				}),
+			},
+		},
+		{
+			name: "output-secret-with-deps",
+			inputs: resource.PropertyMap{
+				"x": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("value"),
+					Known:   true,
+					Secret:  true,
+					Dependencies: []urn.URN{
+						"urn:pulumi:test::prog::randmod:index:Module::mymod",
+						"urn:pulumi:test::prog::randmod:index:Module::mymod2",
+					},
 				}),
 			},
 		},
@@ -98,7 +177,11 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			receivedInputs := threadThroughRegisterResource(t, tc.inputs)
-			require.Equal(t, tc.inputs, receivedInputs)
+			expectedInputs := tc.inputs
+			if tc.inputsReceived != nil {
+				expectedInputs = tc.inputsReceived
+			}
+			require.Equal(t, expectedInputs, receivedInputs)
 		})
 	}
 }
@@ -123,10 +206,13 @@ func threadThroughRegisterResource(t *testing.T, inputs resource.PropertyMap) re
 	input, err := UnmarshalPropertyMap(pctx, inputs)
 	require.NoError(t, err)
 
-	err = pctx.RegisterResource("typ", "name", input, &res)
+	// We cannot use RegisterResource here yet because first-class Output values get lost for normal resources:
+	// https://github.com/pulumi/pulumi/blob/68295c45f3f3c8f6aadbd76d141a4dcf4f0a55d2/sdk/go/pulumi/context.go#L2223
+	err = pctx.RegisterRemoteComponentResource("typ", "name", input, &res)
 	require.NoError(t, err)
 
-	return <-registerResourceChan
+	back := <-registerResourceChan
+	return back
 }
 
 type mockResource struct {
