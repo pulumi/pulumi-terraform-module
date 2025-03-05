@@ -211,8 +211,7 @@ func threadThroughRegisterResource(t *testing.T, inputs resource.PropertyMap) re
 	err = pctx.RegisterRemoteComponentResource("typ", "name", input, &res)
 	require.NoError(t, err)
 
-	back := <-registerResourceChan
-	return back
+	return <-registerResourceChan
 }
 
 type mockResource struct {
