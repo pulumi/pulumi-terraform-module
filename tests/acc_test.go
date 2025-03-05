@@ -163,8 +163,7 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 	// being applied and pulled in when Tofu runs refresh on the second up
 	integrationTest.Up(t, optup.Diff())
 
-	integrationTest.UpdateSource(t, filepath.Join(testProgram, "step2"))
-
+	integrationTest.SetConfig(t, "step", "2")
 	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "test-lambda-state")
 	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
 		"diff": apitype.PlanDiffV1{

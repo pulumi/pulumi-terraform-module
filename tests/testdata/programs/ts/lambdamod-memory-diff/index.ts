@@ -5,6 +5,7 @@ import * as path from "path";
 
 const config = new pulumi.Config();
 const prefix = config.get('prefix') ?? pulumi.getStack();
+const step = config.getNumber('step') || 1;
 
 const testlambda = new lambda.Module("test-lambda", {
     function_name: `${prefix}-testlambda`,
@@ -12,6 +13,7 @@ const testlambda = new lambda.Module("test-lambda", {
     artifacts_dir: path.join(__dirname, "builds"),
     runtime:  "nodejs22.x",
     handler: "app.handler",
+    memory_size: step === 1 ? undefined : 256,
 })
 
 
