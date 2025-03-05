@@ -111,3 +111,68 @@ func TestState(t *testing.T) {
 
 	require.True(t, hasUpdates, "expected the plan after the state edit to have updates")
 }
+
+func TestStateMatchesPlan(t *testing.T) {
+	cases := []struct {
+		name           string
+		inputNumberVar any
+		expected       resource.PropertyValue
+	}{
+		{
+			name:           "uses number",
+			inputNumberVar: 42,
+			expected:       resource.NewNumberProperty(42),
+		},
+		{
+			name: "uses string",
+			// since the input to the module requires a property map
+			// we'll lose precision if we pass the big float here
+			// instead we set the big value as the default in variables.tf
+			inputNumberVar: nil,
+			expected:       resource.NewStringProperty("4222222222222222222"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			tofu, err := NewTofu(ctx, nil)
+			require.NoError(t, err, "error initializing tofu")
+
+			outputs := []TFOutputSpec{
+				{Name: "number_output"},
+			}
+			ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
+			inputs := map[string]interface{}{
+				"inputVar": "test",
+			}
+			if tc.inputNumberVar != nil {
+				inputs["inputNumberVar"] = tc.inputNumberVar
+			}
+			err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
+				resource.NewPropertyMapFromMap(inputs), outputs)
+			require.NoError(t, err, "error creating tf file")
+
+			err = tofu.Init(ctx)
+			require.NoError(t, err, "error running tofu init")
+
+			initialPlan, err := tofu.Plan(ctx)
+			require.NoError(t, err, "error running tofu plan (before apply)")
+			require.NotNil(t, initialPlan, "expected a non-nil plan")
+
+			plannedOutputs := initialPlan.Outputs()
+			require.Equal(t, resource.PropertyMap{
+				resource.PropertyKey("number_output"): tc.expected,
+			}, plannedOutputs)
+
+			state, err := tofu.Apply(ctx)
+			require.NoError(t, err, "error running tofu apply")
+			moduleOutputs := state.Outputs()
+			// output value is the same as the input
+			require.Equal(t, resource.PropertyMap{
+				resource.PropertyKey("number_output"): tc.expected,
+			}, moduleOutputs)
+		})
+	}
+}

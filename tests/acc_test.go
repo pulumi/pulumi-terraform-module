@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -87,7 +88,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		require.Len(t, outputs, 2, "expected two outputs")
 		randomPriority, ok := outputs["randomPriority"]
 		require.True(t, ok, "expected output randomPriority")
-		require.Equal(t, "2", randomPriority.Value)
+		require.Equal(t, float64(2), randomPriority.Value)
 		require.False(t, randomPriority.Secret, "expected output randomPriority to not be secret")
 
 		randomSeed, ok := outputs["randomSeed"]
@@ -120,9 +121,9 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "2",
-			"max":       "10",
-			"min":       "1",
-			"result":    "2",
+			"max":       10,
+			"min":       1,
+			"result":    2,
 			"seed": map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 				"plaintext":                        `"9"`,
@@ -140,6 +141,38 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		upResult := pt.Up(t)
 		autogold.Expect(&map[string]int{"same": 5}).Equal(t, upResult.Summary.ResourceChanges)
 	})
+}
+
+func TestLambdaMemorySizeDiff(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "lambdamod-memory-diff")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
+	integrationTest.Up(t, optup.Diff())
+	// run up a second time because some diffs are due to AWS defaults
+	// being applied and pulled in when Tofu runs refresh on the second up
+	integrationTest.Up(t, optup.Diff())
+
+	integrationTest.SetConfig(t, "step", "2")
+	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "test-lambda-state")
+	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
+		"diff": apitype.PlanDiffV1{
+			Updates: map[string]interface{}{
+				"memory_size": 256,
+			},
+		},
+		"steps": []apitype.OpType{apitype.OpType("update")},
+	}}).Equal(t, resourceDiffs)
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
@@ -569,7 +602,6 @@ func TestDeleteLambda(t *testing.T) {
 	functionName := prefix + "-testlambda"
 
 	// Generate package
-	//nolint:lll
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
 
 	integrationTest.Up(t)
@@ -621,8 +653,10 @@ func TestDeleteLambda(t *testing.T) {
 	// Rerun the AWS calls from above to see if Delete worked. We should see NotFound errors.
 	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
 	if err == nil {
-		//nolint:lll
-		t.Fatalf("delete verification failed: found a Lambda function that should have been deleted: %s", *lambdaInput.FunctionName)
+		t.Fatalf(
+			"delete verification failed: found a Lambda function that should have been deleted: %s",
+			*lambdaInput.FunctionName,
+		)
 	} else {
 		// ResourceNotFoundException is the expected response after Delete
 		var resourceNotFoundError *lambdatypes.ResourceNotFoundException
@@ -647,13 +681,46 @@ func TestDeleteLambda(t *testing.T) {
 	resp, err = cloudwatchlogsClient.DescribeLogGroups(ctx, cloudwatchlogsInput)
 	if err == nil {
 		if len(resp.LogGroups) > 0 {
-			//nolint:lll
 			log.Fatalf("found a log group that should have been deleted, %s", *cloudwatchlogsInput.LogGroupNamePrefix)
 		}
 	} else {
 		t.Fatalf("encountered unexpected error verifying log group was deleted: %v ", err)
 	}
 
+}
+
+// runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
+// and returns a map of resource diffs for the resources that have changes based on the plan
+func runPreviewWithPlanDiff(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	excludeResources ...string,
+) map[string]interface{} {
+	t.Helper()
+
+	root := pt.CurrentStack().Workspace().WorkDir()
+	planPath := filepath.Join(root, "pulumiPlan.out")
+	pt.Preview(t, optpreview.Diff(), optpreview.Plan(planPath))
+	planContents, err := os.ReadFile(planPath)
+	assert.NoError(t, err)
+
+	var plan apitype.DeploymentPlanV1
+	err = json.Unmarshal(planContents, &plan)
+	assert.NoError(t, err)
+
+	resourceDiffs := map[string]interface{}{}
+	for urn, resourcePlan := range plan.ResourcePlans {
+		if slices.Contains(excludeResources, urn.Name()) {
+			continue
+		}
+		if !slices.Contains(resourcePlan.Steps, apitype.OpSame) {
+			resourceDiffs[urn.Name()] = map[string]interface{}{
+				"diff":  resourcePlan.Goal.InputDiff,
+				"steps": resourcePlan.Steps,
+			}
+		}
+	}
+	return resourceDiffs
 }
 
 func getRoot(t *testing.T) string {

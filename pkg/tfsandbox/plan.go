@@ -43,7 +43,9 @@ func (t *Tofu) plan(ctx context.Context) (*tfjson.Plan, error) {
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}
 
-	plan, err := t.tf.ShowPlanFile(ctx, planFile)
+	// NOTE: the recommended default from terraform-json is to set JSONNumber=true
+	// otherwise some number values will lose precision when converted to float64
+	plan, err := t.tf.ShowPlanFile(ctx, planFile, tfexec.JSONNumber(true))
 	if err != nil {
 		return nil, fmt.Errorf("error running show plan: %w", err)
 	}
