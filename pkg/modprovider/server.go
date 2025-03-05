@@ -209,7 +209,7 @@ func (*server) GetPluginInfo(
 
 func (s *server) Configure(
 	_ context.Context,
-	req *pulumirpc.ConfigureRequest,
+	_ *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,

@@ -20,11 +20,15 @@ const (
 	terraformDataResourceType   = "terraform_data"
 	terraformDataResourceName   = "unknown_proxy"
 	terraformDataResourcePrefix = "internal_output_"
+)
+
+func writeTerraformFilesToDirectory() (string, bool) {
 	// An environment variable that can be set to a path of a directory
 	// to which we write the generated Terraform JSON file.
 	// mainly used for debugging purposes and being able to see the generated code.
-	PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE = "PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE"
-)
+	writeDir := os.Getenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE")
+	return writeDir, writeDir != ""
+}
 
 type locals struct {
 	entries map[string]interface{}
@@ -239,7 +243,7 @@ func CreateTFFile(
 		return err
 	}
 
-	if writeDir := os.Getenv(PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE); writeDir != "" {
+	if writeDir, ok := writeTerraformFilesToDirectory(); ok {
 		if _, err := os.Stat(writeDir); os.IsNotExist(err) {
 			// create the directory if it doesn't exist
 			if err := os.MkdirAll(writeDir, 0700); err != nil {
