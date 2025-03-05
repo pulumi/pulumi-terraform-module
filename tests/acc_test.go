@@ -622,6 +622,56 @@ func TestRefresh(t *testing.T) {
 	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
 }
 
+// Verify that pulumi refresh detects deleted resources.
+func TestRefreshDeleted(t *testing.T) {
+	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
+	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
+	require.NoError(t, err)
+
+	localBin := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
+	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
+	it.SetConfig(t, "prefix", generateTestResourcePrefix())
+
+	// First provision a bucket.
+	it.SetConfig(t, "tagvalue", "a")
+	it.Up(t)
+	stateA := it.ExportStack(t)
+
+	// Then destroy the stack so that the bucket is removed from the cloud.
+	it.Destroy(t)
+
+	// Now reset Pulumi state so Pului thinks that the bucket exists.
+	it.ImportStack(t, stateA)
+
+	// Now perform a refresh.
+	refreshResult := it.Refresh(t)
+	t.Logf("pulumi refresh")
+	t.Logf("%s", refreshResult.StdErr)
+	t.Logf("%s", refreshResult.StdOut)
+
+	rc := refreshResult.Summary.ResourceChanges
+	autogold.Expect(&map[string]int{"delete": 1, "same": 3}).Equal(t, rc)
+
+	stateR := it.ExportStack(t)
+
+	var deployment apitype.DeploymentV3
+	err = json.Unmarshal(stateR.Deployment, &deployment)
+	require.NoError(t, err)
+
+	bucketFound := 0
+	for _, r := range deployment.Resources {
+		if r.Type == "bucketMod:tf:aws_s3_bucket" {
+			bucketFound++
+		}
+	}
+	require.Equal(t, 0, bucketFound)
+}
+
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
 func TestDeleteLambda(t *testing.T) {
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
