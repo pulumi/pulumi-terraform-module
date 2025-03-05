@@ -18,6 +18,7 @@
 package property
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -111,8 +112,21 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 			}
 			return pulumi.ToSecret(element), nil
 		case v.IsOutput():
-			contract.Failf("Output is not yet supported in UnmarshalPropertyValue")
-			return nil, nil
+			o := v.OutputValue()
+			if !o.Known {
+				return pulumi.UnsafeUnknownOutput(deps(o.Dependencies)), nil
+			}
+
+			element, err := unmarshal(o.Element)
+			if err != nil {
+				return nil, err
+			}
+
+			if o.Secret {
+				return withDeps(ctx.Context(), o.Dependencies, pulumi.ToSecret(element)), nil
+			}
+
+			return withDeps(ctx.Context(), o.Dependencies, pulumi.ToOutput(element)), nil
 		}
 
 		return nil, fmt.Errorf("unknown property value %v", v)
@@ -127,6 +141,30 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 		m[string(k)] = uv
 	}
 	return m, nil
+}
+
+func withDeps(ctx context.Context, urns []resource.URN, out pulumi.Output) pulumi.Output {
+	if len(urns) == 0 {
+		return out
+	}
+	return pulumi.OutputWithDependencies(ctx, out, deps(urns)...)
+}
+
+func deps(urns []resource.URN) []pulumi.Resource {
+	rr := []pulumi.Resource{}
+	for _, u := range urns {
+		rr = append(rr, &depResource{urn: pulumi.URN(u)})
+	}
+	return rr
+}
+
+type depResource struct {
+	pulumi.CustomResourceState
+	urn pulumi.URN
+}
+
+func (d *depResource) URN() pulumi.URNOutput {
+	return pulumi.URNPtr(d.urn).ToURNPtrOutput().Elem()
 }
 
 func unmarshalPropertyValue(ctx *pulumi.Context, v resource.PropertyValue) (interface{}, bool, error) {
