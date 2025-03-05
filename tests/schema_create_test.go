@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path"
 	"testing"
@@ -210,7 +211,7 @@ resource "aws_instance" "this" {
 					map[string]interface{}{
 						"delete_on_termination": true,
 						"tags":                  nil,
-						"volume_size":           float64(8),
+						"volume_size":           json.Number("8"),
 						"volume_type":           "gp2",
 					},
 				}).Equal(t, actual)
@@ -292,13 +293,13 @@ resource "aws_instance" "this" {
 					map[string]interface{}{
 						"delete_on_termination": true,
 						"tags":                  nil,
-						"volume_size":           float64(7),
+						"volume_size":           json.Number("7"),
 						"volume_type":           "gp3",
 					},
 					map[string]interface{}{
 						"delete_on_termination": true,
 						"tags":                  nil,
-						"volume_size":           float64(8),
+						"volume_size":           json.Number("8"),
 					},
 				}).Equal(t, actual)
 			})
@@ -496,7 +497,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 							map[string]interface{}{
 								"and": []interface{}{
 									map[string]interface{}{
-										"object_size_greater_than": float64(200),
+										"object_size_greater_than": json.Number("200"),
 										"tags":                     nil,
 									},
 								},
@@ -511,7 +512,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 						"transition": []interface{}{
 							map[string]interface{}{
 								"date":          nil,
-								"days":          float64(30),
+								"days":          json.Number("30"),
 								"storage_class": "GLACIER",
 							},
 							map[string]interface{}{

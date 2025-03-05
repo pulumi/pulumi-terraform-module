@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
@@ -26,7 +27,9 @@ func (t *Tofu) apply(ctx context.Context) (*tfjson.State, error) {
 		return nil, fmt.Errorf("error running tofu apply: %w", err)
 	}
 
-	state, err := t.tf.Show(ctx)
+	// NOTE: the recommended default from terraform-json is to set JSONNumber=true
+	// otherwise some number values will lose precision when converted to float64
+	state, err := t.tf.Show(ctx, tfexec.JSONNumber(true))
 	if err != nil {
 		return nil, fmt.Errorf("error running tofu show: %w", err)
 	}

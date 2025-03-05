@@ -3,6 +3,7 @@ package tfsandbox
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"slices"
 
 	tfjson "github.com/hashicorp/terraform-json"
@@ -198,12 +199,34 @@ func extractPropertyMapFromState(stateResource tfjson.StateResource) resource.Pr
 	return objectProperty.ObjectValue()
 }
 
+// replaceJSONNumberValue handles json.Number conversion into a PropertyValue
+//
+// We are setting `JSONNumber(true)` in `terraform-json` which means all number values
+// will be `json.Number`s. By default that means we would convert them to a StringProperty.
+// Instead we convert what we can to numbers and those where we would lose precision we leave
+// as strings
+func replaceJSONNumberValue(i interface{}) (resource.PropertyValue, bool) {
+	if num, ok := i.(json.Number); ok {
+		f := new(big.Float)
+		f.SetString(num.String())
+		f64, accuracy := f.Float64()
+		// if it is not `Exact` then we will lose precision.
+		// in that case we should keep the default of StringProperty
+		if accuracy == big.Exact {
+			return resource.NewNumberProperty(f64), true
+		}
+	}
+	// fallback to default handling
+	return resource.PropertyValue{}, false
+
+}
+
 // extractPropertyMap extracts the property map from a tfjson.StateResource
 func extractPropertyMap(stateResource tfjson.StateResource) resource.PropertyMap {
 	resourceConfig := resource.PropertyMap{}
 	for attrKey, attrValue := range stateResource.AttributeValues {
 		key := resource.PropertyKey(attrKey)
-		resourceConfig[key] = resource.NewPropertyValue(attrValue)
+		resourceConfig[key] = resource.NewPropertyValueRepl(attrValue, nil, replaceJSONNumberValue)
 	}
 	return resourceConfig
 }

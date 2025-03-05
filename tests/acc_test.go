@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -87,7 +88,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		require.Len(t, outputs, 2, "expected two outputs")
 		randomPriority, ok := outputs["randomPriority"]
 		require.True(t, ok, "expected output randomPriority")
-		require.Equal(t, "2", randomPriority.Value)
+		require.Equal(t, float64(2), randomPriority.Value)
 		require.False(t, randomPriority.Secret, "expected output randomPriority to not be secret")
 
 		randomSeed, ok := outputs["randomSeed"]
@@ -120,9 +121,9 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "2",
-			"max":       "10",
-			"min":       "1",
-			"result":    "2",
+			"max":       10,
+			"min":       1,
+			"result":    2,
 			"seed": map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 				"plaintext":                        `"9"`,
@@ -140,6 +141,38 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		upResult := pt.Up(t)
 		autogold.Expect(&map[string]int{"same": 5}).Equal(t, upResult.Summary.ResourceChanges)
 	})
+}
+
+func TestLambdaMemorySizeDiff(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "lambdamod-memory-diff")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
+	integrationTest.Up(t, optup.Diff())
+	// run up a second time because some diffs are due to AWS defaults
+	// being applied and pulled in when Tofu runs refresh on the second up
+	integrationTest.Up(t, optup.Diff())
+
+	integrationTest.SetConfig(t, "step", "2")
+	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "test-lambda-state")
+	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
+		"diff": apitype.PlanDiffV1{
+			Updates: map[string]interface{}{
+				"memory_size": 256,
+			},
+		},
+		"steps": []apitype.OpType{apitype.OpType("update")},
+	}}).Equal(t, resourceDiffs)
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
@@ -434,13 +467,14 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 func TestIntegration(t *testing.T) {
 
 	type testCase struct {
-		name            string // Must be same as project folder in testdata/programs/ts
-		moduleName      string
-		moduleVersion   string
-		moduleNamespace string
-		previewExpect   map[apitype.OpType]int
-		upExpect        map[string]int
-		deleteExpect    map[string]int
+		name                string // Must be same as project folder in testdata/programs/ts
+		moduleName          string
+		moduleVersion       string
+		moduleNamespace     string
+		previewExpect       map[apitype.OpType]int
+		upExpect            map[string]int
+		deleteExpect        map[string]int
+		diffNoChangesExpect map[apitype.OpType]int
 	}
 
 	testcases := []testCase{
@@ -458,6 +492,9 @@ func TestIntegration(t *testing.T) {
 			deleteExpect: map[string]int{
 				"delete": 6,
 			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): 6,
+			},
 		},
 		{
 			name:            "awslambdamod",
@@ -472,6 +509,11 @@ func TestIntegration(t *testing.T) {
 			},
 			deleteExpect: map[string]int{
 				"delete": 9,
+			},
+			//TODO: [Fix delete-replace on null_resource](https://github.com/pulumi/pulumi-terraform-module/issues/166)
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("replace"): 1,
+				apitype.OpType("same"):    8,
 			},
 		},
 	}
@@ -502,11 +544,129 @@ func TestIntegration(t *testing.T) {
 			upResult := integrationTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t)
+			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
+}
+
+func TestDiffDetail(t *testing.T) {
+	// Set up a test Bucket
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	diffDetailTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	diffDetailTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:lll
+	pulumiPackageAdd(t, diffDetailTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+
+	// Up
+	diffDetailTest.Up(t)
+
+	//Change program to remove the module input `server_side_encryption_configuration`
+	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
+
+	// Preview
+	previewResult := diffDetailTest.Preview(t, optpreview.Diff())
+
+	var providerID string
+
+	//Extract the provider URN from state
+	//TODO: once explicit providers are
+	var state map[string]interface{}
+	err := json.Unmarshal(diffDetailTest.ExportStack(t).Deployment, &state)
+	if err != nil {
+		t.Fatalf("unmarshaling stack deployment: %v", err)
+	}
+	for key, val := range state {
+		if key == "resources" {
+			var resourceList []interface{}
+			switch v := val.(type) {
+			case []interface{}:
+				resourceList = v
+			default:
+				t.Log("schema resources list must be of type []interface{}")
+			}
+			for _, resEntry := range resourceList {
+				var res map[string]interface{}
+				switch resEntry.(type) {
+				case map[string]interface{}:
+					res = resEntry.(map[string]interface{})
+					//nolint:lll
+					if res["urn"].(string) == "urn:pulumi:test::ts-s3bucketmod-program::pulumi:providers:bucket::default_4_5_0" {
+						providerID = res["id"].(string)
+						break
+					}
+				default:
+					t.Log("a resource must be of type map[string]interface{}")
+				}
+			}
+		}
+	}
+
+	if providerID == "" {
+		t.Fatal("Could not find provider ID")
+	}
+	// We expect a delete on the module input, and an update on the module state.
+	diffExpect := map[apitype.OpType]int{
+		"delete": 1,
+		"update": 1,
+		"same":   4,
+	}
+	assert.Equal(t, diffExpect, previewResult.ChangeSummary)
+
+	// Assert on the stdout of the test's diff detail.
+	//nolint:lll
+	expectedDiffOutput := fmt.Sprintf(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::ts-s3bucketmod-program::pulumi:pulumi:Stack::ts-s3bucketmod-program-test]
+    ~ bucket:index:ModuleState: (update)
+        [id=moduleStateResource]
+        [urn=urn:pulumi:test::ts-s3bucketmod-program::bucket:index:Module$bucket:index:ModuleState::test-bucket-state]
+        [provider=urn:pulumi:test::ts-s3bucketmod-program::pulumi:providers:bucket::default_4_5_0::%[1]s]
+      ~ moduleInputs: {
+            bucket                              : "%[2]s-test-bucket"
+          - server_side_encryption_configuration: {
+              - rule: {
+                  - apply_server_side_encryption_by_default: {
+                      - sse_algorithm: [secret]
+                    }
+                }
+            }
+        }
+    - bucket:tf:aws_s3_bucket_server_side_encryption_configuration: (delete)
+        [id=module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]]
+        [urn=urn:pulumi:test::ts-s3bucketmod-program::bucket:index:Module$bucket:tf:aws_s3_bucket_server_side_encryption_configuration::module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]]
+        [provider=urn:pulumi:test::ts-s3bucketmod-program::pulumi:providers:bucket::default_4_5_0::%[1]s]
+        bucket               : "%[2]s-test-bucket"
+        expected_bucket_owner: ""
+        id                   : "%[2]s-test-bucket"
+        rule                 : [secret]
+Resources:
+    ~ 1 to update
+    - 1 to delete
+    2 changes. 4 unchanged
+`,
+		providerID, prefix)
+
+	assert.Equal(t, expectedDiffOutput, previewResult.StdOut)
+
+	// Cleanup
+	diffDetailTest.Destroy(t)
 }
 
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
@@ -528,7 +688,6 @@ func TestDeleteLambda(t *testing.T) {
 	functionName := prefix + "-testlambda"
 
 	// Generate package
-	//nolint:lll
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
 
 	integrationTest.Up(t)
@@ -580,8 +739,10 @@ func TestDeleteLambda(t *testing.T) {
 	// Rerun the AWS calls from above to see if Delete worked. We should see NotFound errors.
 	_, err = lambdaClient.GetFunction(ctx, lambdaInput)
 	if err == nil {
-		//nolint:lll
-		t.Fatalf("delete verification failed: found a Lambda function that should have been deleted: %s", *lambdaInput.FunctionName)
+		t.Fatalf(
+			"delete verification failed: found a Lambda function that should have been deleted: %s",
+			*lambdaInput.FunctionName,
+		)
 	} else {
 		// ResourceNotFoundException is the expected response after Delete
 		var resourceNotFoundError *lambdatypes.ResourceNotFoundException
@@ -606,13 +767,46 @@ func TestDeleteLambda(t *testing.T) {
 	resp, err = cloudwatchlogsClient.DescribeLogGroups(ctx, cloudwatchlogsInput)
 	if err == nil {
 		if len(resp.LogGroups) > 0 {
-			//nolint:lll
 			log.Fatalf("found a log group that should have been deleted, %s", *cloudwatchlogsInput.LogGroupNamePrefix)
 		}
 	} else {
 		t.Fatalf("encountered unexpected error verifying log group was deleted: %v ", err)
 	}
 
+}
+
+// runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
+// and returns a map of resource diffs for the resources that have changes based on the plan
+func runPreviewWithPlanDiff(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	excludeResources ...string,
+) map[string]interface{} {
+	t.Helper()
+
+	root := pt.CurrentStack().Workspace().WorkDir()
+	planPath := filepath.Join(root, "pulumiPlan.out")
+	pt.Preview(t, optpreview.Diff(), optpreview.Plan(planPath))
+	planContents, err := os.ReadFile(planPath)
+	assert.NoError(t, err)
+
+	var plan apitype.DeploymentPlanV1
+	err = json.Unmarshal(planContents, &plan)
+	assert.NoError(t, err)
+
+	resourceDiffs := map[string]interface{}{}
+	for urn, resourcePlan := range plan.ResourcePlans {
+		if slices.Contains(excludeResources, urn.Name()) {
+			continue
+		}
+		if !slices.Contains(resourcePlan.Steps, apitype.OpSame) {
+			resourceDiffs[urn.Name()] = map[string]interface{}{
+				"diff":  resourcePlan.Goal.InputDiff,
+				"steps": resourcePlan.Steps,
+			}
+		}
+	}
+	return resourceDiffs
 }
 
 func getRoot(t *testing.T) string {
