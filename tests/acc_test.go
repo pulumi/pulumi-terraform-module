@@ -174,8 +174,6 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 		},
 		"steps": []apitype.OpType{apitype.OpType("update")},
 	}}).Equal(t, resourceDiffs)
-
-	integrationTest.Destroy(t)
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
