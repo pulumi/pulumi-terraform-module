@@ -88,7 +88,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		require.Len(t, outputs, 2, "expected two outputs")
 		randomPriority, ok := outputs["randomPriority"]
 		require.True(t, ok, "expected output randomPriority")
-		require.Equal(t, "2", randomPriority.Value)
+		require.Equal(t, float64(2), randomPriority.Value)
 		require.False(t, randomPriority.Secret, "expected output randomPriority to not be secret")
 
 		randomSeed, ok := outputs["randomSeed"]
@@ -121,9 +121,9 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "2",
-			"max":       "10",
-			"min":       "1",
-			"result":    "2",
+			"max":       10,
+			"min":       1,
+			"result":    2,
 			"seed": map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 				"plaintext":                        `"9"`,
