@@ -410,9 +410,9 @@ func (s *server) CheckConfig(
 	}
 
 	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		KeepUnknowns:     false,
-		KeepSecrets:      false,
-		KeepResources:    false,
+		KeepUnknowns:     true,
+		RejectAssets:     true,
+		KeepSecrets:      true,
 		KeepOutputValues: false,
 	})
 
