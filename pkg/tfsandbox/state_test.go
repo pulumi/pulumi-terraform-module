@@ -152,8 +152,9 @@ func TestStateMatchesPlan(t *testing.T) {
 			if tc.inputNumberVar != nil {
 				inputs["inputNumberVar"] = tc.inputNumberVar
 			}
+			emptyProviders := map[string]resource.PropertyMap{}
 			err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
-				resource.NewPropertyMapFromMap(inputs), outputs)
+				resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 			require.NoError(t, err, "error creating tf file")
 
 			err = tofu.Init(ctx)
