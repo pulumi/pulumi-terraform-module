@@ -86,9 +86,20 @@ func NewModuleComponentResource(
 		planStore.Forget(urn)
 	}()
 
-	providerSelfRef := newProviderSelfReference(ctx, providerSelfURN)
+	var providerSelfRef pulumi.ProviderResource
+	if providerSelfURN != "" {
+		providerSelfRef = newProviderSelfReference(ctx, providerSelfURN)
+	}
 
 	go func() {
+		resourceOptions := []pulumi.ResourceOption{
+			pulumi.Parent(&component),
+		}
+
+		if providerSelfRef != nil {
+			resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+		}
+
 		_, err := newModuleStateResource(ctx,
 			// Needs to be prefixed by parent to avoid "duplicate URN".
 			fmt.Sprintf("%s-state", name),
@@ -96,8 +107,7 @@ func NewModuleComponentResource(
 			urn,
 			packageRef,
 			moduleInputs,
-			pulumi.Parent(&component),
-			pulumi.Provider(providerSelfRef),
+			resourceOptions...,
 		)
 
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
@@ -177,11 +187,18 @@ func NewModuleComponentResource(
 				return
 			}
 
+			resourceOptions := []pulumi.ResourceOption{
+				pulumi.Parent(&component),
+			}
+
+			if providerSelfRef != nil {
+				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+			}
+
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
 				packageRef,
-				pulumi.Parent(&component),
-				pulumi.Provider(providerSelfRef),
+				resourceOptions...,
 			)
 
 			errs = append(errs, err)
@@ -221,11 +238,19 @@ func NewModuleComponentResource(
 				// so that we propagate outputs from module
 				return
 			}
+
+			resourceOptions := []pulumi.ResourceOption{
+				pulumi.Parent(&component),
+			}
+
+			if providerSelfRef != nil {
+				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+			}
+
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
 				packageRef,
-				pulumi.Provider(providerSelfRef),
-				pulumi.Parent(&component))
+				resourceOptions...)
 
 			errs = append(errs, err)
 			if err == nil {
