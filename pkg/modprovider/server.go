@@ -388,6 +388,15 @@ func (s *server) Delete(
 	}
 }
 
+func (s *server) Attach(_ context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	host, err := provider.NewHostClient(req.GetAddress())
+	if err != nil {
+		return nil, err
+	}
+	s.hostClient = host
+	return &emptypb.Empty{}, nil
+}
+
 func isChildResourceType(rawType string) bool {
 	typeTok, err := tokens.ParseTypeToken(rawType)
 	contract.AssertNoErrorf(err, "ParseTypeToken failed on %q", rawType)
