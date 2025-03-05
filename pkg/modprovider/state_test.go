@@ -19,15 +19,21 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestSavingModuleState(t *testing.T) {
 	t.Parallel()
+	timeout := time.Minute * 1
+	waitTimeout = &timeout
 
 	p, err := filepath.Abs(filepath.Join("testdata", "modules", "simple"))
 	require.NoError(t, err)
@@ -89,6 +95,20 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte 
 	})
 	require.NoError(t, err)
 
+	rootStackType := resource.DefaultRootStackURN(s.stack, s.proj).Type()
+	providerURN := urn.New(
+		s.stack,
+		s.proj,
+		rootStackType,
+		"pulumi:providers:simple",
+		"default-provider",
+	)
+
+	_, err = rps.CheckConfig(ctx, &pulumirpc.CheckRequest{
+		Urn:  string(providerURN),
+		News: &structpb.Struct{},
+	})
+
 	// The engine would also call CheckConfig, Configure, omitting for now.
 	//
 	// Call construct to mimic creating a Component resource for a module.
@@ -100,6 +120,9 @@ func checkModuleStateIsSaved(t *testing.T, s *testResourceMonitorServer) []byte 
 		MonitorEndpoint: resmonPath,
 		Type:            fmt.Sprintf("simple:index:%s", defaultComponentTypeName),
 		Name:            "myModuleInstance",
+		Providers: map[string]string{
+			string(s.params.PackageName): string(providerURN) + "::default_0_0_1",
+		},
 	})
 	require.NoErrorf(t, err, "Construct failed")
 
