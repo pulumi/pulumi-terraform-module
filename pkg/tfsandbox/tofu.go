@@ -36,7 +36,6 @@ import (
 type Tofu struct {
 	tf *tfexec.Terraform
 }
-}
 
 // WorkingDir returns the Terraform working directory
 // where all tofu commands will be run.
