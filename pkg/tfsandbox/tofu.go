@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Tofu struct {
