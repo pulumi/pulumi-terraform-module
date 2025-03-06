@@ -71,9 +71,8 @@ func TestState(t *testing.T) {
 		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
 	}, moduleOutputs)
 
-	rawState, ok, err := tofu.PullState(ctx)
+	rawState, rawLockFile, err := tofu.PullStateAndLockFile(ctx)
 	require.NoError(t, err, "error pulling tofu state")
-	require.True(t, ok, "no tofu state found")
 
 	type stateModel struct {
 		Resources []any `json:"resources"`
@@ -95,7 +94,7 @@ func TestState(t *testing.T) {
 	// Now modify the state and run a plan.
 
 	newState := bytes.ReplaceAll(rawState, []byte(`"test"`), []byte(`"test2"`))
-	err = tofu.PushState(ctx, newState)
+	err = tofu.PushStateAndLockFile(ctx, newState, rawLockFile)
 	require.NoError(t, err, "error pushing tofu state")
 
 	plan, err := tofu.Plan(ctx)

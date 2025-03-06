@@ -133,14 +133,14 @@ func NewModuleComponentResource(
 	}
 
 	var moduleOutputs resource.PropertyMap
+	err = tf.PushStateAndLockFile(ctx.Context(), state.rawState, state.rawLockFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
+	}
+
 	err = tf.Init(ctx.Context())
 	if err != nil {
 		return nil, nil, fmt.Errorf("Init failed: %w", err)
-	}
-
-	err = tf.PushState(ctx.Context(), state.rawState)
-	if err != nil {
-		return nil, nil, fmt.Errorf("PushState failed: %w", err)
 	}
 
 	var childResources []*childResource
@@ -192,14 +192,12 @@ func NewModuleComponentResource(
 
 		planStore.SetState(urn, tfState)
 
-		rawState, ok, err := tf.PullState(ctx.Context())
+		rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx.Context())
 		if err != nil {
-			return nil, nil, fmt.Errorf("PullState failed: %w", err)
-		}
-		if !ok {
-			return nil, nil, errors.New("PullState did not find state")
+			return nil, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
 		}
 		state.rawState = rawState
+		state.rawLockFile = rawLockFile
 
 		// Make sure child resources can read updated state.
 		stateStore.SetNewState(urn, state)

@@ -23,28 +23,76 @@ import (
 )
 
 const defaultStateFile = "terraform.tfstate"
+const defaultLockFile = ".terraform.lock.hcl"
 
-func (t *Tofu) PullState(_ context.Context) (json.RawMessage, bool, error) {
+func (t *Tofu) PullStateAndLockFile(_ context.Context) (json.RawMessage, []byte, error) {
+	state, err := t.pullState(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+	lock, err := t.pullLockFile(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+	return state, lock, nil
+}
+
+func (t *Tofu) PushStateAndLockFile(_ context.Context, state json.RawMessage, lock []byte) error {
+	if err := t.pushState(context.Background(), state); err != nil {
+		return err
+	}
+	if err := t.pushLockFile(context.Background(), lock); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Tofu) pullState(_ context.Context) (json.RawMessage, error) {
 	// If for some reason this needs to work in contexts with a non-default state provider, or
 	// take advantage of built-in locking, then tofu state pull command can be used instead.
 	path := filepath.Join(t.WorkingDir(), defaultStateFile)
 	bytes, err := os.ReadFile(path)
 	switch {
 	case err != nil && os.IsNotExist(err):
-		return nil, false, nil
+		return nil, fmt.Errorf("default tfstate file not found: %w", err)
 	case err != nil:
-		return nil, false, fmt.Errorf("failed to read the default tfstate file: %w", err)
+		return nil, fmt.Errorf("failed to read the default tfstate file: %w", err)
 	default:
-		return json.RawMessage(bytes), true, nil
+		return json.RawMessage(bytes), nil
 	}
 }
 
-func (t *Tofu) PushState(_ context.Context, data json.RawMessage) error {
+func (t *Tofu) pushState(_ context.Context, data json.RawMessage) error {
 	// If for some reason this needs to work in contexts with a non-default state provider, or
 	// take advantage of built-in locking, then tofu state push command can be used instead.
 	path := filepath.Join(t.WorkingDir(), defaultStateFile)
 	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 		return fmt.Errorf("failed to write the default tfstate file: %w", err)
+	}
+	return nil
+}
+
+func (t *Tofu) pullLockFile(_ context.Context) ([]byte, error) {
+	path := filepath.Join(t.WorkingDir(), defaultLockFile)
+	bytes, err := os.ReadFile(path)
+	switch {
+	// If the lock file is not present, that's fine
+	case err != nil && os.IsNotExist(err):
+		return nil, nil
+	case err != nil:
+		return nil, fmt.Errorf("failed to read the default lock file: %w", err)
+	default:
+		return bytes, nil
+	}
+}
+
+func (t *Tofu) pushLockFile(_ context.Context, data []byte) error {
+	if data == nil {
+		return nil
+	}
+	path := filepath.Join(t.WorkingDir(), defaultLockFile)
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return fmt.Errorf("failed to write the default lock file: %w", err)
 	}
 	return nil
 }
