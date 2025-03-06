@@ -410,7 +410,7 @@ func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, repl
 
 func TestS3BucketWithExplicitProvider(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	//skipLocalRunsWithoutCreds(t)
+	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucket-explicit-provider")
 	tfFilesDir := func(op string) string {
 		path := filepath.Join(testProgram, fmt.Sprintf("tf_files_%s", op))

@@ -242,6 +242,7 @@ func (h *moduleStateHandler) Delete(
 	req *pulumirpc.DeleteRequest,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
+	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
@@ -273,7 +274,7 @@ func (h *moduleStateHandler) Delete(
 		tf.WorkingDir(),
 		olds["moduleInputs"].ObjectValue(), /*inputs*/
 		[]tfsandbox.TFOutputSpec{},         /*outputs*/
-		map[string]resource.PropertyMap{},  /*providersConfig*/
+		providersConfig,
 	)
 
 	if err != nil {

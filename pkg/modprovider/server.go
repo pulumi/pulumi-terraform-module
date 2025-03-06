@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -53,18 +52,18 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	planStore                  *planStore
-	params                     *ParameterizeArgs
-	hostClient                 *provider.HostClient
-	stateStore                 moduleStateStore
-	moduleStateHandler         *moduleStateHandler
-	childHandler               *childHandler
-	packageName                packageName
-	packageVersion             packageVersion
-	componentTypeName          componentTypeName
-	inferredModuleSchema       *InferredModuleSchema
-	providerConfigurationByURN map[string]resource.PropertyMap
-	providerSelfURN            pulumi.URN
+	planStore            *planStore
+	params               *ParameterizeArgs
+	hostClient           *provider.HostClient
+	stateStore           moduleStateStore
+	moduleStateHandler   *moduleStateHandler
+	childHandler         *childHandler
+	packageName          packageName
+	packageVersion       packageVersion
+	componentTypeName    componentTypeName
+	inferredModuleSchema *InferredModuleSchema
+	providerConfig       resource.PropertyMap
+	providerSelfURN      pulumi.URN
 }
 
 func (s *server) Parameterize(
@@ -209,8 +208,21 @@ func (*server) GetPluginInfo(
 
 func (s *server) Configure(
 	_ context.Context,
-	_ *pulumirpc.ConfigureRequest,
+	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
+	config, err := plugin.UnmarshalProperties(req.Args, plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		RejectAssets:     true,
+		KeepSecrets:      true,
+		KeepOutputValues: false,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("configure failed to parse inputs: %w", err)
+	}
+
+	s.providerConfig = config
+
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
@@ -328,18 +340,7 @@ func (s *server) Construct(
 		KeepOutputValues: false,
 	})
 
-	var providersConfig map[string]resource.PropertyMap
-	if providerURN, ok := req.Providers[string(s.packageName)]; ok {
-		parts := strings.Split(providerURN, "::")
-		// remove the last part to get the actual provider URN
-		reconstructed := strings.Join(parts[:len(parts)-1], "::")
-
-		// an explicit provider option was passed to the Module resource
-		if config, ok := s.providerConfigurationByURN[reconstructed]; ok {
-			providersConfig = cleanProvidersConfig(config)
-		}
-	}
-
+	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
@@ -405,10 +406,6 @@ func (s *server) CheckConfig(
 ) (*pulumirpc.CheckResponse, error) {
 	s.providerSelfURN = pulumi.URN(req.Urn)
 
-	if s.providerConfigurationByURN == nil {
-		s.providerConfigurationByURN = make(map[string]resource.PropertyMap)
-	}
-
 	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
 		KeepUnknowns:     true,
 		RejectAssets:     true,
@@ -420,9 +417,10 @@ func (s *server) CheckConfig(
 		return nil, fmt.Errorf("CheckConfig failed to parse inputs: %w", err)
 	}
 
-	if len(config) > 0 {
-		s.providerConfigurationByURN[req.Urn] = config
-	}
+	// keep provider config in memory for use later.
+	// we keep one instance of provider configuration because each configuration is used
+	// once per provider process.
+	s.providerConfig = config
 
 	return &pulumirpc.CheckResponse{
 		Inputs: req.News,
@@ -477,7 +475,8 @@ func (s *server) Delete(
 ) (*emptypb.Empty, error) {
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+		providersConfig := cleanProvidersConfig(s.providerConfig)
+		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Delete(ctx, req)
 	default:
