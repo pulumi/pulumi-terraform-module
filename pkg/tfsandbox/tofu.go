@@ -74,7 +74,7 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 	// Use a common cache directory for provider plugins
 	env := envMap(os.Environ())
 	env["TF_PLUGIN_CACHE_DIR"] = cacheDir
-	if err := tf.SetEnv(env); err != nil {
+	if err := tf.SetEnv(tfexec.CleanEnv(env)); err != nil {
 		return nil, fmt.Errorf("error setting env var TF_PLUGIN_CACHE_DIR: %w", err)
 	}
 	return &Tofu{
