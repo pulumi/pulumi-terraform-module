@@ -288,21 +288,22 @@ func (s *server) acquirePackageReference(
 //	   }
 //	})
 //
-// the input config here would look like
+// the input config here would look like sometimes where the provider config is a JSON string:
 //
 //		{
 //	       propertyKey("version"): stringProperty("0.1.0"),
 //		   propertyKey("aws"): stringProperty("{\"region\": \"us-west-2\"}")
 //		}
 //
-// notice how the value is a string that is a JSON stringified object due to legacy provider behavior
+// notice how the value is a string that is a JSON stringified object due to legacy provider SDK behavior
+// see https://github.com/pulumi/home/issues/3705 for reference
 // we need to convert this to a map[string]resource.PropertyMap so that it can be used
 // in the Terraform JSON file
 func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
 	providersConfig := make(map[string]resource.PropertyMap)
 	for propertyKey, serializedConfig := range config {
-		if string(propertyKey) == "version" {
-			// skip the version key
+		if string(propertyKey) == "version" || string(propertyKey) == "pluginDownloadURL" {
+			// skip the version and pluginDownloadURL properties
 			continue
 		}
 
@@ -316,13 +317,19 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 			if len(deserialized) > 0 {
 				providersConfig[string(propertyKey)] = resource.NewPropertyMapFromMap(deserialized)
 			}
+			continue
 		}
 
 		if serializedConfig.IsObject() {
-			// we might later get a new behaviour where programs no longer send serialized JSON
+			// we might later get the behaviour where all programs no longer send serialized JSON
 			// but send the actual object instead
+			// right now only YAML and Go programs send the actual object
+			// see https://github.com/pulumi/home/issues/3705 for reference
 			providersConfig[string(propertyKey)] = serializedConfig.ObjectValue()
+			continue
 		}
+
+		contract.Failf("cleanProvidersConfig failed to parse unsupported type: %v", serializedConfig)
 	}
 
 	return providersConfig
