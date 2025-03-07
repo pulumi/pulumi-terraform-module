@@ -1,6 +1,6 @@
 # pulumi-terraform-module
 
-EXPERIMENTAL support for running Terraform Modules directly in Pulumi.
+This provider supports running Terraform Modules directly in Pulumi.
 
 ## Usage
 
@@ -35,17 +35,58 @@ For example:
 
     pulumi package add terraform-module ./infra infra
 
-### Overcoming "failed to get schema"
+### Configuring Terraform Providers
 
-You may encounter the following error while this repository is still internal:
+Some modules require Terraform providers to function. You can configure these providers from within Pulumi. For
+example, when using the [terraform-aws-s3-bucket](https://github.com/terraform-aws-modules/terraform-aws-s3-bucket)
+module, you can configure the `region` of the underlying provider explicitly as follows:
 
+```typescript
+import * as bucket from "@pulumi/bucket";
+
+const provider = new bucket.Provider("test-provider", {
+    aws: {
+        "region": "us-west-2"
+    }
+})
+
+const testBucket = new bucket.Module("test-bucket", {
+    bucket: `${prefix}-test-bucket`
+}, { provider: provider });
 ```
-error: failed to get schema: could not find latest version for provider terraform-module: 404 HTTP error fetching plugin from https://api.github.com/repos/pulumi/pulumi-terraform-module/releases/latest. If this is a private GitHub repository, try providing a token via the GITHUB_TOKEN environment variable. See: https://github.com/settings/tokens
-```
 
-To overcome, consider exporting the GITHUB_TOKEN. If you have GitHub CLI installed and
-authenticated, it can automatically generate a working token like so:
+The relevant [Provider
+Configuration](https://registry.terraform.io/providers/hashicorp/aws/latest/docs#provider-configuration) section will
+be the right place to look for what keys can be configured.
 
-``` shell
-export GITHUB_TOKEN=$(gh auth token)
-```
+Any environment variables you set for Pulumi execution will also be available to these providers. To continue with the
+AWS provider example, you can ensure it can authenticate by setting `AWS_PROFILE` or else `AWS_ACCESS_KEY` and similar
+environment variables.
+
+Note that the providers powering the Module are Terraform providers and not Pulumi bridged providers such as
+[pulumi-aws](https://github.com/pulumi/pulumi-aws). They are the right place to look for additional documentation.
+
+## How it works
+
+The modules are executed with `opentofu` binary that is automatically installed on-demand. The state is stored in your
+chosen [Pulumi state backend](https://www.pulumi.com/docs/iac/concepts/state-and-backends/), defaulting to Pulumi
+Cloud. [Secrets](https://www.pulumi.com/docs/iac/concepts/secrets/) are encrypted and stored securely.
+
+## Why should I use this
+
+You can now migrate legacy Terraform modules to Pulumi without completely rewriting their sources.
+
+As a Pulumi user you also now have access to the mature and rich ecosystem of public Terraform modules that you can mix
+and match with the rest of your Pulumi code.
+
+## Bugs
+
+This provider may not yet work as expected. Known limitations include but are not limited to:
+
+- using the `transforms` resource option
+- targeted updates via `pulumi up --target ...`
+- protecting individual resources deployed by the module
+
+If you are having issues, we would love to hear from you as we work to make this product better:
+
+https://github.com/pulumi/pulumi-terraform-module/issues
