@@ -79,13 +79,20 @@ You can now migrate legacy Terraform modules to Pulumi without completely rewrit
 As a Pulumi user you also now have access to the mature and rich ecosystem of public Terraform modules that you can mix
 and match with the rest of your Pulumi code.
 
-## Bugs
+## Maturity
 
-This provider may not yet work as expected. Known limitations include but are not limited to:
+The project is in experimental phase as we are starting to work with partners to iron out practical issues and reach
+preview level of maturity. There might be some breaking changes still necessary to reach our goal of of enabling as
+many Terraform modules execute seamlessly under Pulumi as possible.
+
+Known limitations at this point include but are not limited to:
 
 - using the `transforms` resource option
 - targeted updates via `pulumi up --target ...`
 - protecting individual resources deployed by the module
+
+## Bugs
+
 
 If you are having issues, we would love to hear from you as we work to make this product better:
 
