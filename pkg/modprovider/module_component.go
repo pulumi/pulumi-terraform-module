@@ -64,6 +64,8 @@ func NewModuleComponentResource(
 	moduleInputs resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
 	packageRef string,
+	providerSelfURN pulumi.URN,
+	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, outputs pulumi.Input, finalError error) {
 	component := ModuleComponentResource{}
@@ -84,7 +86,20 @@ func NewModuleComponentResource(
 		planStore.Forget(urn)
 	}()
 
+	var providerSelfRef pulumi.ProviderResource
+	if providerSelfURN != "" {
+		providerSelfRef = newProviderSelfReference(ctx, providerSelfURN)
+	}
+
 	go func() {
+		resourceOptions := []pulumi.ResourceOption{
+			pulumi.Parent(&component),
+		}
+
+		if providerSelfRef != nil {
+			resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+		}
+
 		_, err := newModuleStateResource(ctx,
 			// Needs to be prefixed by parent to avoid "duplicate URN".
 			fmt.Sprintf("%s-state", name),
@@ -92,7 +107,7 @@ func NewModuleComponentResource(
 			urn,
 			packageRef,
 			moduleInputs,
-			pulumi.Parent(&component),
+			resourceOptions...,
 		)
 
 		contract.AssertNoErrorf(err, "newModuleStateResource failed")
@@ -127,7 +142,10 @@ func NewModuleComponentResource(
 			Name: outputName,
 		})
 	}
-	err = tfsandbox.CreateTFFile(tfName, tfModuleSource, tfModuleVersion, tf.WorkingDir(), moduleInputs, outputSpecs)
+	err = tfsandbox.CreateTFFile(tfName, tfModuleSource,
+		tfModuleVersion, tf.WorkingDir(),
+		moduleInputs, outputSpecs, providersConfig)
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
@@ -169,10 +187,19 @@ func NewModuleComponentResource(
 				return
 			}
 
+			resourceOptions := []pulumi.ResourceOption{
+				pulumi.Parent(&component),
+			}
+
+			if providerSelfRef != nil {
+				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+			}
+
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
 				packageRef,
-				pulumi.Parent(&component))
+				resourceOptions...,
+			)
 
 			errs = append(errs, err)
 			if err == nil {
@@ -211,10 +238,19 @@ func NewModuleComponentResource(
 				// so that we propagate outputs from module
 				return
 			}
+
+			resourceOptions := []pulumi.ResourceOption{
+				pulumi.Parent(&component),
+			}
+
+			if providerSelfRef != nil {
+				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+			}
+
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
 				packageRef,
-				pulumi.Parent(&component))
+				resourceOptions...)
 
 			errs = append(errs, err)
 			if err == nil {
@@ -241,4 +277,17 @@ func NewModuleComponentResource(
 	}
 
 	return &urn, marshalledOutputs, nil
+}
+
+func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {
+	var prov pulumi.ProviderResourceState
+	err := ctx.RegisterResource(
+		string(urn.URN(urn1).Type()),
+		urn.URN(urn1).Name(),
+		pulumi.Map{},
+		&prov,
+		pulumi.URN_(string(urn1)),
+	)
+	contract.AssertNoErrorf(err, "RegisterResource failed to hydrate a self-reference")
+	return &prov
 }

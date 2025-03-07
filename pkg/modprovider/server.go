@@ -27,6 +27,7 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -61,6 +62,8 @@ type server struct {
 	packageVersion       packageVersion
 	componentTypeName    componentTypeName
 	inferredModuleSchema *InferredModuleSchema
+	providerConfig       resource.PropertyMap
+	providerSelfURN      pulumi.URN
 }
 
 func (s *server) Parameterize(
@@ -203,10 +206,23 @@ func (*server) GetPluginInfo(
 	}, nil
 }
 
-func (*server) Configure(
+func (s *server) Configure(
 	_ context.Context,
-	_ *pulumirpc.ConfigureRequest,
+	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
+	config, err := plugin.UnmarshalProperties(req.Args, plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		RejectAssets:     true,
+		KeepSecrets:      true,
+		KeepOutputValues: false,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("configure failed to parse inputs: %w", err)
+	}
+
+	s.providerConfig = config
+
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
@@ -264,6 +280,61 @@ func (s *server) acquirePackageReference(
 	return response.Ref, nil
 }
 
+// cleanProvidersConfig takes config that was produced from provider inputs in the program:
+//
+//	const provider = new vpc.Provider("my-provider", {
+//	  aws: {
+//	      "region": "us-west-2"
+//	   }
+//	})
+//
+// the input config here would look like sometimes where the provider config is a JSON string:
+//
+//		{
+//	       propertyKey("version"): stringProperty("0.1.0"),
+//		   propertyKey("aws"): stringProperty("{\"region\": \"us-west-2\"}")
+//		}
+//
+// notice how the value is a string that is a JSON stringified object due to legacy provider SDK behavior
+// see https://github.com/pulumi/home/issues/3705 for reference
+// we need to convert this to a map[string]resource.PropertyMap so that it can be used
+// in the Terraform JSON file
+func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
+	providersConfig := make(map[string]resource.PropertyMap)
+	for propertyKey, serializedConfig := range config {
+		if string(propertyKey) == "version" || string(propertyKey) == "pluginDownloadURL" {
+			// skip the version and pluginDownloadURL properties
+			continue
+		}
+
+		if serializedConfig.IsString() {
+			value := serializedConfig.StringValue()
+			deserialized := map[string]interface{}{}
+			if err := json.Unmarshal([]byte(value), &deserialized); err != nil {
+				contract.Failf("failed to deserialize provider config into a map: %v", err)
+			}
+
+			if len(deserialized) > 0 {
+				providersConfig[string(propertyKey)] = resource.NewPropertyMapFromMap(deserialized)
+			}
+			continue
+		}
+
+		if serializedConfig.IsObject() {
+			// we might later get the behaviour where all programs no longer send serialized JSON
+			// but send the actual object instead
+			// right now only YAML and Go programs send the actual object
+			// see https://github.com/pulumi/home/issues/3705 for reference
+			providersConfig[string(propertyKey)] = serializedConfig.ObjectValue()
+			continue
+		}
+
+		contract.Failf("cleanProvidersConfig failed to parse unsupported type: %v", serializedConfig)
+	}
+
+	return providersConfig
+}
+
 func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
@@ -275,6 +346,8 @@ func (s *server) Construct(
 		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
 		KeepOutputValues: false,
 	})
+
+	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
@@ -302,7 +375,9 @@ func (s *server) Construct(
 				name,
 				inputProps,
 				s.inferredModuleSchema,
-				packageRef)
+				packageRef,
+				s.providerSelfURN,
+				providersConfig)
 
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
@@ -330,6 +405,33 @@ func (s *server) Check(
 	default:
 		return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
 	}
+}
+
+func (s *server) CheckConfig(
+	_ context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	s.providerSelfURN = pulumi.URN(req.Urn)
+
+	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		RejectAssets:     true,
+		KeepSecrets:      true,
+		KeepOutputValues: false,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("CheckConfig failed to parse inputs: %w", err)
+	}
+
+	// keep provider config in memory for use later.
+	// we keep one instance of provider configuration because each configuration is used
+	// once per provider process.
+	s.providerConfig = config
+
+	return &pulumirpc.CheckResponse{
+		Inputs: req.News,
+	}, nil
 }
 
 func (s *server) Diff(
@@ -380,7 +482,8 @@ func (s *server) Delete(
 ) (*emptypb.Empty, error) {
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+		providersConfig := cleanProvidersConfig(s.providerConfig)
+		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Delete(ctx, req)
 	default:

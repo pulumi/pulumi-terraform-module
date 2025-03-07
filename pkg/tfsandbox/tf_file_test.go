@@ -35,10 +35,11 @@ func TestCreateTFFile(t *testing.T) {
 	// see https://developer.hashicorp.com/terraform/language/expressions/types
 	// see https://developer.hashicorp.com/terraform/language/expressions/type-constraints
 	tests := []struct {
-		name           string
-		tfVariableType string
-		inputsValue    resource.PropertyValue
-		outputs        []TFOutputSpec
+		name            string
+		tfVariableType  string
+		inputsValue     resource.PropertyValue
+		outputs         []TFOutputSpec
+		providersConfig map[string]resource.PropertyMap
 	}{
 		{
 			name:           "string",
@@ -255,7 +256,7 @@ func TestCreateTFFile(t *testing.T) {
 
 			err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
 				"tfVar": tt.inputsValue,
-			}, tt.outputs)
+			}, tt.outputs, tt.providersConfig)
 			assert.NoError(t, err)
 
 			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), "pulumi.tf.json"))

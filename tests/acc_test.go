@@ -378,6 +378,92 @@ func TestS3BucketModSecret(t *testing.T) {
 
 }
 
+// When writing out TF files, we need to replace data that is random with a static value
+// so that the TF files are deterministic.
+func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, replaces map[string]string) {
+	// for every file in dir, replace data with the input static value
+	err := filepath.Walk(tfFilesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			s := string(b)
+			for data, replace := range replaces {
+				s = strings.ReplaceAll(s, data, replace)
+			}
+
+			err = os.WriteFile(path, []byte(s), 0600)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+}
+
+func TestS3BucketWithExplicitProvider(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucket-explicit-provider")
+	tfFilesDir := func(op string) string {
+		path := filepath.Join(testProgram, fmt.Sprintf("tf_files_%s", op))
+		fullPath, err := filepath.Abs(path)
+		require.NoError(t, err)
+		return fullPath
+	}
+
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram,
+		opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
+		opttest.Env("PULUMI_TERRAFORM_MODULE_WAIT_TIMEOUT", "5m"))
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:all
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+
+	t.Run("pulumi preview", func(t *testing.T) {
+		tfFiles := tfFilesDir("preview")
+		t.Setenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFiles)
+		preview := integrationTest.Preview(t)
+		require.Empty(t, preview.StdErr, "expected no errors in preview")
+		cleanRandomDataFromTerraformArtifacts(t, tfFiles, map[string]string{
+			prefix: "PREFIX",
+		})
+	})
+
+	t.Run("pulumi up", func(t *testing.T) {
+		tfFiles := tfFilesDir("up")
+		t.Setenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFiles)
+		up := integrationTest.Up(t)
+		require.Empty(t, up.StdErr, "expected no errors in up")
+		cleanRandomDataFromTerraformArtifacts(t, tfFiles, map[string]string{
+			prefix: "PREFIX",
+		})
+	})
+
+	t.Run("pulumi destroy", func(t *testing.T) {
+		tfFiles := tfFilesDir("destroy")
+		t.Setenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFiles)
+		destroy := integrationTest.Destroy(t)
+		require.Empty(t, destroy.StdErr, "expected no errors in destroy")
+		cleanRandomDataFromTerraformArtifacts(t, tfFiles, map[string]string{
+			prefix: "PREFIX",
+		})
+	})
+}
+
 func TestIntegration(t *testing.T) {
 
 	type testCase struct {

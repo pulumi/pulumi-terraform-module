@@ -22,6 +22,14 @@ const (
 	terraformDataResourcePrefix = "internal_output_"
 )
 
+func writeTerraformFilesToDirectory() (string, bool) {
+	// An environment variable that can be set to a path of a directory
+	// to which we write the generated Terraform JSON file.
+	// mainly used for debugging purposes and being able to see the generated code.
+	writeDir := os.Getenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE")
+	return writeDir, writeDir != ""
+}
+
 type locals struct {
 	entries map[string]interface{}
 	counter int
@@ -114,6 +122,7 @@ func CreateTFFile(
 	workingDir string,
 	inputs resource.PropertyMap,
 	outputs []TFOutputSpec,
+	providerConfig map[string]resource.PropertyMap,
 ) error {
 	moduleProps := map[string]interface{}{
 		"source": source,
@@ -136,6 +145,8 @@ func CreateTFFile(
 	containsUnknowns := inputs.ContainsUnknowns()
 
 	resources := map[string]map[string]interface{}{}
+	providers := map[string]interface{}{}
+
 	// NOTE: this should only happen at plan time. At apply time all computed values
 	// should be resolved
 	if containsUnknowns {
@@ -152,6 +163,10 @@ func CreateTFFile(
 	}
 	inputsMap := inputs.MapRepl(nil, locals.decode)
 
+	for providerName, config := range providerConfig {
+		providers[providerName] = config.MapRepl(nil, locals.decode)
+	}
+
 	for k, v := range inputsMap {
 		// TODO: I'm only converting the top layer properties for now
 		// It doesn't look like modules have info on nested properties, typically
@@ -164,6 +179,15 @@ func CreateTFFile(
 			nil, /* map[string]*info.Schema */
 		)
 		moduleProps[tfKey] = v
+	}
+
+	if len(providers) > 0 {
+		providersField := map[string]string{}
+		for providerName := range providers {
+			providersField[providerName] = providerName
+		}
+
+		moduleProps["providers"] = providersField
 	}
 
 	// To expose outputs from a module, we create proxy resources of type "terraform_data"
@@ -198,6 +222,10 @@ func CreateTFFile(
 		tfFile["resource"] = resources
 	}
 
+	if len(providers) > 0 {
+		tfFile["provider"] = providers
+	}
+
 	tfFile["module"] = map[string]interface{}{
 		name: moduleProps,
 	}
@@ -214,5 +242,20 @@ func CreateTFFile(
 	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0600); err != nil {
 		return err
 	}
+
+	if writeDir, ok := writeTerraformFilesToDirectory(); ok {
+		if _, err := os.Stat(writeDir); os.IsNotExist(err) {
+			// create the directory if it doesn't exist
+			if err := os.MkdirAll(writeDir, 0700); err != nil {
+				return err
+			}
+		}
+
+		file := path.Join(writeDir, fmt.Sprintf("%s.tf.json", name))
+		if err := os.WriteFile(file, contents, 0600); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

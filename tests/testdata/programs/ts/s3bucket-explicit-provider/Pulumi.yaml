@@ -1,0 +1,5 @@
+name: ts-s3bucketmod-program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

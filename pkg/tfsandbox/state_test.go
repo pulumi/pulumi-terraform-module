@@ -38,11 +38,13 @@ func TestState(t *testing.T) {
 		{Name: "sensitive_output"},
 		{Name: "statically_known"},
 	}
+
+	providersConfig := map[string]resource.PropertyMap{}
 	ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"inputVar": "test",
-		}), outputs)
+		}), outputs, providersConfig)
 	require.NoError(t, err, "error creating tf file")
 
 	err = tofu.Init(ctx)
@@ -150,8 +152,9 @@ func TestStateMatchesPlan(t *testing.T) {
 			if tc.inputNumberVar != nil {
 				inputs["inputNumberVar"] = tc.inputNumberVar
 			}
+			emptyProviders := map[string]resource.PropertyMap{}
 			err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
-				resource.NewPropertyMapFromMap(inputs), outputs)
+				resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 			require.NoError(t, err, "error creating tf file")
 
 			err = tofu.Init(ctx)

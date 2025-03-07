@@ -242,6 +242,7 @@ func (h *moduleStateHandler) Delete(
 	req *pulumirpc.DeleteRequest,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
+	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
@@ -273,6 +274,7 @@ func (h *moduleStateHandler) Delete(
 		tf.WorkingDir(),
 		olds["moduleInputs"].ObjectValue(), /*inputs*/
 		[]tfsandbox.TFOutputSpec{},         /*outputs*/
+		providersConfig,
 	)
 
 	if err != nil {
@@ -330,8 +332,9 @@ func (h *moduleStateHandler) Read(
 	// when refreshing, we do not require outputs to be exposed
 	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
 		tf.WorkingDir(),
-		inputs,                     /*inputs*/
-		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+		inputs,                            /*inputs*/
+		[]tfsandbox.TFOutputSpec{},        /*outputs*/
+		map[string]resource.PropertyMap{}, /*providersConfig*/
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
