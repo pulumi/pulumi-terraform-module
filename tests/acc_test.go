@@ -338,7 +338,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 func TestS3BucketModSecret(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
-	//skipLocalRunsWithoutCreds(t)
+	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
