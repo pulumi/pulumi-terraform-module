@@ -17,7 +17,6 @@ package modprovider
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -45,10 +44,12 @@ const (
 type moduleState struct {
 	// Intended to store contents of TF state exactly.
 	rawState []byte
+	// Intended to store contents of TF lock file exactly.
+	rawLockFile []byte
 }
 
 func (ms *moduleState) Equal(other moduleState) bool {
-	return bytes.Equal(ms.rawState, other.rawState)
+	return bytes.Equal(ms.rawState, other.rawState) && bytes.Equal(ms.rawLockFile, other.rawLockFile)
 }
 
 func (ms *moduleState) Unmarshal(s *structpb.Struct) {
@@ -63,6 +64,10 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 	if !ok {
 		return // empty
 	}
+	if lock, ok := props["lock"]; ok {
+		lockString := lock.StringValue()
+		ms.rawLockFile = []byte(lockString)
+	}
 	stateString := state.StringValue()
 	ms.rawState = []byte(stateString)
 }
@@ -71,6 +76,7 @@ func (ms *moduleState) Marshal() *structpb.Struct {
 	state := resource.PropertyMap{
 		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
 		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
+		"lock":  resource.NewStringProperty(string(ms.rawLockFile)),
 	}
 
 	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
@@ -281,14 +287,14 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
 
+	err = tf.PushStateAndLockFile(ctx, oldState.rawState, oldState.rawLockFile)
+	if err != nil {
+		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
+	}
+
 	err = tf.Init(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Init failed: %w", err)
-	}
-
-	err = tf.PushState(ctx, oldState.rawState)
-	if err != nil {
-		return nil, fmt.Errorf("PushState failed: %w", err)
 	}
 
 	err = tf.Destroy(ctx)
@@ -343,9 +349,9 @@ func (h *moduleStateHandler) Read(
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
 
-	err = tf.PushState(ctx, oldState.rawState)
+	err = tf.PushStateAndLockFile(ctx, oldState.rawState, oldState.rawLockFile)
 	if err != nil {
-		return nil, fmt.Errorf("PushState failed: %w", err)
+		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
 	plan, err := tf.PlanRefreshOnly(ctx)
@@ -365,16 +371,14 @@ func (h *moduleStateHandler) Read(
 	// Child resources need to access the state in their Read() implementation.
 	h.planStore.SetState(modUrn, state)
 
-	rawState, ok, err := tf.PullState(ctx)
+	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("PullState failed: %w", err)
-	}
-	if !ok {
-		return nil, errors.New("PullState did not find state")
+		return nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
 	}
 
 	refreshedModuleState := moduleState{
-		rawState: rawState,
+		rawState:    rawState,
+		rawLockFile: rawLockFile,
 	}
 
 	// The engine will call Diff() after Read(), and it would expect this to be populated.
