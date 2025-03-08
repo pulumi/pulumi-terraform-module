@@ -24,9 +24,9 @@ require (
 	github.com/opentofu/tofudl v0.0.0-20250129123822-d4254f2a6147
 	github.com/pulumi/opentofu v0.0.0-00010101000000-000000000000
 	github.com/pulumi/providertest v0.1.5
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.103.0
-	github.com/pulumi/pulumi/pkg/v3 v3.152.0
-	github.com/pulumi/pulumi/sdk/v3 v3.152.0
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.104.0
+	github.com/pulumi/pulumi/pkg/v3 v3.153.1
+	github.com/pulumi/pulumi/sdk/v3 v3.153.1
 	github.com/stretchr/testify v1.10.0
 	github.com/zclconf/go-cty v1.16.2
 	google.golang.org/grpc v1.70.0

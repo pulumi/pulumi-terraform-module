@@ -26,6 +26,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -363,6 +365,10 @@ func (s *server) Construct(
 		_ pulumi.ResourceOption,
 	) (*pulumiprovider.ConstructResult, error) {
 		ctok := componentTypeToken(s.packageName, s.componentTypeName)
+
+		logRedirector := tfbridge.NewTerraformLogRedirector(ctx.Context(), s.hostClient)
+		ctx = tfsandbox.PulumiWithValue(ctx, logRedirector)
+
 		switch typ {
 		case string(ctok):
 			componentUrn, outputs, err := NewModuleComponentResource(ctx,
@@ -480,6 +486,8 @@ func (s *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
+
+	ctx = tfsandbox.WithLogger(ctx, tfbridge.NewTerraformLogRedirector(ctx, s.hostClient))
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
@@ -504,6 +512,7 @@ func (s *server) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
 ) (*pulumirpc.ReadResponse, error) {
+	ctx = tfsandbox.WithLogger(ctx, tfbridge.NewTerraformLogRedirector(ctx, s.hostClient))
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)

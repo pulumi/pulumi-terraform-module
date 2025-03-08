@@ -17,7 +17,10 @@ package tfsandbox
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"math/rand/v2"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -27,6 +30,7 @@ import (
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -38,6 +42,23 @@ type Tofu struct {
 // where all tofu commands will be run.
 func (t *Tofu) WorkingDir() string {
 	return t.tf.WorkingDir()
+}
+
+// SetLogger sets the logger for the both tfexec and tofu
+func (t *Tofu) setLogger(w io.Writer) {
+	t.tf.SetStdout(w)
+
+	// This sets the logger for the tfexec package itself
+	t.tf.SetLogger(log.New(w, "TF_EXEC", 0))
+	if tfLog, ok := os.LookupEnv("TF_LOG"); ok {
+		// There is currently a limitation where you have to set the TF_LOG_PATH
+		// if you want to set the TF_LOG level. https://github.com/hashicorp/terraform-exec/issues/436
+		// Because of this we won't get the WARN and TRACE logs to stdout.
+		err := t.tf.SetLogPath(path.Join(t.WorkingDir(), "tf.log"))
+		contract.AssertNoErrorf(err, "error setting TF_LOG_PATH")
+		err = t.tf.SetLog(tfLog)
+		contract.AssertNoErrorf(err, "error setting TF_LOG")
+	}
 }
 
 // NewTofu will create a new Tofu client which can be used to
@@ -65,9 +86,14 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
-	return &Tofu{
+	tofu := &Tofu{
 		tf: tf,
-	}, nil
+	}
+	logger := GetLogger(ctx)
+	if logger != nil {
+		tofu.setLogger(logger)
+	}
+	return tofu, nil
 }
 
 // findExistingTofu checks if tofu is already installed on the machine
