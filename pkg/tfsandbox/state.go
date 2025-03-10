@@ -25,18 +25,22 @@ import (
 const defaultStateFile = "terraform.tfstate"
 const defaultLockFile = ".terraform.lock.hcl"
 
-func (t *Tofu) PullStateAndLockFile(_ context.Context) (json.RawMessage, []byte, error) {
-	state, err := t.pullState(context.Background())
+// PullStateAndLockFile reads the state and lock file from the Tofu working directory.
+// If the lock file is not present, it returns nil for the lock file and no error.
+// It's possible for modules to not have any providers which would mean no lock file
+func (t *Tofu) PullStateAndLockFile(_ context.Context) (state json.RawMessage, lockFile []byte, err error) {
+	state, err = t.pullState(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
-	lock, err := t.pullLockFile(context.Background())
+	lockFile, err = t.pullLockFile(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
-	return state, lock, nil
+	return state, lockFile, nil
 }
 
+// PushStateAndLockFile writes the state and lock file to the Tofu working directory.
 func (t *Tofu) PushStateAndLockFile(_ context.Context, state json.RawMessage, lock []byte) error {
 	if err := t.pushState(context.Background(), state); err != nil {
 		return err
