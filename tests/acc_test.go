@@ -486,13 +486,13 @@ func TestIntegration(t *testing.T) {
 				apitype.OpType("create"): 6,
 			},
 			upExpect: map[string]int{
-				"create": 5,
+				"create": 6,
 			},
 			deleteExpect: map[string]int{
-				"delete": 5,
+				"delete": 6,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 5,
+				apitype.OpType("same"): 6,
 			},
 		},
 		{
@@ -501,16 +501,16 @@ func TestIntegration(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 6,
+				apitype.OpType("create"): 5,
 			},
 			upExpect: map[string]int{
-				"create": 6,
+				"create": 5,
 			},
 			deleteExpect: map[string]int{
-				"delete": 6,
+				"delete": 5,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 6,
+				apitype.OpType("same"): 5,
 			},
 		},
 		{
@@ -1071,6 +1071,7 @@ func pulumiPackageAdd(
 		t.Errorf("Failed to run pulumi package add\nExit code: %d\nError: %v\n%s\n%s",
 			exitCode, err, stdout, stderr)
 	}
+
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
 }
