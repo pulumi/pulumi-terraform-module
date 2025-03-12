@@ -259,7 +259,18 @@ func InferModuleSchema(
 	mod TFModuleSource,
 	ver TFModuleVersion,
 ) (*InferredModuleSchema, error) {
-	module, err := extractModuleContent(ctx, mod, ver)
+	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil))
+}
+
+func inferModuleSchema(
+	ctx context.Context,
+	packageName packageName,
+	mod TFModuleSource,
+	ver TFModuleVersion,
+	logger tfsandbox.Logger,
+) (*InferredModuleSchema, error) {
+
+	module, err := extractModuleContent(ctx, mod, ver, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -319,8 +330,9 @@ func extractModuleContent(
 	ctx context.Context,
 	source TFModuleSource,
 	version TFModuleVersion,
+	logger tfsandbox.Logger,
 ) (*configs.Module, error) {
-	modDir, err := resolveModuleSources(ctx, source, version)
+	modDir, err := resolveModuleSources(ctx, source, version, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -391,6 +403,7 @@ func resolveModuleSources(
 	ctx context.Context,
 	source tfsandbox.TFModuleSource,
 	version tfsandbox.TFModuleVersion, //optional
+	logger tfsandbox.Logger,
 ) (string, error) {
 	tf, err := tfsandbox.NewTofu(ctx, tfsandbox.ModuleWorkdir(source, version))
 	if err != nil {
@@ -408,7 +421,7 @@ func resolveModuleSources(
 	}
 
 	// init will resolve module sources and create .terraform/modules folder
-	if err := tf.Init(ctx); err != nil {
+	if err := tf.Init(ctx, logger); err != nil {
 		return "", fmt.Errorf("tofu init failure: %w", err)
 	}
 

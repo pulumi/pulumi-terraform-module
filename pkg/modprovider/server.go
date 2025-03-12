@@ -79,7 +79,8 @@ func (s *server) Parameterize(
 	s.componentTypeName = defaultComponentTypeName
 	s.packageName = pargs.PackageName
 	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
-	inferredModuleSchema, err := InferModuleSchema(ctx, s.packageName, pargs.TFModuleSource, pargs.TFModuleVersion)
+	logger := newResourceLogger(s.hostClient, "")
+	inferredModuleSchema, err := inferModuleSchema(ctx, s.packageName, pargs.TFModuleSource, pargs.TFModuleVersion, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring module schema for '%s' version %s: %w",
 			pargs.TFModuleSource,

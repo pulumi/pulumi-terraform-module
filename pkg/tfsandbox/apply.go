@@ -9,8 +9,8 @@ import (
 )
 
 // Apply runs the terraform apply command and returns the final state
-func (t *Tofu) Apply(ctx context.Context) (*State, error) {
-	state, err := t.apply(ctx)
+func (t *Tofu) Apply(ctx context.Context, logger Logger) (*State, error) {
+	state, err := t.apply(ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -22,8 +22,11 @@ func (t *Tofu) Apply(ctx context.Context) (*State, error) {
 }
 
 // Apply runs the terraform apply command and returns the final state
-func (t *Tofu) apply(ctx context.Context) (*tfjson.State, error) {
-	if err := t.tf.Apply(ctx); err != nil {
+func (t *Tofu) apply(ctx context.Context, logger Logger) (*tfjson.State, error) {
+	logWriter := newJSONLogPipe(ctx, logger)
+	defer logWriter.Close()
+
+	if err := t.tf.ApplyJSON(ctx, logWriter); err != nil {
 		return nil, fmt.Errorf("error running tofu apply: %w", err)
 	}
 

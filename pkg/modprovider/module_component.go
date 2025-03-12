@@ -156,7 +156,9 @@ func NewModuleComponentResource(
 		return nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
-	err = tf.Init(ctx.Context())
+	logger := newComponentLogger(ctx.Log, &component)
+
+	err = tf.Init(ctx.Context(), logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Init failed: %w", err)
 	}
@@ -165,7 +167,7 @@ func NewModuleComponentResource(
 
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx.Context())
+	plan, err := tf.Plan(ctx.Context(), logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
@@ -212,7 +214,7 @@ func NewModuleComponentResource(
 		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
-		tfState, err := tf.Apply(ctx.Context())
+		tfState, err := tf.Apply(ctx.Context(), logger)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Apply failed: %w", err)
 		}
