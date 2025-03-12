@@ -556,6 +556,7 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
+//nolint:lll
 func TestDiffDetail(t *testing.T) {
 	// Set up a test Bucket
 	localProviderBinPath := ensureCompiledProvider(t)
@@ -581,89 +582,18 @@ func TestDiffDetail(t *testing.T) {
 	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
 
 	// Preview
-	previewResult := diffDetailTest.Preview(t, optpreview.Diff())
+	resourceDiffs := runPreviewWithPlanDiff(t, diffDetailTest)
 
-	var providerID string
-
-	//Extract the provider URN from state
-	//TODO: once explicit providers are
-	var state map[string]interface{}
-	err := json.Unmarshal(diffDetailTest.ExportStack(t).Deployment, &state)
-	if err != nil {
-		t.Fatalf("unmarshaling stack deployment: %v", err)
-	}
-	for key, val := range state {
-		if key == "resources" {
-			var resourceList []interface{}
-			switch v := val.(type) {
-			case []interface{}:
-				resourceList = v
-			default:
-				t.Log("schema resources list must be of type []interface{}")
-			}
-			for _, resEntry := range resourceList {
-				var res map[string]interface{}
-				switch resEntry.(type) {
-				case map[string]interface{}:
-					res = resEntry.(map[string]interface{})
-					//nolint:lll
-					if res["urn"].(string) == "urn:pulumi:test::ts-s3bucketmod-program::pulumi:providers:bucket::default_4_5_0" {
-						providerID = res["id"].(string)
-						break
-					}
-				default:
-					t.Log("a resource must be of type map[string]interface{}")
-				}
-			}
-		}
-	}
-
-	if providerID == "" {
-		t.Fatal("Could not find provider ID")
-	}
-	// We expect a delete on the module input, and an update on the module state.
-	diffExpect := map[apitype.OpType]int{
-		"delete": 1,
-		"update": 1,
-		"same":   4,
-	}
-	assert.Equal(t, diffExpect, previewResult.ChangeSummary)
-
-	// Assert on the stdout of the test's diff detail.
-	//nolint:lll
-	expectedDiffOutput := fmt.Sprintf(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::ts-s3bucketmod-program::pulumi:pulumi:Stack::ts-s3bucketmod-program-test]
-    ~ bucket:index:ModuleState: (update)
-        [id=moduleStateResource]
-        [urn=urn:pulumi:test::ts-s3bucketmod-program::bucket:index:Module$bucket:index:ModuleState::test-bucket-state]
-        [provider=urn:pulumi:test::ts-s3bucketmod-program::pulumi:providers:bucket::default_4_5_0::%[1]s]
-      ~ moduleInputs: {
-            bucket                              : "%[2]s-test-bucket"
-          - server_side_encryption_configuration: {
-              - rule: {
-                  - apply_server_side_encryption_by_default: {
-                      - sse_algorithm: [secret]
-                    }
-                }
-            }
-        }
-    - bucket:tf:aws_s3_bucket_server_side_encryption_configuration: (delete)
-        [id=module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]]
-        [urn=urn:pulumi:test::ts-s3bucketmod-program::bucket:index:Module$bucket:tf:aws_s3_bucket_server_side_encryption_configuration::module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]]
-        [provider=urn:pulumi:test::ts-s3bucketmod-program::pulumi:providers:bucket::default_4_5_0::%[1]s]
-        bucket               : "%[2]s-test-bucket"
-        expected_bucket_owner: ""
-        id                   : "%[2]s-test-bucket"
-        rule                 : [secret]
-Resources:
-    ~ 1 to update
-    - 1 to delete
-    2 changes. 4 unchanged
-`,
-		providerID, prefix)
-
-	assert.Equal(t, expectedDiffOutput, previewResult.StdOut)
+	autogold.Expect(map[string]interface{}{
+		"module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]": map[string]interface{}{
+			"diff":  apitype.PlanDiffV1{},
+			"steps": []apitype.OpType{apitype.OpType("delete")},
+		},
+		"test-bucket-state": map[string]interface{}{
+			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"bucket": prefix + "-test-bucket"}}},
+			"steps": []apitype.OpType{apitype.OpType("update")},
+		},
+	}).Equal(t, resourceDiffs)
 
 	// Cleanup
 	diffDetailTest.Destroy(t)
@@ -951,8 +881,12 @@ func runPreviewWithPlanDiff(
 			continue
 		}
 		if !slices.Contains(resourcePlan.Steps, apitype.OpSame) {
+			var diff apitype.PlanDiffV1
+			if resourcePlan.Goal != nil {
+				diff = resourcePlan.Goal.InputDiff
+			}
 			resourceDiffs[urn.Name()] = map[string]interface{}{
-				"diff":  resourcePlan.Goal.InputDiff,
+				"diff":  diff,
 				"steps": resourcePlan.Steps,
 			}
 		}
