@@ -463,7 +463,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 	})
 }
 
-func TestIntegration(t *testing.T) {
+func TestE2eTs(t *testing.T) {
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs
@@ -478,7 +478,7 @@ func TestIntegration(t *testing.T) {
 
 	testcases := []testCase{
 		{
-			name:            "ts/s3bucketmod",
+			name:            "s3bucketmod",
 			moduleName:      "terraform-aws-modules/s3-bucket/aws",
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
@@ -496,25 +496,7 @@ func TestIntegration(t *testing.T) {
 			},
 		},
 		{
-			name:            "python/s3bucketmod",
-			moduleName:      "terraform-aws-modules/s3-bucket/aws",
-			moduleVersion:   "4.5.0",
-			moduleNamespace: "bucket",
-			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 5,
-			},
-			upExpect: map[string]int{
-				"create": 5,
-			},
-			deleteExpect: map[string]int{
-				"delete": 5,
-			},
-			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 5,
-			},
-		},
-		{
-			name:            "ts/awslambdamod",
+			name:            "awslambdamod",
 			moduleName:      "terraform-aws-modules/lambda/aws",
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
@@ -540,9 +522,90 @@ func TestIntegration(t *testing.T) {
 		localProviderBinPath := ensureCompiledProvider(t)
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
-			testProgram := filepath.Join("testdata", "programs", tc.name)
+			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
+
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath, opttest.TestInPlace())
+
+			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+			// Get a prefix for resource names
+			prefix := generateTestResourcePrefix()
+
+			// Set prefix via config
+			integrationTest.SetConfig(t, "prefix", prefix)
+
+			// Generate package
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
+
+			// Preview
+			previewResult := integrationTest.Preview(t)
+
+			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Up
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t)
+			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+		})
+	}
+}
+
+func TestE2ePython(t *testing.T) {
+
+	type testCase struct {
+		name                string // Must be same as project folder in testdata/programs
+		moduleName          string
+		moduleVersion       string
+		moduleNamespace     string
+		previewExpect       map[apitype.OpType]int
+		upExpect            map[string]int
+		deleteExpect        map[string]int
+		diffNoChangesExpect map[apitype.OpType]int
+	}
+
+	testcases := []testCase{
+		{
+			name:            "s3bucketmod",
+			moduleName:      "terraform-aws-modules/s3-bucket/aws",
+			moduleVersion:   "4.5.0",
+			moduleNamespace: "bucket",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 5,
+			},
+			upExpect: map[string]int{
+				"create": 5,
+			},
+			deleteExpect: map[string]int{
+				"delete": 5,
+			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): 5,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		localProviderBinPath := ensureCompiledProvider(t)
+		skipLocalRunsWithoutCreds(t)
+		t.Run(tc.name, func(t *testing.T) {
+			testProgram := filepath.Join("testdata", "programs", "python", tc.name)
+			testOpts := []opttest.Option{
+				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
+				opttest.TestInPlace(),
+				opttest.SkipInstall(),
+				opttest.WorkspaceOptions(),
+			}
+
+			integrationTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
 
 			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
@@ -557,22 +620,24 @@ func TestIntegration(t *testing.T) {
 			previewResult := integrationTest.Preview(t)
 			t.Log(previewResult.StdOut)
 			t.Log(previewResult.StdErr)
-			t.Log(integrationTest.WorkingDir())
 
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-			//// Up
-			//upResult := integrationTest.Up(t)
-			//autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
-			//
-			//// Preview expect no changes
-			//previewResult = integrationTest.Preview(t)
-			//t.Log(previewResult.StdOut)
-			//autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
-			//
-			//// Delete
-			//destroyResult := integrationTest.Destroy(t)
-			//autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			// Up
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t)
+			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+
+			// TODO: Clean-up local test dir?
+
 		})
 	}
 }

@@ -5,11 +5,3 @@ runtime:
   options:
     toolchain: pip
     virtualenv: venv
-config:
-  pulumi:tags:
-    value:
-      pulumi:template: python
-plugins:
-  providers:
-    - name: terraform-module
-      path: /Users/guin/go/src/github.com/pulumi/pulumi-terraform-module-provider/bin
