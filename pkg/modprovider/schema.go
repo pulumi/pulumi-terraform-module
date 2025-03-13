@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -38,7 +39,7 @@ func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 // The code will need to run input/output schema inference for these sources to compute an appropriate PackageSpec.
 func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModuleSchema) (*schema.PackageSpec, error) {
 	pkgVer := inferPackageVersion(pargs.TFModuleVersion)
-	packageName := pargs.PackageName
+	packageName := string(pargs.PackageName)
 	repository := "github.com/pulumi/pulumi-terraform-module"
 	mainResourceToken := fmt.Sprintf("%s:index:%s", packageName, defaultComponentTypeName)
 
@@ -46,20 +47,27 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		ImportBasePath: path.Join(
 			repository,
 			"sdks",
-			string(packageName),
+			packageName,
 			tfbridge.GetModuleMajorVersion(string(pargs.TFModuleVersion)),
 		),
-		RootPackageName:              string(packageName),
-		LiftSingleValueMethodReturns: true,
-		GenerateExtraInputTypes:      true,
-		RespectSchemaVersion:         true,
+		RootPackageName:      packageName,
+		RespectSchemaVersion: true,
 	}
 	goInfoJson, err := json.Marshal(goInfo)
 	if err != nil {
 		return nil, err
 	}
+
+	nodejsInfo := &nodejs_codegen.NodePackageInfo{
+		RespectSchemaVersion: true,
+	}
+	nodejsInfoJson, err := json.Marshal(nodejsInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	packageSpec := &schema.PackageSpec{
-		Name:       string(packageName),
+		Name:       packageName,
 		Namespace:  "pulumi",
 		Repository: repository,
 		Version:    string(pkgVer),
@@ -81,7 +89,7 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 			SupportPack: true,
 		},
 		Language: map[string]schema.RawMessage{
-			"nodejs": schema.RawMessage(`{"respectSchemaVersion": true}`),
+			"nodejs": nodejsInfoJson,
 			"go":     goInfoJson,
 		},
 		Parameterization: newParameterizationSpec(pargs),
