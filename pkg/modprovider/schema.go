@@ -17,7 +17,10 @@ package modprovider
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -36,11 +39,31 @@ func inferPackageVersion(versionSpec TFModuleVersion) packageVersion {
 func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModuleSchema) (*schema.PackageSpec, error) {
 	pkgVer := inferPackageVersion(pargs.TFModuleVersion)
 	packageName := pargs.PackageName
+	repository := "github.com/pulumi/pulumi-terraform-module"
 	mainResourceToken := fmt.Sprintf("%s:index:%s", packageName, defaultComponentTypeName)
+
+	goInfo := &go_codegen.GoPackageInfo{
+		ImportBasePath: path.Join(
+			repository,
+			"sdks",
+			string(packageName),
+			tfbridge.GetModuleMajorVersion(string(pargs.TFModuleVersion)),
+		),
+		RootPackageName:              string(packageName),
+		LiftSingleValueMethodReturns: true,
+		GenerateExtraInputTypes:      true,
+		RespectSchemaVersion:         true,
+	}
+	goInfoJson, err := json.Marshal(goInfo)
+	if err != nil {
+		return nil, err
+	}
 	packageSpec := &schema.PackageSpec{
-		Name:    string(packageName),
-		Version: string(pkgVer),
-		Types:   inferredModule.SupportingTypes,
+		Name:       string(packageName),
+		Namespace:  "pulumi",
+		Repository: repository,
+		Version:    string(pkgVer),
+		Types:      inferredModule.SupportingTypes,
 		Provider: schema.ResourceSpec{
 			InputProperties: inferredModule.ProvidersConfig.Variables,
 		},
@@ -59,6 +82,7 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		},
 		Language: map[string]schema.RawMessage{
 			"nodejs": schema.RawMessage(`{"respectSchemaVersion": true}`),
+			"go":     goInfoJson,
 		},
 		Parameterization: newParameterizationSpec(pargs),
 	}
