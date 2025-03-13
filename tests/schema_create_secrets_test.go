@@ -41,7 +41,7 @@ module "local" {
 	assert.NoError(t, err)
 	err = os.MkdirAll(path.Join(tofu.WorkingDir(), "local_module"), 0700)
 	assert.NoError(t, err)
-	err = tofu.Init(ctx)
+	err = tofu.Init(ctx, tfsandbox.DiscardLogger)
 	assert.NoError(t, err)
 
 	t.Run("SDKV2_TypeList", func(t *testing.T) {

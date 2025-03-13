@@ -55,10 +55,10 @@ func TestTofuPlan(t *testing.T) {
 	}), outputs, providersConfig)
 	assert.NoErrorf(t, err, "error creating tf file")
 
-	err = tofu.Init(ctx)
+	err = tofu.Init(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu init")
 
-	plan, err := tofu.plan(ctx)
+	plan, err := tofu.plan(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu plan")
 	childModules := plan.PlannedValues.RootModule.ChildModules
 	assert.Len(t, childModules, 1)
@@ -80,18 +80,18 @@ func TestTofuApply(t *testing.T) {
 	}), emptyOutputs, providersConfig)
 	assert.NoErrorf(t, err, "error creating tf file")
 
-	err = tofu.Init(ctx)
+	err = tofu.Init(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu init")
 
-	state, err := tofu.apply(ctx)
+	state, err := tofu.apply(ctx, DiscardLogger)
 	assert.NoError(t, err)
 	assert.Equal(t, "module.test.terraform_data.example", state.Values.RootModule.ChildModules[0].Resources[0].Address)
 
-	state, err = tofu.refresh(ctx)
+	state, err = tofu.refresh(ctx, DiscardLogger)
 	assert.NoError(t, err, "error running tofu refresh")
 	assert.Equal(t, "module.test.terraform_data.example", state.Values.RootModule.ChildModules[0].Resources[0].Address)
 
-	err = tofu.Destroy(ctx)
+	err = tofu.Destroy(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu destroy")
 }
 

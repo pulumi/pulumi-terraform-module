@@ -7,8 +7,8 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
-func (t *Tofu) Refresh(ctx context.Context) (*State, error) {
-	st, err := t.refresh(ctx)
+func (t *Tofu) Refresh(ctx context.Context, log Logger) (*State, error) {
+	st, err := t.refresh(ctx, log)
 	if err != nil {
 		return nil, err
 	}
@@ -19,8 +19,11 @@ func (t *Tofu) Refresh(ctx context.Context) (*State, error) {
 	return s, nil
 }
 
-func (t *Tofu) refresh(ctx context.Context) (*tfjson.State, error) {
-	if err := t.tf.Refresh(ctx); err != nil {
+func (t *Tofu) refresh(ctx context.Context, log Logger) (*tfjson.State, error) {
+	logWriter := newJSONLogPipe(ctx, log)
+	defer logWriter.Close()
+
+	if err := t.tf.RefreshJSON(ctx, logWriter); err != nil {
 		return nil, fmt.Errorf("error running tofu refresh: %w", err)
 	}
 

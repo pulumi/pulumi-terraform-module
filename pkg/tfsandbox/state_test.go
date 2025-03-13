@@ -47,10 +47,10 @@ func TestState(t *testing.T) {
 		}), outputs, providersConfig)
 	require.NoError(t, err, "error creating tf file")
 
-	err = tofu.Init(ctx)
+	err = tofu.Init(ctx, DiscardLogger)
 	require.NoError(t, err, "error running tofu init")
 
-	initialPlan, err := tofu.Plan(ctx)
+	initialPlan, err := tofu.Plan(ctx, DiscardLogger)
 	require.NoError(t, err, "error running tofu plan (before apply)")
 	require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -61,7 +61,7 @@ func TestState(t *testing.T) {
 		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
 	}, plannedOutputs)
 
-	state, err := tofu.Apply(ctx)
+	state, err := tofu.Apply(ctx, DiscardLogger)
 	require.NoError(t, err, "error running tofu apply")
 
 	moduleOutputs := state.Outputs()
@@ -99,7 +99,7 @@ func TestState(t *testing.T) {
 	err = tofu.PushStateAndLockFile(ctx, newState, rawLockFile)
 	require.NoError(t, err, "error pushing tofu state")
 
-	plan, err := tofu.Plan(ctx)
+	plan, err := tofu.Plan(ctx, DiscardLogger)
 	require.NoError(t, err, "error replanning")
 
 	hasUpdates := false
@@ -156,10 +156,10 @@ func TestStateMatchesPlan(t *testing.T) {
 				resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 			require.NoError(t, err, "error creating tf file")
 
-			err = tofu.Init(ctx)
+			err = tofu.Init(ctx, DiscardLogger)
 			require.NoError(t, err, "error running tofu init")
 
-			initialPlan, err := tofu.Plan(ctx)
+			initialPlan, err := tofu.Plan(ctx, DiscardLogger)
 			require.NoError(t, err, "error running tofu plan (before apply)")
 			require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -168,7 +168,7 @@ func TestStateMatchesPlan(t *testing.T) {
 				resource.PropertyKey("number_output"): tc.expected,
 			}, plannedOutputs)
 
-			state, err := tofu.Apply(ctx)
+			state, err := tofu.Apply(ctx, DiscardLogger)
 			require.NoError(t, err, "error running tofu apply")
 			moduleOutputs := state.Outputs()
 			// output value is the same as the input

@@ -24,8 +24,8 @@ import (
 )
 
 // Plan runs terraform plan and returns the plan representation.
-func (t *Tofu) Plan(ctx context.Context) (*Plan, error) {
-	plan, err := t.plan(ctx)
+func (t *Tofu) Plan(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.plan(ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +36,8 @@ func (t *Tofu) Plan(ctx context.Context) (*Plan, error) {
 	return p, nil
 }
 
-func (t *Tofu) PlanRefreshOnly(ctx context.Context) (*Plan, error) {
-	plan, err := t.planRefreshOnly(ctx)
+func (t *Tofu) PlanRefreshOnly(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.planRefreshOnly(ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -49,17 +49,19 @@ func (t *Tofu) PlanRefreshOnly(ctx context.Context) (*Plan, error) {
 	return p, nil
 }
 
-func (t *Tofu) plan(ctx context.Context) (*tfjson.Plan, error) {
-	return t.planWithOptions(ctx, false /*refreshOnly*/)
+func (t *Tofu) plan(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, logger, false /*refreshOnly*/)
 }
 
-func (t *Tofu) planRefreshOnly(ctx context.Context) (*tfjson.Plan, error) {
-	return t.planWithOptions(ctx, true /*refreshOnly*/)
+func (t *Tofu) planRefreshOnly(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, logger, true /*refreshOnly*/)
 }
 
-func (t *Tofu) planWithOptions(ctx context.Context, refreshOnly bool) (*tfjson.Plan, error) {
+func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly bool) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), "plan.out")
-	_ /*hasChanges*/, err := t.tf.Plan(ctx, tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))
+	logWriter := newJSONLogPipe(ctx, logger)
+	defer logWriter.Close()
+	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter, tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))
 	if err != nil {
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}

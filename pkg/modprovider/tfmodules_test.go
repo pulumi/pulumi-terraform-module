@@ -24,11 +24,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func TestExtractModuleContentWorks(t *testing.T) {
 	ctx := context.Background()
-	awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1")
+	awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1", tfsandbox.DiscardLogger)
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
 }
@@ -157,7 +159,7 @@ func TestResolveModuleSources(t *testing.T) {
 		src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 		p, err := filepath.Abs(src)
 		require.NoError(t, err)
-		d, err := resolveModuleSources(ctx, TFModuleSource(p), "")
+		d, err := resolveModuleSources(ctx, TFModuleSource(p), "", tfsandbox.DiscardLogger)
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -173,7 +175,7 @@ func TestResolveModuleSources(t *testing.T) {
 		ctx := context.Background()
 		s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
 		v := TFModuleVersion("4.5.0")
-		d, err := resolveModuleSources(ctx, s, v)
+		d, err := resolveModuleSources(ctx, s, v, tfsandbox.DiscardLogger)
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))

@@ -292,12 +292,14 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
-	err = tf.Init(ctx)
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	err = tf.Init(ctx, logger)
 	if err != nil {
 		return nil, fmt.Errorf("Init failed: %w", err)
 	}
 
-	err = tf.Destroy(ctx)
+	err = tf.Destroy(ctx, logger)
 	if err != nil {
 		return nil, fmt.Errorf("Delete failed: %w", err)
 	}
@@ -354,7 +356,9 @@ func (h *moduleStateHandler) Read(
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
-	plan, err := tf.PlanRefreshOnly(ctx)
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	plan, err := tf.PlanRefreshOnly(ctx, logger)
 	if err != nil {
 		return nil, fmt.Errorf("Planning module refresh failed: %w", err)
 	}
@@ -363,7 +367,7 @@ func (h *moduleStateHandler) Read(
 	h.planStore.SetPlan(modUrn, plan)
 
 	// Now actually apply the refresh.
-	state, err := tf.Refresh(ctx)
+	state, err := tf.Refresh(ctx, logger)
 	if err != nil {
 		return nil, fmt.Errorf("Module refresh failed: %w", err)
 	}

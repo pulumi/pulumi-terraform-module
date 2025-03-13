@@ -6,8 +6,11 @@ import (
 )
 
 // Destroy runs the terraform destroy command
-func (t *Tofu) Destroy(ctx context.Context) error {
-	if err := t.tf.Destroy(ctx); err != nil {
+func (t *Tofu) Destroy(ctx context.Context, log Logger) error {
+	logWriter := newJSONLogPipe(ctx, log)
+	defer logWriter.Close()
+
+	if err := t.tf.DestroyJSON(ctx, logWriter); err != nil {
 		return fmt.Errorf("error running tofu destroy: %w", err)
 	}
 
