@@ -598,40 +598,46 @@ func TestE2eGo(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "go", tc.name)
 			testOpts := []opttest.Option{
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
+				// pulumitest's go mod tidy fails if we try to install prior to generating the SDKs
 				opttest.SkipInstall(),
 			}
 
-			integrationTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
+			e2eTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
 
 			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
 
 			// Set prefix via config
-			integrationTest.SetConfig(t, "prefix", prefix)
+			e2eTest.SetConfig(t, "prefix", prefix)
 
 			// Generate package
-			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
+			pulumiPackageAdd(
+				t,
+				e2eTest,
+				localProviderBinPath,
+				tc.moduleName,
+				tc.moduleVersion,
+				tc.moduleNamespace)
 
 			// Preview
-			previewResult := integrationTest.Preview(t)
+			previewResult := e2eTest.Preview(t)
 			t.Log(previewResult.StdOut)
 			t.Log(previewResult.StdErr)
 
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-			//// Up
-			//upResult := integrationTest.Up(t)
-			//autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
-			//
-			//// Preview expect no changes
-			//previewResult = integrationTest.Preview(t)
-			//t.Log(previewResult.StdOut)
-			//autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
-			//
-			//// Delete
-			//destroyResult := integrationTest.Destroy(t)
-			//autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
-			//
+			// Up
+			upResult := e2eTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			// Preview expect no changes
+			previewResult = e2eTest.Preview(t)
+			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Delete
+			destroyResult := e2eTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 
 		})
 	}
