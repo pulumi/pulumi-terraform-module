@@ -16,10 +16,11 @@ package modprovider
 
 import (
 	"encoding/json"
-	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 )
 
 func TestParameterizationSpec(t *testing.T) {
@@ -42,13 +43,14 @@ func TestParameterizationSpec(t *testing.T) {
 
 func TestPulumiSchemaForModuleHasLanguageInfoGo(t *testing.T) {
 	pArgs := ParameterizeArgs{TFModuleSource: "hashicorp/consul/aws", TFModuleVersion: "0.0.5", PackageName: "consul"}
-	
+
 	schema, err := pulumiSchemaForModule(&pArgs, &InferredModuleSchema{})
 	assert.NoError(t, err)
 
-	rawJsonResult := schema.Language["go"]
+	rawJSONResult := schema.Language["go"]
 	var goInfo = &go_codegen.GoPackageInfo{}
-	json.Unmarshal(rawJsonResult, &goInfo)
+	err = json.Unmarshal(rawJSONResult, &goInfo)
+	assert.NoError(t, err)
 
 	assert.True(t, goInfo.RespectSchemaVersion)
 	assert.Equal(t, "github.com/pulumi/pulumi-terraform-module/sdks/consul", goInfo.ImportBasePath)

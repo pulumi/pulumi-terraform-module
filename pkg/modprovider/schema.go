@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -48,7 +47,6 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 			repository,
 			"sdks",
 			packageName,
-			tfbridge.GetModuleMajorVersion(string(pargs.TFModuleVersion)),
 		),
 		RootPackageName:      packageName,
 		RespectSchemaVersion: true,

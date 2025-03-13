@@ -250,7 +250,6 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	})
 
 	t.Run("go", func(t *testing.T) {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#78] pulumi convert fails when generating a Go SDK")
 		d := dest("go")
 		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
 	})
@@ -604,13 +603,11 @@ func TestE2eGo(t *testing.T) {
 
 			e2eTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
 
-			// Get a prefix for resource names
+			// Get a prefix for resource names to avoid naming conflicts
 			prefix := generateTestResourcePrefix()
-
-			// Set prefix via config
 			e2eTest.SetConfig(t, "prefix", prefix)
 
-			// Generate package
+			// Generate local package
 			pulumiPackageAdd(
 				t,
 				e2eTest,
@@ -619,23 +616,15 @@ func TestE2eGo(t *testing.T) {
 				tc.moduleVersion,
 				tc.moduleNamespace)
 
-			// Preview
 			previewResult := e2eTest.Preview(t)
-			t.Log(previewResult.StdOut)
-			t.Log(previewResult.StdErr)
-
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-			// Up
 			upResult := e2eTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
-			// Preview expect no changes
 			previewResult = e2eTest.Preview(t)
-			t.Log(previewResult.StdOut)
 			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
-			// Delete
 			destroyResult := e2eTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 
@@ -676,6 +665,7 @@ func TestDiffDetail(t *testing.T) {
 			"steps": []apitype.OpType{apitype.OpType("delete")},
 		},
 		"test-bucket-state": map[string]interface{}{
+			//nolint:lll
 			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"bucket": prefix + "-test-bucket"}}},
 			"steps": []apitype.OpType{apitype.OpType("update")},
 		},
