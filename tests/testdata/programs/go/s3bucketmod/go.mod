@@ -3,7 +3,7 @@ module github.com/pulumi/pulumi-terraform-module-provider/tests/testdata/program
 go 1.23.5
 
 require (
-	github.com/pulumi/pulumi-terraform-module/sdks v0.0.0-00010101000000-000000000000
+	github.com/pulumi/pulumi-terraform-module/sdks/go/bucket/v4 v4.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi/sdk/v3 v3.155.0
 )
 
@@ -91,4 +91,4 @@ require (
 	lukechampine.com/frand v1.4.2 // indirect
 )
 
-replace github.com/pulumi/pulumi-terraform-module/sdks => ./sdks/bucket
+replace github.com/pulumi/pulumi-terraform-module/sdks/go/bucket/v4 => ./sdks/bucket

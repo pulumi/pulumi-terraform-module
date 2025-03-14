@@ -17,6 +17,7 @@ package modprovider
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"path"
 
 	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -46,6 +47,9 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		ImportBasePath: path.Join(
 			repository,
 			"sdks",
+			"go",
+			packageName,
+			tfbridge.GetModuleMajorVersion(string(pkgVer)),
 			packageName,
 		),
 		RootPackageName:      packageName,

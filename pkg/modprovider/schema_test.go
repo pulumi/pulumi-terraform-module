@@ -42,17 +42,59 @@ func TestParameterizationSpec(t *testing.T) {
 }
 
 func TestPulumiSchemaForModuleHasLanguageInfoGo(t *testing.T) {
-	pArgs := ParameterizeArgs{TFModuleSource: "hashicorp/consul/aws", TFModuleVersion: "0.0.5", PackageName: "consul"}
+	type testCase struct {
+		name                    string
+		pArgs                   ParameterizeArgs
+		expectedImportBasePath  string
+		expectedRootPackageName string
+	}
 
-	schema, err := pulumiSchemaForModule(&pArgs, &InferredModuleSchema{})
-	assert.NoError(t, err)
+	testcases := []testCase{
+		{
+			name: "Go module version 0",
+			pArgs: ParameterizeArgs{
+				TFModuleSource:  "hashicorp/consul/aws",
+				TFModuleVersion: "0.0.5",
+				PackageName:     "consul",
+			},
+			expectedRootPackageName: "consul",
+			expectedImportBasePath:  "github.com/pulumi/pulumi-terraform-module/sdks/go/consul/consul",
+		},
+		{
+			name: "Go module version 1",
+			pArgs: ParameterizeArgs{
+				TFModuleSource:  "hashicorp/consul/aws",
+				TFModuleVersion: "1.2.3",
+				PackageName:     "consul",
+			},
+			expectedRootPackageName: "consul",
+			expectedImportBasePath:  "github.com/pulumi/pulumi-terraform-module/sdks/go/consul/consul",
+		},
+		{
+			name: "Go module version greater than 1",
+			pArgs: ParameterizeArgs{
+				TFModuleSource:  "hashicorp/bucket/aws",
+				TFModuleVersion: "4.5.0",
+				PackageName:     "bucket",
+			},
+			expectedImportBasePath:  "github.com/pulumi/pulumi-terraform-module/sdks/go/bucket/v4/bucket",
+			expectedRootPackageName: "bucket",
+		},
+	}
+	for _, tc := range testcases {
+		tc := tc
 
-	rawJSONResult := schema.Language["go"]
-	var goInfo = &go_codegen.GoPackageInfo{}
-	err = json.Unmarshal(rawJSONResult, &goInfo)
-	assert.NoError(t, err)
+		t.Run(tc.name, func(t *testing.T) {
+			schema, err := pulumiSchemaForModule(&tc.pArgs, &InferredModuleSchema{})
+			assert.NoError(t, err)
 
-	assert.True(t, goInfo.RespectSchemaVersion)
-	assert.Equal(t, "github.com/pulumi/pulumi-terraform-module/sdks/consul", goInfo.ImportBasePath)
-	assert.Equal(t, "consul", goInfo.RootPackageName)
+			rawJSONResult := schema.Language["go"]
+			var goInfo = &go_codegen.GoPackageInfo{}
+			err = json.Unmarshal(rawJSONResult, &goInfo)
+			assert.NoError(t, err)
+			assert.True(t, goInfo.RespectSchemaVersion)
+			assert.Equal(t, tc.expectedImportBasePath, goInfo.ImportBasePath)
+			assert.Equal(t, tc.expectedRootPackageName, goInfo.RootPackageName)
+		})
+	}
 }
