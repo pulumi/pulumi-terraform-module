@@ -27,7 +27,7 @@ import (
 )
 
 // componentLogger is an implementation of tfsandbox.Logger that sends log messages to a Pulumi Log and associates them
-// with a particular resource. This is used to write status messages from plan/apply to the Pulumi UI.
+// with a particular component resource. This is used to write status messages from plan/apply to the Pulumi UI.
 type componentLogger struct {
 	log      pulumi.Log
 	resource pulumi.Resource
@@ -53,8 +53,10 @@ func (l *componentLogger) Log(level tfsandbox.LogLevel, message string) {
 		case tfsandbox.Info:
 			return l.log.Info(message, args)
 		case tfsandbox.Warn:
+			args.Ephemeral = false
 			return l.log.Warn(message, args)
 		case tfsandbox.Error:
+			args.Ephemeral = false
 			return l.log.Error(message, args)
 		}
 		return nil
@@ -78,16 +80,17 @@ func (l *resourceLogger) Log(level tfsandbox.LogLevel, message string) {
 		return
 	}
 
-	severity := diag.Debug
+	var err error
 	switch level {
 	case tfsandbox.Info:
-		severity = diag.Info
+		err = l.hc.LogStatus(context.TODO(), diag.Info, l.urn, message)
 	case tfsandbox.Warn:
-		severity = diag.Warning
+		err = l.hc.Log(context.TODO(), diag.Warning, l.urn, message)
 	case tfsandbox.Error:
-		severity = diag.Error
+		err = l.hc.Log(context.TODO(), diag.Error, l.urn, message)
+	default:
+		err = l.hc.LogStatus(context.TODO(), diag.Debug, l.urn, message)
 	}
 
-	err := l.hc.LogStatus(context.TODO(), severity, l.urn, message)
 	contract.IgnoreError(err)
 }
