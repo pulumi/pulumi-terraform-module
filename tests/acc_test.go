@@ -466,7 +466,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 func TestE2eTs(t *testing.T) {
 
 	type testCase struct {
-		name                string // Must be same as project folder in testdata/programs
+		name                string // Must be same as project folder in testdata/programs/ts
 		moduleName          string
 		moduleVersion       string
 		moduleNamespace     string
@@ -523,9 +523,7 @@ func TestE2eTs(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
-
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-
 			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
 			// Get a prefix for resource names
@@ -539,7 +537,6 @@ func TestE2eTs(t *testing.T) {
 
 			// Preview
 			previewResult := integrationTest.Preview(t)
-
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
 			// Up
@@ -561,7 +558,7 @@ func TestE2eTs(t *testing.T) {
 func TestE2ePython(t *testing.T) {
 
 	type testCase struct {
-		name                string // Must be same as project folder in testdata/programs
+		name                string // Must be same as project folder in testdata/programs/python
 		moduleName          string
 		moduleVersion       string
 		moduleNamespace     string
@@ -598,14 +595,11 @@ func TestE2ePython(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "python", tc.name)
-			testOpts := []opttest.Option{
+			integrationTest := pulumitest.NewPulumiTest(
+				t,
+				testProgram,
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
-				opttest.TestInPlace(),
-				opttest.SkipInstall(),
-				opttest.WorkspaceOptions(),
-			}
-
-			integrationTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
+			)
 
 			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
@@ -614,30 +608,25 @@ func TestE2ePython(t *testing.T) {
 			integrationTest.SetConfig(t, "prefix", prefix)
 
 			// Generate package
-			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
+			pulumiPackageAdd(
+				t,
+				integrationTest,
+				localProviderBinPath,
+				tc.moduleName,
+				tc.moduleVersion,
+				tc.moduleNamespace)
 
-			// Preview
 			previewResult := integrationTest.Preview(t)
-			t.Log(previewResult.StdOut)
-			t.Log(previewResult.StdErr)
-
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-			// Up
 			upResult := integrationTest.Up(t)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
-			// Preview expect no changes
 			previewResult = integrationTest.Preview(t)
-			t.Log(previewResult.StdOut)
 			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
-			// Delete
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
-
-			// TODO: Clean-up local test dir?
-
 		})
 	}
 }
@@ -1136,7 +1125,6 @@ func pulumiPackageAdd(
 		t.Errorf("Failed to run pulumi package add\nExit code: %d\nError: %v\n%s\n%s",
 			exitCode, err, stdout, stderr)
 	}
-
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
 }
