@@ -463,7 +463,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 	})
 }
 
-func TestIntegration(t *testing.T) {
+func TestE2eTs(t *testing.T) {
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs/ts
@@ -549,6 +549,82 @@ func TestIntegration(t *testing.T) {
 			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
 			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+		})
+	}
+}
+
+func TestE2ePython(t *testing.T) {
+
+	type testCase struct {
+		name                string // Must be same as project folder in testdata/programs/python
+		moduleName          string
+		moduleVersion       string
+		moduleNamespace     string
+		previewExpect       map[apitype.OpType]int
+		upExpect            map[string]int
+		deleteExpect        map[string]int
+		diffNoChangesExpect map[apitype.OpType]int
+	}
+
+	testcases := []testCase{
+		{
+			name:            "s3bucketmod",
+			moduleName:      "terraform-aws-modules/s3-bucket/aws",
+			moduleVersion:   "4.5.0",
+			moduleNamespace: "bucket",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 5,
+			},
+			upExpect: map[string]int{
+				"create": 5,
+			},
+			deleteExpect: map[string]int{
+				"delete": 5,
+			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): 5,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		localProviderBinPath := ensureCompiledProvider(t)
+		skipLocalRunsWithoutCreds(t)
+		t.Run(tc.name, func(t *testing.T) {
+			testProgram := filepath.Join("testdata", "programs", "python", tc.name)
+			integrationTest := pulumitest.NewPulumiTest(
+				t,
+				testProgram,
+				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
+			)
+
+			// Get a prefix for resource names
+			prefix := generateTestResourcePrefix()
+
+			// Set prefix via config
+			integrationTest.SetConfig(t, "prefix", prefix)
+
+			// Generate package
+			pulumiPackageAdd(
+				t,
+				integrationTest,
+				localProviderBinPath,
+				tc.moduleName,
+				tc.moduleVersion,
+				tc.moduleNamespace)
+
+			previewResult := integrationTest.Preview(t)
+			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			previewResult = integrationTest.Preview(t)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
 			destroyResult := integrationTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
