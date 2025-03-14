@@ -250,7 +250,6 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	})
 
 	t.Run("go", func(t *testing.T) {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#78] pulumi convert fails when generating a Go SDK")
 		d := dest("go")
 		pulumiConvert(t, localProviderBinPath, example, d, "go", generateOnly)
 	})
@@ -556,7 +555,83 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
-//nolint:lll
+func TestE2eGo(t *testing.T) {
+
+	type testCase struct {
+		name                string // Must be same as project folder in testdata/programs
+		moduleName          string
+		moduleVersion       string
+		moduleNamespace     string
+		previewExpect       map[apitype.OpType]int
+		upExpect            map[string]int
+		deleteExpect        map[string]int
+		diffNoChangesExpect map[apitype.OpType]int
+	}
+
+	testcases := []testCase{
+		{
+			name:            "s3bucketmod",
+			moduleName:      "terraform-aws-modules/s3-bucket/aws",
+			moduleVersion:   "4.5.0",
+			moduleNamespace: "bucket",
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 5,
+			},
+			upExpect: map[string]int{
+				"create": 5,
+			},
+			deleteExpect: map[string]int{
+				"delete": 5,
+			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): 5,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		localProviderBinPath := ensureCompiledProvider(t)
+		skipLocalRunsWithoutCreds(t)
+		t.Run(tc.name, func(t *testing.T) {
+			testProgram := filepath.Join("testdata", "programs", "go", tc.name)
+			testOpts := []opttest.Option{
+				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
+				// pulumitest's go mod tidy fails if we try to install prior to generating the SDKs
+				opttest.SkipInstall(),
+			}
+
+			e2eTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
+
+			// Get a prefix for resource names to avoid naming conflicts
+			prefix := generateTestResourcePrefix()
+			e2eTest.SetConfig(t, "prefix", prefix)
+
+			// Generate local package
+			pulumiPackageAdd(
+				t,
+				e2eTest,
+				localProviderBinPath,
+				tc.moduleName,
+				tc.moduleVersion,
+				tc.moduleNamespace)
+
+			previewResult := e2eTest.Preview(t)
+			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+
+			upResult := e2eTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			previewResult = e2eTest.Preview(t)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			destroyResult := e2eTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+
+		})
+	}
+}
+
 func TestDiffDetail(t *testing.T) {
 	// Set up a test Bucket
 	localProviderBinPath := ensureCompiledProvider(t)
@@ -590,6 +665,7 @@ func TestDiffDetail(t *testing.T) {
 			"steps": []apitype.OpType{apitype.OpType("delete")},
 		},
 		"test-bucket-state": map[string]interface{}{
+			//nolint:lll
 			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"bucket": prefix + "-test-bucket"}}},
 			"steps": []apitype.OpType{apitype.OpType("update")},
 		},
