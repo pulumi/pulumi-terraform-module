@@ -556,18 +556,18 @@ func TestE2eTs(t *testing.T) {
 			previewResult := integrationTest.Preview(t)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-			//// Up
-			//upResult := integrationTest.Up(t)
-			//autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
-			//
-			//// Preview expect no changes
-			//previewResult = integrationTest.Preview(t)
-			//t.Log(previewResult.StdOut)
-			//autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
-			//
-			//// Delete
-			//destroyResult := integrationTest.Destroy(t)
-			//autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			// Up
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t)
+			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
@@ -720,62 +720,6 @@ func TestE2eGo(t *testing.T) {
 			destroyResult := e2eTest.Destroy(t)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 
-		})
-	}
-}
-
-// Some resources take minutes to provision and destroy.
-// TestPreview is for such resources, where we only verify that preview works as expected.
-func TestPreview(t *testing.T) {
-	type testCase struct {
-		name            string // Must be same as project folder in testdata/programs/ts
-		moduleName      string
-		moduleVersion   string
-		moduleNamespace string
-		previewExpect   map[apitype.OpType]int
-	}
-
-	testcases := []testCase{
-		{
-			name:            "rdsmod",
-			moduleName:      "terraform-aws-modules/rds/aws",
-			moduleVersion:   "6.10.0",
-			moduleNamespace: "rds",
-			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 6,
-			},
-		},
-	}
-
-	for _, tc := range testcases {
-		tc := tc
-		localProviderBinPath := ensureCompiledProvider(t)
-		skipLocalRunsWithoutCreds(t)
-		t.Run(tc.name, func(t *testing.T) {
-			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
-			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-			previewTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
-
-			// Get a prefix for resource names
-			prefix := generateTestResourcePrefix()
-
-			// Set prefix via config
-			previewTest.SetConfig(t, "prefix", prefix)
-
-			// Generate package
-			pulumiPackageAdd(
-				t,
-				previewTest,
-				localProviderBinPath,
-				tc.moduleName,
-				tc.moduleVersion,
-				tc.moduleNamespace)
-
-			// Preview
-			previewResult := previewTest.Preview(t)
-			t.Log(previewResult.StdOut)
-			t.Log(previewResult.StdErr)
-			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 		})
 	}
 }
