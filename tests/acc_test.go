@@ -557,18 +557,18 @@ func TestE2eTs(t *testing.T) {
 			previewResult := integrationTest.Preview(t)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
-			//// Up
-			//upResult := integrationTest.Up(t)
-			//autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
-			//
-			//// Preview expect no changes
-			//previewResult = integrationTest.Preview(t)
-			//t.Log(previewResult.StdOut)
-			//autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
-			//
-			//// Delete
-			//destroyResult := integrationTest.Destroy(t)
-			//autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			// Up
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t)
+			t.Log(previewResult.StdOut)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			// Delete
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }

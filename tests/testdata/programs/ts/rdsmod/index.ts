@@ -5,7 +5,7 @@ const config = new pulumi.Config();
 const prefix = config.get('prefix') ?? pulumi.getStack();
 
 const testrds = new rds.Module("test-rds", {
-    identifier: `${prefix}test-rds-module`,
+    identifier: `test-rds-module-${prefix}`,
     engine: "mysql",
     instance_class: "db.t3.micro",
     allocated_storage: 20,
