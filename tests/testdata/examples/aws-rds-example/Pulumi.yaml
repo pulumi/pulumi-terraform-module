@@ -1,0 +1,5 @@
+name: rds-example
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
