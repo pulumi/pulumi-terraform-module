@@ -1,6 +1,6 @@
-import * as vpcmod from './sdks/vpcmod';
+import * as vpcmod from '@pulumi/vpcmod';
 import * as pulumi from '@pulumi/pulumi';
-import * as rdsmod from './sdks/rdsmod';
+import * as rdsmod from '@pulumi/rdsmod';
 import * as aws from '@pulumi/aws';
 import * as std from '@pulumi/std';
 

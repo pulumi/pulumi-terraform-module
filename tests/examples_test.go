@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -45,6 +46,11 @@ func Test_RdsExample(t *testing.T) {
 	projectSettings, err := integrationTest.CurrentStack().Workspace().ProjectSettings(context.Background())
 	assert.NoError(t, err)
 	rdsUrn := resource.NewURN(tokens.QName(stackName), projectSettings.Name, "rdsmod:index:Module", "", "test-rds")
+
+	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
+		optpreview.ErrorProgressStreams(os.Stderr),
+		optpreview.ProgressStreams(os.Stdout),
+	)
 
 	// TODO [pulumi/pulumi-terraform-module#151] Property dependencies aren't flowing through
 	integrationTest.Destroy(t, optdestroy.TargetDependents(), optdestroy.Target([]string{
