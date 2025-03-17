@@ -225,6 +225,10 @@ func CreateTFFile(
 		tfFile["output"] = mOutputs
 	}
 
+	if len(resources) > 0 {
+		tfFile["resource"] = resources
+	}
+
 	if len(providers) > 0 {
 		tfFile["provider"] = providers
 	}
