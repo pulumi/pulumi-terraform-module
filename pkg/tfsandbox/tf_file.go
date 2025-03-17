@@ -17,9 +17,9 @@ type TFOutputSpec struct {
 }
 
 const (
-	terraformDataResourceType   = "terraform_data"
-	terraformDataResourceName   = "unknown_proxy"
-	terraformDataResourcePrefix = "internal_output_"
+	terraformDataResourceType     = "terraform_data"
+	terraformDataResourceName     = "unknown_proxy"
+	terraformIsSecretOutputPrefix = "internal_output_is_secret_"
 )
 
 func writeTerraformFilesToDirectory() (string, bool) {
@@ -145,6 +145,7 @@ func CreateTFFile(
 	containsUnknowns := inputs.ContainsUnknowns()
 
 	resources := map[string]map[string]interface{}{}
+	mOutputs := map[string]map[string]interface{}{}
 	providers := map[string]interface{}{}
 
 	// NOTE: this should only happen at plan time. At apply time all computed values
@@ -190,36 +191,38 @@ func CreateTFFile(
 		moduleProps["providers"] = providersField
 	}
 
-	// To expose outputs from a module, we create proxy resources of type "terraform_data"
-	// the inputs to those resources are the outputs of the source module
-	// the resources are named "internal_output_<output_name>" and have the following format
-	// "resource": {
-	//    "terraform_data": {
-	//       "internal_output_output_name1": {
-	//           "input": "${module.source_module.output_name1}"
-	//       },
-	//       "internal_output_output_name2": {
-	//           "input": "${module.source_module.output_name2}"
-	//       },
-	//       ...
-	//     }
+	// To expose outputs from a module, we need to account for the secretness of the outputs
+	// If you try and output a secret value without setting `sensitive: true` in the output
+	// The deployment will fail. We need to be able to handle this dynamically since we won't know
+	// the secret status until after the operation.
+	//
+	// To handle this, we use two outputs for each output value:
+	// - The first output is the actual value that we mark as non-sensitive to avoid the error
+	// - The second output is a boolean that indicates whether the value is a secret or not.
+	//
+	// "output": {
+	//    "name1": {
+	//       "value": "${nonsensitive(module.source_module.output_name1)}"
+	//    },
+	//    "internal_output_is_secret_name1": {
+	//       "value": "${issensitive(module.source_module.output_name1)}"
+	//    },
+	//    ...
 	// }
-	// the reason we are using terraform_data resource is because
-	// they maintain unknown-ness and secretness of the outputs of the modules
-	// regardless of whether the outputs were marked as sensitive or not
+	//
+	// NOTE: terraform only allows plain booleans in the output.sensitive field.
+	// i.e. `sensitive: "${issensitive(module.source_module.output_name1)}"` won't work
 	for _, output := range outputs {
-		if _, ok := resources[terraformDataResourceType]; !ok {
-			resources[terraformDataResourceType] = map[string]interface{}{}
+		mOutputs[output.Name] = map[string]interface{}{
+			"value": fmt.Sprintf("${nonsensitive(module.%s.%s)}", name, output.Name),
 		}
-
-		resourceName := fmt.Sprintf("%s%s", terraformDataResourcePrefix, output.Name)
-		resources[terraformDataResourceType][resourceName] = map[string]interface{}{
-			"input": fmt.Sprintf("${try(module.%s.%s, \"\")}", name, output.Name),
+		mOutputs[fmt.Sprintf("%s%s", terraformIsSecretOutputPrefix, output.Name)] = map[string]interface{}{
+			"value": fmt.Sprintf("${issensitive(module.%s.%s)}", name, output.Name),
 		}
 	}
 
-	if len(resources) > 0 {
-		tfFile["resource"] = resources
+	if len(mOutputs) > 0 {
+		tfFile["output"] = mOutputs
 	}
 
 	if len(providers) > 0 {

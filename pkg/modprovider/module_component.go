@@ -19,15 +19,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -183,12 +182,6 @@ func NewModuleComponentResource(
 		var errs []error
 
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			if rp.IsInternalOutputResource() {
-				// skip internal output resources which we created
-				// so that we propagate outputs from module
-				return
-			}
-
 			resourceOptions := []pulumi.ResourceOption{
 				pulumi.Parent(&component),
 			}
@@ -233,12 +226,6 @@ func NewModuleComponentResource(
 
 		var errs []error
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			if rp.IsInternalOutputResource() {
-				// skip internal output resources which we created
-				// so that we propagate outputs from module
-				return
-			}
-
 			resourceOptions := []pulumi.ResourceOption{
 				pulumi.Parent(&component),
 			}
