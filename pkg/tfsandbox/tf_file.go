@@ -214,7 +214,7 @@ func CreateTFFile(
 
 		resourceName := fmt.Sprintf("%s%s", terraformDataResourcePrefix, output.Name)
 		resources[terraformDataResourceType][resourceName] = map[string]interface{}{
-			"input": fmt.Sprintf("${module.%s.%s}", name, output.Name),
+			"input": fmt.Sprintf("${try(module.%s.%s, \"\")}", name, output.Name),
 		}
 	}
 
