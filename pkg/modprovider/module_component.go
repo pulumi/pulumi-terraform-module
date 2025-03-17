@@ -19,15 +19,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
