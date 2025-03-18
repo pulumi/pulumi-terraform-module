@@ -183,12 +183,6 @@ func NewModuleComponentResource(
 		var errs []error
 
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			if rp.IsInternalOutputResource() {
-				// skip internal output resources which we created
-				// so that we propagate outputs from module
-				return
-			}
-
 			resourceOptions := []pulumi.ResourceOption{
 				pulumi.Parent(&component),
 			}
@@ -233,12 +227,6 @@ func NewModuleComponentResource(
 
 		var errs []error
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			if rp.IsInternalOutputResource() {
-				// skip internal output resources which we created
-				// so that we propagate outputs from module
-				return
-			}
-
 			resourceOptions := []pulumi.ResourceOption{
 				pulumi.Parent(&component),
 			}
