@@ -185,7 +185,7 @@ type testLogger struct {
 	r io.Writer
 }
 
-func (t *testLogger) Log(_ LogLevel, input string, ephemeral bool) {
+func (t *testLogger) Log(_ LogLevel, input string, _ bool) {
 	_, err := t.r.Write([]byte(input))
 	contract.AssertNoErrorf(err, "test logger failed to write")
 }

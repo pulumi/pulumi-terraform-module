@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/opentofu/command/format"
 	"github.com/pulumi/opentofu/command/jsonformat"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
