@@ -21,7 +21,7 @@ func Test_RdsExample(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
-	testProgram, err := filepath.Abs(filepath.Join("testdata", "examples", "aws-rds-example"))
+	testProgram, err := filepath.Abs(filepath.Join("examples", "aws-rds-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
