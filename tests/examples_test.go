@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,8 +15,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func Test_RdsExample(t *testing.T) {
@@ -45,7 +44,7 @@ func Test_RdsExample(t *testing.T) {
 	stackName := integrationTest.CurrentStack().Name()
 	projectSettings, err := integrationTest.CurrentStack().Workspace().ProjectSettings(context.Background())
 	assert.NoError(t, err)
-	rdsUrn := resource.NewURN(tokens.QName(stackName), projectSettings.Name, "rdsmod:index:Module", "", "test-rds")
+	rdsUrn := fmt.Sprintf("urn:pulumi:%s::%s::rdsmod:index:Module::test-rds", stackName, projectSettings.Name.String())
 
 	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(os.Stderr),
@@ -54,6 +53,6 @@ func Test_RdsExample(t *testing.T) {
 
 	// TODO [pulumi/pulumi-terraform-module#151] Property dependencies aren't flowing through
 	integrationTest.Destroy(t, optdestroy.TargetDependents(), optdestroy.Target([]string{
-		rdsUrn.Quote(),
+		rdsUrn,
 	}))
 }
