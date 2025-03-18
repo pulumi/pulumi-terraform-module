@@ -8,7 +8,6 @@
     "dependencies": {
         "@pulumi/aws": "^6.72.0",
         "@pulumi/pulumi": "^3.113.0",
-        "@pulumi/rdsmod": "file:sdks/rdsmod",
-        "@pulumi/vpcmod": "file:sdks/vpcmod"
+        "@pulumi/std": "^2.2.0"
     }
 }
