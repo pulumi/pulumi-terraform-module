@@ -748,11 +748,13 @@ func TestE2eYAML(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "yaml", tc.name)
-			e2eTest := pulumitest.NewPulumiTest(
-				t,
-				testProgram,
+			testOpts := []opttest.Option{
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
-			)
+				// The program references a module that doesn't exist yet, so we skip the install step,
+				opttest.SkipInstall(),
+			}
+
+			e2eTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
 
 			// Get a prefix for resource names to avoid naming conflicts
 			prefix := generateTestResourcePrefix()
