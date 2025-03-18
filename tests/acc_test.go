@@ -599,7 +599,8 @@ func TestE2eDotnet(t *testing.T) {
 				t,
 				testProgram,
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
-				opttest.SkipInstall(),
+				//opttest.SkipInstall(),
+				//opttest.TestInPlace(),
 			)
 
 			// Get a prefix for resource names

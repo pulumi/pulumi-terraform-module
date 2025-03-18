@@ -5,3 +5,7 @@ config:
   pulumi:tags:
     value:
       pulumi:template: csharp
+plugins:
+  providers:
+    - name: terraform-module
+      path: /Users/guin/go/src/github.com/pulumi/pulumi-terraform-module-provider/bin

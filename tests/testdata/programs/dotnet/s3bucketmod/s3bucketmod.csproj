@@ -7,15 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-        <PackageReference Include="Pulumi" Version="3.*" />
+    <PackageReference Include="Pulumi" Version="3.*" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Ensure the path to the referenced project is correct -->
     <ProjectReference Include="sdks/bucket/Pulumi.Bucket.csproj" />
     <!-- Exclude files from compilation if necessary -->
     <Compile Remove="sdks/**/*.cs" />
+<!--     <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes> -->
   </ItemGroup>
 
-</Project>
 
+</Project>
