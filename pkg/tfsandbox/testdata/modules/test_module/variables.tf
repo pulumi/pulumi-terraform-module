@@ -9,3 +9,8 @@ variable "input_number_var" {
   // we can't pass in a big value
   default = 4222222222222222222
 }
+
+variable "another_input_var" {
+  type    = string
+  default = "default"
+}

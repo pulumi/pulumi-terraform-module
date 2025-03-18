@@ -18,12 +18,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func TestState(t *testing.T) {
@@ -177,4 +179,62 @@ func TestStateMatchesPlan(t *testing.T) {
 			}, moduleOutputs)
 		})
 	}
+}
+
+type testLogger struct {
+	r io.Writer
+}
+
+func (t *testLogger) Log(_ LogLevel, input string) {
+	_, err := t.r.Write([]byte(input))
+	contract.AssertNoErrorf(err, "test logger failed to write")
+}
+
+func TestSecretOutputs(t *testing.T) {
+	t.Run("nested secrets", func(t *testing.T) {
+		ctx := context.Background()
+
+		tofu, err := NewTofu(ctx, nil)
+		require.NoError(t, err, "error initializing tofu")
+		var buffer bytes.Buffer
+		logger := &testLogger{r: &buffer}
+
+		outputs := []TFOutputSpec{
+			{Name: "nested_sensitive_output"},
+		}
+		ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
+		inputs := map[string]any{
+			"inputVar":        "test",
+			"anotherInputVar": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("somevalue")}),
+		}
+		emptyProviders := map[string]resource.PropertyMap{}
+		err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
+			resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
+		require.NoError(t, err, "error creating tf file")
+
+		err = tofu.Init(ctx, logger)
+		require.NoErrorf(t, err, "error running tofu init: %s", buffer.String())
+		initialPlan, err := tofu.Plan(ctx, logger)
+		require.NoErrorf(t, err, "error running tofu plan (before apply): %s", buffer.String())
+		require.NotNil(t, initialPlan, "expected a non-nil plan")
+
+		plannedOutputs := initialPlan.Outputs()
+		require.Equal(t, resource.PropertyMap{
+			"nested_sensitive_output": resource.MakeComputed(resource.NewStringProperty("")),
+		}, plannedOutputs)
+
+		state, err := tofu.Apply(ctx, logger)
+		require.NoErrorf(t, err, "error running tofu apply: %s", buffer.String())
+		moduleOutputs := state.Outputs()
+		// output value is the same as the input
+		require.Equal(t, resource.PropertyMap{
+			resource.PropertyKey("nested_sensitive_output"): resource.MakeSecret(
+				resource.NewObjectProperty(
+					resource.NewPropertyMapFromMap(map[string]any{
+						"A": resource.NewStringProperty("test"),
+						"B": resource.NewStringProperty("somevalue"),
+						"C": resource.NewStringProperty("test"),
+					}))),
+		}, moduleOutputs)
+	})
 }

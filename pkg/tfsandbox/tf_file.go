@@ -213,11 +213,12 @@ func CreateTFFile(
 	// NOTE: terraform only allows plain booleans in the output.sensitive field.
 	// i.e. `sensitive: "${issensitive(module.source_module.output_name1)}"` won't work
 	for _, output := range outputs {
-		mOutputs[output.Name] = map[string]interface{}{
-			"value": fmt.Sprintf("${nonsensitive(module.%s.%s)}", name, output.Name),
+		mOutputs[output.Name] = map[string]any{
+			// wrapping in jsondecode/jsonencode to workaround an issue where nonsensitive/issensitive is not recursive
+			"value": fmt.Sprintf("${jsondecode(nonsensitive(jsonencode(module.%s.%s)))}", name, output.Name),
 		}
-		mOutputs[fmt.Sprintf("%s%s", terraformIsSecretOutputPrefix, output.Name)] = map[string]interface{}{
-			"value": fmt.Sprintf("${issensitive(module.%s.%s)}", name, output.Name),
+		mOutputs[fmt.Sprintf("%s%s", terraformIsSecretOutputPrefix, output.Name)] = map[string]any{
+			"value": fmt.Sprintf("${jsondecode(issensitive(jsonencode(module.%s.%s)))}", name, output.Name),
 		}
 	}
 
