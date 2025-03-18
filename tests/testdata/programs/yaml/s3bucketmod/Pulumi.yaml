@@ -1,0 +1,14 @@
+name: s3bucketmod
+description: A minimal Pulumi YAML program
+runtime: yaml
+config:
+  prefix:
+    type: string
+resources:
+  testBucket:
+    type: bucket:index:Module
+    properties:
+      bucket: ${prefix}-test-bucket
+
+outputs:
+  bucketARN: ${testBucket.s3_bucket_arn}
