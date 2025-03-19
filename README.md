@@ -66,6 +66,21 @@ environment variables.
 Note that the providers powering the Module are Terraform providers and not Pulumi bridged providers such as
 [pulumi-aws](https://github.com/pulumi/pulumi-aws). They are the right place to look for additional documentation.
 
+## Usage for Pulumi YAML programs
+
+Pulumi YAML programs do not have an SDK per se; `pulumi package add` only generates a parameterized package reference.
+To use a local module inside a Pulumi YAML program, you would reference the module by its schema token, 
+<package-name>:index:Module.
+In our VPC example this would look as follows:
+
+```yaml
+resources:
+  my-vpc:
+    type: vpc:index:Module
+    properties:
+      [ ... ]
+```
+
 ## How it works
 
 The modules are executed with `opentofu` binary that is automatically installed on-demand. The state is stored in your
