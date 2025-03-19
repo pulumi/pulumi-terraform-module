@@ -28,8 +28,16 @@ bin
 .envrc
 
 tests/testdata/**/package-lock.json
+tests/testdata/**/yarn.lock
 tests/testdata/**/build/lib
 tests/testdata/**/*.egg-info
+tests/testdata/programs/**/node_modules
+tests/testdata/programs/**/sdks
+tests/testdata/examples/**/sdks
+examples/**/node_modules
+examples/**/sdks
+examples/**/yarn.lock
+examples**/package-lock.json
 
 # TODO[pulumi/pulumi-terraform-module-provider#79] unwanted file generated
 schema-terraform-module.json
