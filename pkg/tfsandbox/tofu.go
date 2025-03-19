@@ -67,23 +67,35 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
-	cacheDir, err := getPluginCacheDir()
-	if err != nil {
-		return nil, fmt.Errorf("error getting plugin cache dir: %w", err)
-	}
-	// Use a common cache directory for provider plugins
-	env := envMap(os.Environ())
-	env["TF_PLUGIN_CACHE_DIR"] = cacheDir
-	if err := tf.SetEnv(tfexec.CleanEnv(env)); err != nil {
-		return nil, fmt.Errorf("error setting env var TF_PLUGIN_CACHE_DIR: %w", err)
-	}
+	// TODO[pulumi/pulumi-terraform-module#199] concurrent access to the plugin cache
+	// if err := setupPluginCache(tf); err != nil {
+	// 	return nil, fmt.Errorf("error setting up plugin cache: %w", err)
+	// }
+
 	return &Tofu{
 		tf: tf,
 	}, nil
 }
 
+//nolint:unused
+func setupPluginCache(tf *tfexec.Terraform) error {
+	cacheDir, err := getPluginCacheDir()
+	if err != nil {
+		return fmt.Errorf("error getting plugin cache dir: %w", err)
+	}
+	// Use a common cache directory for provider plugins
+	env := envMap(os.Environ())
+	env["TF_PLUGIN_CACHE_DIR"] = cacheDir
+	if err := tf.SetEnv(tfexec.CleanEnv(env)); err != nil {
+		return fmt.Errorf("error setting env var TF_PLUGIN_CACHE_DIR: %w", err)
+	}
+	return nil
+}
+
 // getPluginCacheDir returns the directory where the plugin cache should be stored
 // we are reusing the dynamic_tf_plugins directory since it downloads the same provider plugins
+//
+//nolint:unused
 func getPluginCacheDir() (string, error) {
 	pulumiPath, err := workspace.GetPulumiPath("dynamic_tf_plugins")
 	if err != nil {
@@ -97,6 +109,8 @@ func getPluginCacheDir() (string, error) {
 }
 
 // internal helper from tfexec
+//
+//nolint:unused
 func envMap(environ []string) map[string]string {
 	env := map[string]string{}
 	for _, ev := range environ {
