@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sync"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
@@ -66,17 +67,57 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly b
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}
 
-	// NOTE: the recommended default from terraform-json is to set JSONNumber=true
-	// otherwise some number values will lose precision when converted to float64
-	plan, err := t.tf.ShowPlanFile(ctx, planFile, tfexec.JSONNumber(true))
-	if err != nil {
-		return nil, fmt.Errorf("error running show plan: %w", err)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	planChan := make(chan *tfjson.Plan, 1)
+	humanPlanChan := make(chan string, 1)
+	errChan := make(chan error, 2)
+	defer close(planChan)
+	defer close(errChan)
+	defer close(humanPlanChan)
+
+	go func() {
+		defer wg.Done()
+		// NOTE: the recommended default from terraform-json is to set JSONNumber=true
+		// otherwise some number values will lose precision when converted to float64
+		plan, err := t.tf.ShowPlanFile(ctx, planFile, tfexec.JSONNumber(true))
+		if err != nil {
+			errChan <- fmt.Errorf("error running show plan: %w", err)
+			return
+		}
+		planChan <- plan
+	}()
+
+	go func() {
+		defer wg.Done()
+		humanPlan, err := t.tf.ShowPlanFileRaw(ctx, planFile, tfexec.JSONNumber(true))
+		if err != nil {
+			errChan <- fmt.Errorf("error running show human plan: %w", err)
+			return
+		}
+		humanPlanChan <- humanPlan
+	}()
+
+	wg.Wait()
+
+	var plan *tfjson.Plan
+	var humanPlan string
+	var finalErr error
+	for range 2 {
+		select {
+		case p := <-planChan:
+			plan = p
+		case hp := <-humanPlanChan:
+			humanPlan = hp
+		case err := <-errChan:
+			finalErr = err
+		}
 	}
 
-	humanPlan, err := t.tf.ShowPlanFileRaw(ctx, planFile, tfexec.JSONNumber(true))
-	if err != nil {
-		return nil, fmt.Errorf("error running show human plan: %w", err)
+	if finalErr != nil {
+		return nil, finalErr
 	}
+
 	logger.Log(Debug, humanPlan, false)
 
 	return plan, nil
