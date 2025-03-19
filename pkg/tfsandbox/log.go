@@ -35,12 +35,14 @@ const (
 )
 
 type Logger interface {
-	Log(level LogLevel, message string, ephemeral bool)
+	Log(ctx context.Context, level LogLevel, message string)
+	LogStatus(ctx context.Context, level LogLevel, message string)
 }
 
 type discardLogger struct{}
 
-func (discardLogger) Log(_ LogLevel, _ string, _ bool) {}
+func (discardLogger) Log(_ context.Context, _ LogLevel, _ string)       {}
+func (discardLogger) LogStatus(_ context.Context, _ LogLevel, _ string) {}
 
 var DiscardLogger Logger = discardLogger{}
 
@@ -66,21 +68,21 @@ func newJSONLogPipe(ctx context.Context, logger Logger) io.WriteCloser {
 				// We drain the reader rather than returning early here to avoid killing the writer due
 				// to write-after-closed errors.
 				if !errors.Is(err, io.EOF) {
-					logger.Log(Debug, err.Error(), false)
+					logger.Log(ctx, Debug, err.Error())
 					_, err = io.Copy(io.Discard, reader)
 					contract.IgnoreError(err)
 				}
 				return
 			}
 
-			handleMessage(logger, msg)
+			handleMessage(ctx, logger, msg)
 		}
 	}()
 
 	return writer
 }
 
-func handleMessage(logger Logger, log JSONLog) {
+func handleMessage(ctx context.Context, logger Logger, log JSONLog) {
 	switch log.Type {
 	case jsonformat.LogApplyStart,
 		jsonformat.LogApplyComplete,
@@ -90,13 +92,13 @@ func handleMessage(logger Logger, log JSONLog) {
 		jsonformat.LogProvisionComplete,
 		jsonformat.LogResourceDrift:
 		// good status messages
-		logger.Log(log.Level, log.Message, true)
+		logger.LogStatus(ctx, log.Level, log.Message)
 	case jsonformat.LogDiagnostic:
 		// Diagnostic messages are typically errors
-		logger.Log(log.Level, format.DiagnosticPlainFromJSON(log.Diagnostic, 78), false)
+		logger.Log(ctx, log.Level, format.DiagnosticPlainFromJSON(log.Diagnostic, 78))
 	case jsonformat.LogChangeSummary:
 		// e.g. Plan: 3 to add, 0 to change, 0 to destroy.
-		logger.Log(Info, log.Message, true)
+		logger.LogStatus(ctx, Info, log.Message)
 	default:
 		// by default don't log it
 		return
