@@ -599,8 +599,7 @@ func TestE2eDotnet(t *testing.T) {
 				t,
 				testProgram,
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
-				//opttest.SkipInstall(),
-				//opttest.TestInPlace(),
+				opttest.SkipInstall(),
 			)
 
 			// Get a prefix for resource names
@@ -620,17 +619,15 @@ func TestE2eDotnet(t *testing.T) {
 
 			previewResult := integrationTest.Preview(t)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
-			t.Log(previewResult.StdOut)
-			t.Log(previewResult.StdErr)
 
-			//upResult := integrationTest.Up(t)
-			//autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
-			//
-			//previewResult = integrationTest.Preview(t)
-			//autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
-			//
-			//destroyResult := integrationTest.Destroy(t)
-			//autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			upResult := integrationTest.Up(t)
+			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+
+			previewResult = integrationTest.Preview(t)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+
+			destroyResult := integrationTest.Destroy(t)
+			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
