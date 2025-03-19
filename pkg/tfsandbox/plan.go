@@ -73,5 +73,11 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly b
 		return nil, fmt.Errorf("error running show plan: %w", err)
 	}
 
+	humanPlan, err := t.tf.ShowPlanFileRaw(ctx, planFile, tfexec.JSONNumber(true))
+	if err != nil {
+		return nil, fmt.Errorf("error running show human plan: %w", err)
+	}
+	logger.Log(Debug, humanPlan, false)
+
 	return plan, nil
 }
