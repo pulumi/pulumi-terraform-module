@@ -37,7 +37,7 @@ func newComponentLogger(log pulumi.Log, resource pulumi.Resource) tfsandbox.Logg
 	return &componentLogger{log: log, resource: resource}
 }
 
-func (l *componentLogger) Log(level tfsandbox.LogLevel, message string) {
+func (l *componentLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, message string) {
 	if l.log == nil {
 		return
 	}
@@ -53,10 +53,36 @@ func (l *componentLogger) Log(level tfsandbox.LogLevel, message string) {
 		case tfsandbox.Info:
 			return l.log.Info(message, args)
 		case tfsandbox.Warn:
+			// Warn and Error should never be ephemeral
 			args.Ephemeral = false
 			return l.log.Warn(message, args)
 		case tfsandbox.Error:
 			args.Ephemeral = false
+			return l.log.Error(message, args)
+		}
+		return nil
+	}()
+	contract.IgnoreError(err)
+}
+
+func (l *componentLogger) Log(_ context.Context, level tfsandbox.LogLevel, message string) {
+	if l.log == nil {
+		return
+	}
+
+	err := func() error {
+		args := &pulumi.LogArgs{
+			Resource:  l.resource,
+			Ephemeral: false,
+		}
+		switch level {
+		case tfsandbox.Debug:
+			return l.log.Debug(message, args)
+		case tfsandbox.Info:
+			return l.log.Info(message, args)
+		case tfsandbox.Warn:
+			return l.log.Warn(message, args)
+		case tfsandbox.Error:
 			return l.log.Error(message, args)
 		}
 		return nil
@@ -75,22 +101,48 @@ func newResourceLogger(hc *provider.HostClient, urn resource.URN) tfsandbox.Logg
 	return &resourceLogger{hc: hc, urn: urn}
 }
 
-func (l *resourceLogger) Log(level tfsandbox.LogLevel, message string) {
+func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, message string) {
 	if l.hc == nil {
 		return
 	}
 
 	var err error
+	var diagLevel diag.Severity
 	switch level {
 	case tfsandbox.Info:
-		err = l.hc.LogStatus(context.TODO(), diag.Info, l.urn, message)
+		diagLevel = diag.Info
 	case tfsandbox.Warn:
-		err = l.hc.Log(context.TODO(), diag.Warning, l.urn, message)
+		diagLevel = diag.Warning
 	case tfsandbox.Error:
-		err = l.hc.Log(context.TODO(), diag.Error, l.urn, message)
+		diagLevel = diag.Error
 	default:
-		err = l.hc.LogStatus(context.TODO(), diag.Debug, l.urn, message)
+		diagLevel = diag.Info
 	}
+
+	err = l.hc.Log(ctx, diagLevel, l.urn, message)
+
+	contract.IgnoreError(err)
+}
+
+func (l *resourceLogger) LogStatus(ctx context.Context, level tfsandbox.LogLevel, message string) {
+	if l.hc == nil {
+		return
+	}
+
+	var err error
+	var diagLevel diag.Severity
+	switch level {
+	case tfsandbox.Info:
+		diagLevel = diag.Info
+	case tfsandbox.Warn:
+	case tfsandbox.Error:
+		l.Log(ctx, level, message)
+		return
+	default:
+		diagLevel = diag.Info
+	}
+
+	err = l.hc.LogStatus(ctx, diagLevel, l.urn, message)
 
 	contract.IgnoreError(err)
 }

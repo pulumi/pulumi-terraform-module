@@ -18,9 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 
+	"github.com/pulumi/opentofu/command/format"
+	"github.com/pulumi/opentofu/command/jsonformat"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -34,21 +35,23 @@ const (
 )
 
 type Logger interface {
-	Log(level LogLevel, message string)
+	Log(ctx context.Context, level LogLevel, message string)
+	LogStatus(ctx context.Context, level LogLevel, message string)
 }
 
 type discardLogger struct{}
 
-func (discardLogger) Log(_ LogLevel, _ string) {}
+func (discardLogger) Log(_ context.Context, _ LogLevel, _ string)       {}
+func (discardLogger) LogStatus(_ context.Context, _ LogLevel, _ string) {}
 
 var DiscardLogger Logger = discardLogger{}
 
-func newJSONLogPipe(ctx context.Context, logger Logger) io.WriteCloser {
-	type logMessage struct {
-		Level   LogLevel `json:"@level"`
-		Message string   `json:"@message"`
-	}
+type JSONLog struct {
+	jsonformat.JSONLog
+	Level LogLevel `json:"@level"`
+}
 
+func newJSONLogPipe(ctx context.Context, logger Logger) io.WriteCloser {
 	reader, writer := io.Pipe()
 	go func() {
 		defer reader.Close() // Ensure we close the reader on our way out.
@@ -59,27 +62,45 @@ func newJSONLogPipe(ctx context.Context, logger Logger) io.WriteCloser {
 				return
 			}
 
-			var msg logMessage
+			var msg JSONLog
 			if err := dec.Decode(&msg); err != nil {
 				// If we encounter a decoding error, log the error and ignore the rest of the output.
 				// We drain the reader rather than returning early here to avoid killing the writer due
 				// to write-after-closed errors.
 				if !errors.Is(err, io.EOF) {
-					logger.Log(Debug, err.Error())
+					logger.Log(ctx, Debug, err.Error())
 					_, err = io.Copy(io.Discard, reader)
 					contract.IgnoreError(err)
 				}
 				return
 			}
 
-			switch msg.Level {
-			case Info, Error, Warn:
-				logger.Log(msg.Level, msg.Message)
-			default:
-				logger.Log(Debug, fmt.Sprintf("%v: %v", msg.Level, msg.Message))
-			}
+			handleMessage(ctx, logger, msg)
 		}
 	}()
 
 	return writer
+}
+
+func handleMessage(ctx context.Context, logger Logger, log JSONLog) {
+	switch log.Type {
+	case jsonformat.LogApplyStart,
+		jsonformat.LogApplyComplete,
+		jsonformat.LogRefreshStart,
+		jsonformat.LogRefreshComplete,
+		jsonformat.LogProvisionStart,
+		jsonformat.LogProvisionComplete,
+		jsonformat.LogResourceDrift:
+		// good status messages
+		logger.LogStatus(ctx, log.Level, log.Message)
+	case jsonformat.LogDiagnostic:
+		// Diagnostic messages are typically errors
+		logger.Log(ctx, log.Level, format.DiagnosticPlainFromJSON(log.Diagnostic, 78))
+	case jsonformat.LogChangeSummary:
+		// e.g. Plan: 3 to add, 0 to change, 0 to destroy.
+		logger.LogStatus(ctx, Info, log.Message)
+	default:
+		// by default don't log it
+		return
+	}
 }
