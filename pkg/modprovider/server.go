@@ -215,7 +215,7 @@ func (s *server) Configure(
 		KeepUnknowns:     true,
 		RejectAssets:     true,
 		KeepSecrets:      true,
-		KeepOutputValues: false,
+		KeepOutputValues: false, // TODO is this a problem? Why drop oututs?
 	})
 
 	if err != nil {
@@ -417,7 +417,7 @@ func (s *server) CheckConfig(
 		KeepUnknowns:     true,
 		RejectAssets:     true,
 		KeepSecrets:      true,
-		KeepOutputValues: false,
+		KeepOutputValues: false, // TODO is this a problem? Why skip output values?
 	})
 
 	if err != nil {
