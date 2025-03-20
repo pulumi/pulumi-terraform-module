@@ -16,6 +16,7 @@ package tfsandbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 
@@ -66,12 +67,31 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly b
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}
 
-	// NOTE: the recommended default from terraform-json is to set JSONNumber=true
-	// otherwise some number values will lose precision when converted to float64
-	plan, err := t.tf.ShowPlanFile(ctx, planFile, tfexec.JSONNumber(true))
+	var (
+		plan    *tfjson.Plan
+		planErr error
+		planCh  = make(chan bool)
+	)
+
+	// fork
+	go func() {
+		defer close(planCh)
+		// NOTE: the recommended default from terraform-json is to set JSONNumber=true
+		// otherwise some number values will lose precision when converted to float64
+		plan, planErr = t.tf.ShowPlanFile(ctx, planFile, tfexec.JSONNumber(true))
+	}()
+
+	humanPlan, humanPlanErr := t.tf.ShowPlanFileRaw(ctx, planFile, tfexec.JSONNumber(true))
+
+	// join
+	<-planCh
+
+	err = errors.Join(planErr, humanPlanErr)
 	if err != nil {
 		return nil, fmt.Errorf("error running show plan: %w", err)
 	}
+
+	logger.Log(ctx, Debug, humanPlan)
 
 	return plan, nil
 }
