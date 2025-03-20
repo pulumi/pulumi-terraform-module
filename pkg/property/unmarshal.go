@@ -123,10 +123,10 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 			}
 
 			if o.Secret {
-				return withDeps(ctx.Context(), o.Dependencies, pulumi.ToSecret(element)), nil
+				return WithDeps(ctx.Context(), o.Dependencies, pulumi.ToSecret(element)), nil
 			}
 
-			return withDeps(ctx.Context(), o.Dependencies, pulumi.ToOutput(element)), nil
+			return WithDeps(ctx.Context(), o.Dependencies, pulumi.ToOutput(element)), nil
 		}
 
 		return nil, fmt.Errorf("unknown property value %v", v)
@@ -143,17 +143,36 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 	return m, nil
 }
 
-func withDeps(ctx context.Context, urns []resource.URN, out pulumi.Output) pulumi.Output {
+// Helper function to attach dependency URNs to an existing output.
+func WithDeps(ctx context.Context, urns []resource.URN, out pulumi.Input) pulumi.Input {
 	if len(urns) == 0 {
 		return out
 	}
-	return pulumi.OutputWithDependencies(ctx, out, deps(urns)...)
+	return pulumi.OutputWithDependencies(ctx, pulumi.ToOutputWithContext(ctx, out), deps(urns)...)
+}
+
+// Broadcast deps to every element of a map.
+func MapWithDeps(ctx context.Context, urns []resource.URN, out pulumi.Map) pulumi.Map {
+	if len(urns) == 0 {
+		return out
+	}
+	result := pulumi.Map{}
+	for k, v := range out {
+		result[k] = WithDeps(ctx, urns, v)
+	}
+	return result
 }
 
 func deps(urns []resource.URN) []pulumi.Resource {
 	rr := []pulumi.Resource{}
+	seen := map[resource.URN]struct{}{}
+
 	for _, u := range urns {
+		if _, ok := seen[u]; ok {
+			continue
+		}
 		rr = append(rr, &depResource{urn: pulumi.URN(u)})
+		seen[u] = struct{}{}
 	}
 	return rr
 }

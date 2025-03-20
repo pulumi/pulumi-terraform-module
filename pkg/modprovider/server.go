@@ -29,12 +29,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/property"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -354,6 +357,17 @@ func (s *server) Construct(
 		KeepOutputValues: true,
 	})
 
+	// Cannot yet track dependencies precisely through opentofu interaction; instead collect them all up in a big
+	// bag and reattach this bag to every single output of the module. Not doing this will not make the engine
+	// realize that resources that depend on the module also depend on these dependencies of the module's inputs.
+	var dependencyURNs []urn.URN
+	resource.NewObjectProperty(inputProps).MapRepl(nil, func(pv resource.PropertyValue) (interface{}, bool) {
+		if pv.IsOutput() {
+			dependencyURNs = append(dependencyURNs, pv.OutputValue().Dependencies...)
+		}
+		return nil, false
+	})
+
 	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
@@ -390,8 +404,9 @@ func (s *server) Construct(
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
 			}
 			constructResult := &pulumiprovider.ConstructResult{
-				URN:   pulumi.URN(string(*componentUrn)),
-				State: outputs,
+				URN: pulumi.URN(string(*componentUrn)),
+				// Note dependencies reattached here.
+				State: property.MapWithDeps(ctx.Context(), dependencyURNs, outputs),
 			}
 			return constructResult, nil
 		default:

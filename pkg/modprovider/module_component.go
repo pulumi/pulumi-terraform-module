@@ -67,7 +67,7 @@ func NewModuleComponentResource(
 	providerSelfURN pulumi.URN,
 	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
-) (componentUrn *urn.URN, outputs pulumi.Input, finalError error) {
+) (componentUrn *urn.URN, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}
 	tok := componentTypeToken(pkgName, compTypeName)
 	err := ctx.RegisterComponentResource(string(tok), name, &component, opts...)
