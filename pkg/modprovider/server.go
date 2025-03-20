@@ -357,9 +357,10 @@ func (s *server) Construct(
 		KeepOutputValues: true,
 	})
 
-	// Cannot yet track dependencies precisely through opentofu interaction; instead collect them all up in a big
-	// bag and reattach this bag to every single output of the module. Not doing this will not make the engine
-	// realize that resources that depend on the module also depend on these dependencies of the module's inputs.
+	// Cannot yet track dependencies precisely through the opentofu interaction. Instead the code collects them all
+	// up in a bag and reattaches this bag to every single output of the module. This is necessary: failing to
+	// reattach the bag will cause the engine to miss the fact that resources that consume the outputs of the
+	// module depend on the dependencies of the inputs of the module.
 	var dependencyURNs []urn.URN
 	resource.NewObjectProperty(inputProps).MapRepl(nil, func(pv resource.PropertyValue) (interface{}, bool) {
 		if pv.IsOutput() {
