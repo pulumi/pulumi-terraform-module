@@ -88,7 +88,7 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly b
 
 	err = errors.Join(planErr, humanPlanErr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error running show plan: %w", err)
 	}
 
 	logger.Log(ctx, Debug, humanPlan)
