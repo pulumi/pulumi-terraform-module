@@ -14,5 +14,12 @@ const m = new randmod.Module("myrandmod", {
     randseed: pulumi.secret(seed.result.apply(n => String(n))),
 });
 
+// Expect dependent to depend on seed if dependency tracking is transitive through the module instance.
+new random.RandomInteger('dependent', {
+    min: 1,
+    max: m.random_priority.apply(_ => 16), // Introduce a dependency on the module.
+    seed: 'the-most-random-seed',
+});
+
 export const randomPriority = m.random_priority;
 export const randomSeed = m.random_seed;

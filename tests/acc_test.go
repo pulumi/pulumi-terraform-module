@@ -1222,6 +1222,22 @@ func Test_Dependencies(t *testing.T) {
 				resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
 			}).Equal(t, r.PropertyDependencies)
 		}
+
+		// TODO is this enough for dependent to depend on randmod:index:Module that itself does not seem to
+		// depend on anything, for the engine to decide that it transitively depends on seed? Only ModuleState
+		// depends on seed, but maybe that is ok because ModuleState is a child of Module?
+		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
+			autogold.Expect(map[string]interface{}{"max": 16, "min": 1, "seed": "the-most-random-seed"}).Equal(t, r.Inputs)
+			autogold.Expect(map[string]interface{}{"id": "9", "max": 16, "min": 1, "result": 9, "seed": "the-most-random-seed"}).Equal(t, r.Outputs)
+			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod")}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("max"): {
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+				},
+				resource.PropertyKey("min"):  {},
+				resource.PropertyKey("seed"): {},
+			}).Equal(t, r.PropertyDependencies)
+		}
 	}
 }
 
