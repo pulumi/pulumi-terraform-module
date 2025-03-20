@@ -37,6 +37,7 @@ import (
 
 const (
 	provider = "terraform-module"
+	randmod  = "randmod"
 )
 
 // testdata/randmod is a fully local module written for test purposes that uses resources from the
@@ -46,7 +47,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Module written to support the test.
-	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
 	require.NoError(t, err)
 
 	// Program written to support the test.
@@ -56,7 +57,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "randmod"
+	packageName := randmod
 	t.Run("pulumi package add", func(t *testing.T) {
 		// pulumi package add <provider-path> <randmod-path> <package-name>
 		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
@@ -181,7 +182,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Reuse randmod test module for this test.
-	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
 	require.NoError(t, err)
 
 	// Program written to support the test.
@@ -192,7 +193,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "randmod"
+	packageName := randmod
 	t.Run("pulumi package add", func(t *testing.T) {
 		// pulumi package add <provider-path> <randmod-path> <package-name>
 		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
@@ -1167,7 +1168,7 @@ func Test_Dependencies(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Reuse randmod for this one.
-	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
 	require.NoError(t, err)
 
 	// Program written to support the test.
@@ -1177,7 +1178,7 @@ func Test_Dependencies(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "randmod"
+	packageName := randmod
 
 	// pulumi package add <provider-path> <randmod-path> <package-name>
 	pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
@@ -1216,9 +1217,11 @@ func Test_Dependencies(t *testing.T) {
 					},
 				},
 			}).Equal(t, r.Inputs)
+			//nolint:lll
 			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
-				resource.PropertyKey("__module"):     {},
+				resource.PropertyKey("__module"): {},
+				//nolint:lll
 				resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
 			}).Equal(t, r.PropertyDependencies)
 		}
@@ -1228,7 +1231,9 @@ func Test_Dependencies(t *testing.T) {
 		// depends on seed, but maybe that is ok because ModuleState is a child of Module?
 		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
 			autogold.Expect(map[string]interface{}{"max": 16, "min": 1, "seed": "the-most-random-seed"}).Equal(t, r.Inputs)
+			//nolint:lll
 			autogold.Expect(map[string]interface{}{"id": "9", "max": 16, "min": 1, "result": 9, "seed": "the-most-random-seed"}).Equal(t, r.Outputs)
+			//nolint:lll
 			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod")}).Equal(t, r.Dependencies)
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
 				resource.PropertyKey("max"): {
