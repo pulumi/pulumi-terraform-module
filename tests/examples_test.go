@@ -51,10 +51,11 @@ func Test_RdsExample(t *testing.T) {
 		optpreview.ProgressStreams(os.Stdout),
 	)
 
-	// TODO [pulumi/pulumi-terraform-module#151] Property dependencies aren't flowing through
-	integrationTest.Destroy(t, optdestroy.TargetDependents(), optdestroy.Target([]string{
-		rdsUrn,
-	}))
+	integrationTest.Destroy(t)
+
+	// integrationTest.Destroy(t, optdestroy.TargetDependents(), optdestroy.Target([]string{
+	// 	rdsUrn,
+	// }))
 }
 
 func Test_EksExample(t *testing.T) {
