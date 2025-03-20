@@ -1,0 +1,5 @@
+name: eks-example
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
