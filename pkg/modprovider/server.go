@@ -62,8 +62,12 @@ type server struct {
 	packageVersion       packageVersion
 	componentTypeName    componentTypeName
 	inferredModuleSchema *InferredModuleSchema
-	providerConfig       resource.PropertyMap
 	providerSelfURN      pulumi.URN
+
+	// Note that providerConfig does not include any first-class dependencies passed as Output values. In fact
+	// there are no Output values inside this map. In the current implementation this is OK as the data is only
+	// used to produce Terraform files to feed to opentofu and lacks the capability to track these dependencies.
+	providerConfig resource.PropertyMap
 }
 
 func (s *server) Parameterize(
@@ -212,10 +216,13 @@ func (s *server) Configure(
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	config, err := plugin.UnmarshalProperties(req.Args, plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		RejectAssets:     true,
-		KeepSecrets:      true,
-		KeepOutputValues: false, // TODO is this a problem? Why drop oututs?
+		KeepUnknowns: true,
+		RejectAssets: true,
+		KeepSecrets:  true,
+
+		// This is only used to store s.providerConfig so it is OK to ignore dependencies in any Output values
+		// present in the request.
+		KeepOutputValues: false,
 	})
 
 	if err != nil {
@@ -414,10 +421,13 @@ func (s *server) CheckConfig(
 	s.providerSelfURN = pulumi.URN(req.Urn)
 
 	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		RejectAssets:     true,
-		KeepSecrets:      true,
-		KeepOutputValues: false, // TODO is this a problem? Why skip output values?
+		KeepUnknowns: true,
+		RejectAssets: true,
+		KeepSecrets:  true,
+
+		// This is only used to store s.providerConfig so it is OK to ignore dependencies in any Output values
+		// present in the request.
+		KeepOutputValues: false,
 	})
 
 	if err != nil {
