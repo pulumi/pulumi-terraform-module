@@ -36,7 +36,7 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 		name   string
 		inputs resource.PropertyMap
 
-		// Only needed if turnaround value is a normalized form of the original value.
+		// Only needed if expected inputs are different from inputs.
 		inputsReceived resource.PropertyMap
 	}
 
