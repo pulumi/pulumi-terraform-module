@@ -1,0 +1,5 @@
+name: alb-example
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

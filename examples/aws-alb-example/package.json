@@ -1,0 +1,14 @@
+{
+    "name": "alb-example",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/aws-lambda": "^8.10.147",
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/aws": "^6.72.0",
+        "@pulumi/pulumi": "^3.113.0",
+        "@pulumi/std": "^2.2.0"
+    }
+}
