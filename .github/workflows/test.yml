@@ -84,7 +84,9 @@ jobs:
       fail-fast: false
       matrix:
         total-shards:
-          - 2
+          - 4
         current-shard:
           - 0
           - 1
+          - 2
+          - 3
