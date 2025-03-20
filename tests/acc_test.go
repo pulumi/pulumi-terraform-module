@@ -1216,10 +1216,10 @@ func Test_Dependencies(t *testing.T) {
 					},
 				},
 			}).Equal(t, r.Inputs)
-			autogold.Expect([]urn.URN{}).Equal(t, r.Dependencies)
+			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
 				resource.PropertyKey("__module"):     {},
-				resource.PropertyKey("moduleInputs"): {},
+				resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
 			}).Equal(t, r.PropertyDependencies)
 		}
 	}
