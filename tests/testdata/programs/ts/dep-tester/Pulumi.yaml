@@ -1,0 +1,5 @@
+name: ts-dep-tester
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

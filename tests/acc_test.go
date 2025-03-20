@@ -1162,6 +1162,69 @@ func TestDeleteLambda(t *testing.T) {
 
 }
 
+// Test that Pulumi understands dependencies.
+func Test_Dependencies(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Reuse randmod for this one.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	require.NoError(t, err)
+
+	// Program written to support the test.
+	randModProg := filepath.Join("testdata", "programs", "ts", "dep-tester")
+
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
+	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt.CopyToTempDir(t)
+
+	packageName := "randmod"
+
+	// pulumi package add <provider-path> <randmod-path> <package-name>
+	pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
+
+	upOutput := pt.Up(t)
+	t.Logf("pulumi up said: %s\n", upOutput.StdOut+upOutput.StdErr)
+
+	deploy := pt.ExportStack(t)
+
+	t.Logf("DEPLOYMENT: %v", string(deploy.Deployment))
+
+	var deployment apitype.DeploymentV3
+	err = json.Unmarshal(deploy.Deployment, &deployment)
+	require.NoError(t, err)
+
+	for _, r := range deployment.Resources {
+		if r.URN.Type() == "randmod:index:Module" {
+			autogold.Expect(map[string]interface{}{}).Equal(t, r.Inputs)
+			autogold.Expect(map[string]interface{}{"random_priority": 2, "random_seed": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `"9"`,
+			}}).Equal(t, r.Outputs)
+			autogold.Expect([]urn.URN{}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{}).Equal(t, r.PropertyDependencies)
+		}
+
+		if r.URN.Type() == "randmod:index:ModuleState" {
+			// r.Outputs are too large, ignore for now in this test
+			autogold.Expect(map[string]interface{}{
+				"__module": "urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod",
+				"moduleInputs": map[string]interface{}{
+					"maxlen": 10,
+					"randseed": map[string]interface{}{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"plaintext":                        `"9"`,
+					},
+				},
+			}).Equal(t, r.Inputs)
+			autogold.Expect([]urn.URN{}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("__module"):     {},
+				resource.PropertyKey("moduleInputs"): {},
+			}).Equal(t, r.PropertyDependencies)
+		}
+	}
+}
+
 // runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
 // and returns a map of resource diffs for the resources that have changes based on the plan
 func runPreviewWithPlanDiff(
