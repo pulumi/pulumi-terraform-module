@@ -268,7 +268,11 @@ func (h *moduleStateHandler) Delete(
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
-		// TODO[pulumi/pulumi-terraform-module#151] support Outputs in Unmarshal
+
+		// If there are any resource.NewOutputProperty values in old inputs with dependencies, this setting
+		// will ignore the dependencies and remove these values in favor of simpler Computed or Secret values.
+		// This is OK for the purposes of Delete running tofu destroy because the code cannot take advantage of
+		// these precisely tracked dependencies here anyway. So it is OK to ignore them.
 		KeepOutputValues: false,
 	})
 	if err != nil {
