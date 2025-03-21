@@ -153,6 +153,36 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		"required provider variables are incorrect")
 }
 
+func TestInferringModuleSchemaGitHubSource(t *testing.T) {
+	ctx := context.Background()
+	packageName := packageName("bucket-demo")
+	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
+	demoSchema, err := InferModuleSchema(ctx, packageName, "github.com/yemisprojects/s3_website_module_demo", version)
+	assert.NoError(t, err, "failed to infer module schema for github module")
+	assert.NotNil(t, demoSchema, "inferred module schema for aws vpc module is nil")
+	// verify a sample of the inputs with different inferred types
+	expectedSampleInputs := map[string]*schema.PropertySpec{
+		"bucket_name": {
+			Description: "Name of S3 bucket for the website",
+			Secret:      false,
+			TypeSpec:    stringType,
+		},
+		"environment": {
+			Description: "Environment bucket resides in",
+			Secret:      false,
+			TypeSpec:    stringType,
+		},
+	}
+
+	for name, expected := range expectedSampleInputs {
+		actual, ok := demoSchema.Inputs[name]
+		assert.True(t, ok, "input %s is missing from the schema", name)
+		assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+		assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
+		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+	}
+}
+
 func TestResolveModuleSources(t *testing.T) {
 	t.Run("local path-based module source", func(t *testing.T) {
 		ctx := context.Background()
@@ -165,13 +195,13 @@ func TestResolveModuleSources(t *testing.T) {
 		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
 		require.NoError(t, err)
 
-		t.Logf("varaibles.tf: %s", bytes)
+		t.Logf("variables.tf: %s", bytes)
 
 		assert.Contains(t, string(bytes), "maxlen")
 	})
 
 	// This test will hit the network to download a well-known module from a registry.
-	t.Run("remote module source", func(t *testing.T) {
+	t.Run("registry remote module source", func(t *testing.T) {
 		ctx := context.Background()
 		s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
 		v := TFModuleVersion("4.5.0")
@@ -181,7 +211,48 @@ func TestResolveModuleSources(t *testing.T) {
 		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
 		require.NoError(t, err)
 
-		t.Logf("varaibles.tf: %s", bytes)
+		t.Logf("variables.tf: %s", bytes)
 		assert.Contains(t, string(bytes), "putin_khuylo")
 	})
+
+	// This test will attempt to resolve the source for a github-sourced module.
+	t.Run("github module source plain", func(t *testing.T) {
+		ctx := context.Background()
+		moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
+		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
+		require.NoError(t, err)
+
+		bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
+		require.NoError(t, err)
+
+		t.Logf("variables.tf: %s", bytes)
+		assert.Contains(t, string(bytes), "index_document")
+	})
+
+	t.Run("github module source explicit version ref", func(t *testing.T) {
+		ctx := context.Background()
+		moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
+		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
+		require.NoError(t, err)
+
+		bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
+		require.NoError(t, err)
+
+		t.Logf("variables.tf: %s", bytes)
+		assert.Contains(t, string(bytes), "index_document")
+	})
+
+	t.Run("github module source with git path prefix", func(t *testing.T) {
+		ctx := context.Background()
+		moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
+		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
+		require.NoError(t, err)
+
+		bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
+		require.NoError(t, err)
+
+		t.Logf("variables.tf: %s", bytes)
+		assert.Contains(t, string(bytes), "index_document")
+	})
+
 }

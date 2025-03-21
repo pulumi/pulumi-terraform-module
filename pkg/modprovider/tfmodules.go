@@ -266,11 +266,11 @@ func inferModuleSchema(
 	ctx context.Context,
 	packageName packageName,
 	mod TFModuleSource,
-	ver TFModuleVersion,
+	tfModuleVersion TFModuleVersion,
 	logger tfsandbox.Logger,
 ) (*InferredModuleSchema, error) {
 
-	module, err := extractModuleContent(ctx, mod, ver, logger)
+	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger)
 	if err != nil {
 		return nil, err
 	}
