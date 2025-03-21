@@ -35,6 +35,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -62,8 +64,12 @@ type server struct {
 	packageVersion       packageVersion
 	componentTypeName    componentTypeName
 	inferredModuleSchema *InferredModuleSchema
-	providerConfig       resource.PropertyMap
 	providerSelfURN      pulumi.URN
+
+	// Note that providerConfig does not include any first-class dependencies passed as Output values. In fact
+	// there are no Output values inside this map. In the current implementation this is OK as the data is only
+	// used to produce Terraform files to feed to opentofu and lacks the capability to track these dependencies.
+	providerConfig resource.PropertyMap
 }
 
 func (s *server) Parameterize(
@@ -212,9 +218,12 @@ func (s *server) Configure(
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	config, err := plugin.UnmarshalProperties(req.Args, plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		RejectAssets:     true,
-		KeepSecrets:      true,
+		KeepUnknowns: true,
+		RejectAssets: true,
+		KeepSecrets:  true,
+
+		// This is only used to store s.providerConfig so it is OK to ignore dependencies in any Output values
+		// present in the request.
 		KeepOutputValues: false,
 	})
 
@@ -341,11 +350,10 @@ func (s *server) Construct(
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
 	inputProps, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-		// TODO[https://github.com/pulumi/pulumi-terraform-module/issues/151] support Outputs in Unmarshal
-		KeepOutputValues: false,
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
 	})
 
 	providersConfig := cleanProvidersConfig(s.providerConfig)
@@ -361,12 +369,12 @@ func (s *server) Construct(
 	return pulumiprovider.Construct(ctx, req, s.hostClient.EngineConn(), func(
 		ctx *pulumi.Context, typ, name string,
 		_ pulumiprovider.ConstructInputs,
-		_ pulumi.ResourceOption,
+		resourceOptions pulumi.ResourceOption,
 	) (*pulumiprovider.ConstructResult, error) {
 		ctok := componentTypeToken(s.packageName, s.componentTypeName)
 		switch typ {
 		case string(ctok):
-			componentUrn, outputs, err := NewModuleComponentResource(ctx,
+			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
 				s.stateStore,
 				s.planStore,
 				s.packageName,
@@ -378,14 +386,20 @@ func (s *server) Construct(
 				s.inferredModuleSchema,
 				packageRef,
 				s.providerSelfURN,
-				providersConfig)
+				providersConfig,
+				resourceOptions,
+			)
 
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
 			}
+
 			constructResult := &pulumiprovider.ConstructResult{
-				URN:   pulumi.URN(string(*componentUrn)),
-				State: outputs,
+				URN: pulumi.URN(string(*componentUrn)),
+				// Every Output needs to depend on the modStateResource.
+				State: pulumix.MapWithBroadcastDependencies(ctx.Context(), []pulumi.Resource{
+					modStateResource,
+				}, outputs),
 			}
 			return constructResult, nil
 		default:
@@ -415,9 +429,12 @@ func (s *server) CheckConfig(
 	s.providerSelfURN = pulumi.URN(req.Urn)
 
 	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		RejectAssets:     true,
-		KeepSecrets:      true,
+		KeepUnknowns: true,
+		RejectAssets: true,
+		KeepSecrets:  true,
+
+		// This is only used to store s.providerConfig so it is OK to ignore dependencies in any Output values
+		// present in the request.
 		KeepOutputValues: false,
 	})
 

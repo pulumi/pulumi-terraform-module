@@ -37,6 +37,7 @@ import (
 
 const (
 	provider = "terraform-module"
+	randmod  = "randmod"
 )
 
 // testdata/randmod is a fully local module written for test purposes that uses resources from the
@@ -46,7 +47,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Module written to support the test.
-	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
 	require.NoError(t, err)
 
 	// Program written to support the test.
@@ -56,7 +57,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "randmod"
+	packageName := randmod
 	t.Run("pulumi package add", func(t *testing.T) {
 		// pulumi package add <provider-path> <randmod-path> <package-name>
 		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
@@ -181,7 +182,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Reuse randmod test module for this test.
-	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", "randmod"))
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
 	require.NoError(t, err)
 
 	// Program written to support the test.
@@ -192,7 +193,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "randmod"
+	packageName := randmod
 	t.Run("pulumi package add", func(t *testing.T) {
 		// pulumi package add <provider-path> <randmod-path> <package-name>
 		pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
@@ -1160,6 +1161,91 @@ func TestDeleteLambda(t *testing.T) {
 		t.Fatalf("encountered unexpected error verifying log group was deleted: %v ", err)
 	}
 
+}
+
+// Test that Pulumi understands dependencies.
+func Test_Dependencies(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Reuse randmod for this one.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
+	require.NoError(t, err)
+
+	// Program written to support the test.
+	randModProg := filepath.Join("testdata", "programs", "ts", "dep-tester")
+
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
+	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt.CopyToTempDir(t)
+
+	packageName := randmod
+
+	// pulumi package add <provider-path> <randmod-path> <package-name>
+	pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
+
+	upOutput := pt.Up(t)
+	t.Logf("pulumi up said: %s\n", upOutput.StdOut+upOutput.StdErr)
+
+	deploy := pt.ExportStack(t)
+
+	t.Logf("DEPLOYMENT: %v", string(deploy.Deployment))
+
+	var deployment apitype.DeploymentV3
+	err = json.Unmarshal(deploy.Deployment, &deployment)
+	require.NoError(t, err)
+
+	for _, r := range deployment.Resources {
+		if r.URN.Type() == "randmod:index:Module" {
+			slices.Sort(r.Dependencies)
+
+			// The Component depends on the union of things passed in dependsOn by the user and things
+			// flowing through the input dependencies.
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
+			}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{}).Equal(t, r.PropertyDependencies)
+		}
+
+		if r.URN.Type() == "randmod:index:ModuleState" {
+			// If dependencies are implemented correctly, this resource must depend on resource
+			// dependencies that are flowing through the module inputs such as the "seed" resource.
+
+			//nolint:lll
+			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("__module"): {},
+				//nolint:lll
+				resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
+			}).Equal(t, r.PropertyDependencies)
+		}
+
+		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
+			// If dependencies are implemented correctly, this resource must depend on the ModuleState
+			// resource, which in turn depends on the "seed" resource.
+
+			slices.Sort(r.Dependencies)
+
+			//nolint:lll
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+			}).Equal(t, r.Dependencies)
+
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
+
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("max"): {
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+				},
+				resource.PropertyKey("min"):  {},
+				resource.PropertyKey("seed"): {},
+			}).Equal(t, r.PropertyDependencies)
+		}
+	}
 }
 
 // runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
