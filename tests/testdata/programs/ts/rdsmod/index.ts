@@ -71,5 +71,4 @@ const testrdsmodule = new rds.Module("test-rds", {
     // DB option group
     major_engine_version: "8.0",
     vpc_security_group_ids: [securityGroup.id]
-
-}, {dependsOn: [subnet2a, subnet2b, vpc, securityGroup]})
+})
