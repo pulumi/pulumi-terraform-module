@@ -521,16 +521,16 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 6,
+				apitype.OpType("create"): 11,
 			},
 			upExpect: map[string]int{
-				"create": 6,
+				"create": 11,
 			},
 			deleteExpect: map[string]int{
-				"delete": 6,
+				"delete": 11,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 6,
+				apitype.OpType("same"): 11,
 			},
 		},
 	}

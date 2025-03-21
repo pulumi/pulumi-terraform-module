@@ -6,12 +6,6 @@ const config = new pulumi.Config();
 const prefix = config.get('prefix') ?? pulumi.getStack();
 
 
-
-import * as pulumi from "@pulumi/pulumi";
-import * as rds from "@pulumi/rds";
-import * as aws from "@pulumi/aws"
-
-
 //Make a VPC
 const vpc = new aws.ec2.Vpc("myVpc", {
     cidrBlock: "10.0.0.0/16",
