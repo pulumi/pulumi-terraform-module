@@ -124,10 +124,11 @@ func CreateTFFile(
 	outputs []TFOutputSpec,
 	providerConfig map[string]resource.PropertyMap,
 ) error {
+
 	moduleProps := map[string]interface{}{
 		"source": source,
 	}
-	// local modules don't have a version
+	// local modules and github-based modules don't have a version
 	if version != "" {
 		moduleProps["version"] = version
 	}

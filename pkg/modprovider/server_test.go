@@ -90,6 +90,36 @@ func TestParseParameterizeRequest(t *testing.T) {
 		assert.Equal(t, packageName("consul"), args.PackageName)
 	})
 
+	t.Run("parses github-based remote module source", func(t *testing.T) {
+		testRequest := &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: []string{"github.com/yemisprojects/s3_website_module_demo", "demoWebsite"},
+				},
+			},
+		}
+		args, err := parseParameterizeRequest(ctx, testRequest)
+		assert.NoError(t, err)
+		assert.Equal(t, TFModuleSource("github.com/yemisprojects/s3_website_module_demo"), args.TFModuleSource)
+		assert.Equal(t, TFModuleVersion(""), args.TFModuleVersion)
+		assert.Equal(t, packageName("demoWebsite"), args.PackageName)
+	})
+
+	t.Run("fails on invalid module source", func(t *testing.T) {
+		testRequest := &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: []string{"absolute-definite-nonsense", "demoWebsite"},
+				},
+			},
+		}
+		args, err := parseParameterizeRequest(ctx, testRequest)
+		assert.Error(t, err)
+		assert.Empty(t, args.TFModuleSource)
+		assert.Empty(t, args.TFModuleVersion)
+		assert.Empty(t, args.PackageName)
+	})
+
 	t.Run("parses value with module source and version spec", func(t *testing.T) {
 		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Value{
