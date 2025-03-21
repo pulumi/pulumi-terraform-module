@@ -15,9 +15,10 @@
 // Package property exposes PropertyMap/PropertyValue helpers that did not make it into the official Pulumi Go SDK yet.
 //
 // See also: https://github.com/pulumi/pulumi/issues/18447
-package property
+package pulumix
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -34,7 +35,6 @@ import (
 //
 // Known limitations:
 //
-// - first-class Output values with dependencies are not supported
 // - resource references are not supported
 // - PropertyMap{"foo": NewNullProperty()} may not turnaround but drop "foo"
 func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.Map, error) {
@@ -111,8 +111,21 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 			}
 			return pulumi.ToSecret(element), nil
 		case v.IsOutput():
-			contract.Failf("Output is not yet supported in UnmarshalPropertyValue")
-			return nil, nil
+			o := v.OutputValue()
+			if !o.Known {
+				return pulumi.UnsafeUnknownOutput(deps(o.Dependencies)), nil
+			}
+
+			element, err := unmarshal(o.Element)
+			if err != nil {
+				return nil, err
+			}
+
+			if o.Secret {
+				return withDeps(ctx.Context(), o.Dependencies, pulumi.ToSecret(element)), nil
+			}
+
+			return withDeps(ctx.Context(), o.Dependencies, pulumi.ToOutput(element)), nil
 		}
 
 		return nil, fmt.Errorf("unknown property value %v", v)
@@ -129,6 +142,26 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 	return m, nil
 }
 
+// Helper function to attach dependency URNs to an existing output.
+func withDeps(ctx context.Context, urns []resource.URN, out pulumi.Output) pulumi.Input {
+	if len(urns) == 0 {
+		return out
+	}
+	return pulumi.OutputWithDependencies(ctx, out, deps(urns)...)
+}
+
+// Helper function to lift URNs to dependency resources.
+func deps(urns []resource.URN) []pulumi.Resource {
+	rr := []pulumi.Resource{}
+	for _, u := range urns {
+		rr = append(rr, newDependencyResource(newUrnOutput(u)))
+	}
+	return rr
+}
+
+// This got copied from pulumi Go SDK but is likely not entirely suitable for the purposes of this package, note how in
+// particular it drops dependencies of Output values. Is only currently used to process Archive values though so this
+// incompleteness seems benign.
 func unmarshalPropertyValue(ctx *pulumi.Context, v resource.PropertyValue) (interface{}, bool, error) {
 	switch {
 	case v.IsComputed():

@@ -1,18 +1,14 @@
 package tests
 
 import (
-	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 )
@@ -41,20 +37,12 @@ func Test_RdsExample(t *testing.T) {
 		optup.ProgressStreams(os.Stdout),
 	)
 
-	stackName := integrationTest.CurrentStack().Name()
-	projectSettings, err := integrationTest.CurrentStack().Workspace().ProjectSettings(context.Background())
-	assert.NoError(t, err)
-	rdsUrn := fmt.Sprintf("urn:pulumi:%s::%s::rdsmod:index:Module::test-rds", stackName, projectSettings.Name.String())
-
 	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(os.Stderr),
 		optpreview.ProgressStreams(os.Stdout),
 	)
 
-	// TODO [pulumi/pulumi-terraform-module#151] Property dependencies aren't flowing through
-	integrationTest.Destroy(t, optdestroy.TargetDependents(), optdestroy.Target([]string{
-		rdsUrn,
-	}))
+	integrationTest.Destroy(t)
 }
 
 func Test_EksExample(t *testing.T) {

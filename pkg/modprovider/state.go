@@ -31,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -119,7 +119,7 @@ func newModuleStateResource(
 	var res moduleStateResource
 	tok := moduleStateTypeToken(pkgName)
 
-	inputsMap := property.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
+	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
 		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
 		"moduleInputs":    resource.NewObjectProperty(moduleInputs),
 	})
@@ -268,7 +268,11 @@ func (h *moduleStateHandler) Delete(
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
-		// TODO[pulumi/pulumi-terraform-module#151] support Outputs in Unmarshal
+
+		// If there are any resource.NewOutputProperty values in old inputs with dependencies, this setting
+		// will ignore the dependencies and remove these values in favor of simpler Computed or Secret values.
+		// This is OK for the purposes of Delete running tofu destroy because the code cannot take advantage of
+		// these precisely tracked dependencies here anyway. So it is OK to ignore them.
 		KeepOutputValues: false,
 	})
 	if err != nil {
