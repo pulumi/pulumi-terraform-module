@@ -154,7 +154,7 @@ func withDeps(ctx context.Context, urns []resource.URN, out pulumi.Output) pulum
 func deps(urns []resource.URN) []pulumi.Resource {
 	rr := []pulumi.Resource{}
 	for _, u := range urns {
-		rr = append(rr, NewDependencyResource(NewUrnOutput(u)))
+		rr = append(rr, newDependencyResource(newUrnOutput(u)))
 	}
 	return rr
 }

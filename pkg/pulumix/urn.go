@@ -19,6 +19,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func NewUrnOutput(u resource.URN) pulumi.URNOutput {
+func newUrnOutput(u resource.URN) pulumi.URNOutput {
 	return pulumi.URNPtr(pulumi.URN(u)).ToURNPtrOutput().Elem()
 }

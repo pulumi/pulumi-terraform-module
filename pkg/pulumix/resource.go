@@ -18,7 +18,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func NewDependencyResource(urn pulumi.URNOutput) pulumi.Resource {
+func newDependencyResource(urn pulumi.URNOutput) pulumi.Resource {
 	return &depResource{urn: urn}
 }
 
