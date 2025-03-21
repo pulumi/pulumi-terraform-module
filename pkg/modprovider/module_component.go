@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -67,12 +67,12 @@ func NewModuleComponentResource(
 	providerSelfURN pulumi.URN,
 	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
-) (componentUrn *urn.URN, outputs pulumi.Map, finalError error) {
+) (componentUrn *urn.URN, moduleStateResource *moduleStateResource, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}
 	tok := componentTypeToken(pkgName, compTypeName)
 	err := ctx.RegisterComponentResource(string(tok), name, &component, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("RegisterComponentResource failed: %w", err)
 	}
 
 	urn := component.MustURN(ctx.Context())
@@ -91,27 +91,25 @@ func NewModuleComponentResource(
 		providerSelfRef = newProviderSelfReference(ctx, providerSelfURN)
 	}
 
-	go func() {
-		resourceOptions := []pulumi.ResourceOption{
-			pulumi.Parent(&component),
-		}
+	resourceOptions := []pulumi.ResourceOption{
+		pulumi.Parent(&component),
+	}
 
-		if providerSelfRef != nil {
-			resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
-		}
+	if providerSelfRef != nil {
+		resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+	}
 
-		_, err := newModuleStateResource(ctx,
-			// Needs to be prefixed by parent to avoid "duplicate URN".
-			fmt.Sprintf("%s-state", name),
-			pkgName,
-			urn,
-			packageRef,
-			moduleInputs,
-			resourceOptions...,
-		)
+	modStateResource, err := newModuleStateResource(ctx,
+		// Needs to be prefixed by parent to avoid "duplicate URN".
+		fmt.Sprintf("%s-state", name),
+		pkgName,
+		urn,
+		packageRef,
+		moduleInputs,
+		resourceOptions...,
+	)
 
-		contract.AssertNoErrorf(err, "newModuleStateResource failed")
-	}()
+	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
 	state := stateStore.AwaitOldState(urn)
 	defer func() {
@@ -126,7 +124,7 @@ func NewModuleComponentResource(
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 	tf, err := tfsandbox.NewTofu(ctx.Context(), wd)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
 	// Important: the name of the module instance in TF must be at least unique enough to
@@ -147,20 +145,20 @@ func NewModuleComponentResource(
 		moduleInputs, outputSpecs, providersConfig)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
 
 	var moduleOutputs resource.PropertyMap
 	err = tf.PushStateAndLockFile(ctx.Context(), state.rawState, state.rawLockFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
 	logger := newComponentLogger(ctx.Log, &component)
 
 	err = tf.Init(ctx.Context(), logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Init failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("Init failed: %w", err)
 	}
 
 	var childResources []*childResource
@@ -169,7 +167,7 @@ func NewModuleComponentResource(
 	// may be able to reuse the plan from DryRun for the subsequent application.
 	plan, err := tf.Plan(ctx.Context(), logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Plan failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
 
 	planStore.SetPlan(urn, plan)
@@ -203,21 +201,21 @@ func NewModuleComponentResource(
 			}
 		})
 		if err := errors.Join(errs...); err != nil {
-			return nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
 		tfState, err := tf.Apply(ctx.Context(), logger)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Apply failed: %w", err)
+			return nil, nil, nil, fmt.Errorf("Apply failed: %w", err)
 		}
 
 		planStore.SetState(urn, tfState)
 
 		rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx.Context())
 		if err != nil {
-			return nil, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
+			return nil, nil, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
 		}
 		state.rawState = rawState
 		state.rawLockFile = rawLockFile
@@ -246,7 +244,7 @@ func NewModuleComponentResource(
 			}
 		})
 		if err := errors.Join(errs...); err != nil {
-			return nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 
 		moduleOutputs = tfState.Outputs()
@@ -259,12 +257,12 @@ func NewModuleComponentResource(
 		cr.Await(ctx.Context())
 	}
 
-	marshalledOutputs := property.MustUnmarshalPropertyMap(ctx, moduleOutputs)
+	marshalledOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
 	if err := ctx.RegisterResourceOutputs(&component, marshalledOutputs); err != nil {
-		return nil, nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
 	}
 
-	return &urn, marshalledOutputs, nil
+	return &urn, modStateResource, marshalledOutputs, nil
 }
 
 func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {

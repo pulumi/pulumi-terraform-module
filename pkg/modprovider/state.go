@@ -31,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -119,7 +119,7 @@ func newModuleStateResource(
 	var res moduleStateResource
 	tok := moduleStateTypeToken(pkgName)
 
-	inputsMap := property.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
+	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
 		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
 		"moduleInputs":    resource.NewObjectProperty(moduleInputs),
 	})

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package property exposes PropertyMap/PropertyValue helpers that did not make it into the official Pulumi Go SDK yet.
+// Package pulumix exposes helpers that did not make it into the official Pulumi Go SDK yet.
 //
 // See also: https://github.com/pulumi/pulumi/issues/18447
-package property
+package pulumix

@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -69,7 +69,7 @@ func newChildResource(
 	inputs := childResourceInputs(modUrn, sop.Address(), sop.Values())
 	t := childResourceTypeToken(pkgName, sop.Type())
 	name := childResourceName(sop)
-	inputsMap := property.MustUnmarshalPropertyMap(ctx, inputs)
+	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, inputs)
 	err := ctx.RegisterPackageResource(string(t), name, inputsMap, &resource, packageRef, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for a child resource: %w", err)

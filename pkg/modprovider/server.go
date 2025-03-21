@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -37,7 +36,7 @@ import (
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/property"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -357,18 +356,6 @@ func (s *server) Construct(
 		KeepOutputValues: true,
 	})
 
-	// Cannot yet track dependencies precisely through the opentofu interaction. Instead the code collects them all
-	// up in a bag and reattaches this bag to every single output of the module. This is necessary: failing to
-	// reattach the bag will cause the engine to miss the fact that resources that consume the outputs of the
-	// module depend on the dependencies of the inputs of the module.
-	var dependencyURNs []urn.URN
-	resource.NewObjectProperty(inputProps).MapRepl(nil, func(pv resource.PropertyValue) (interface{}, bool) {
-		if pv.IsOutput() {
-			dependencyURNs = append(dependencyURNs, pv.OutputValue().Dependencies...)
-		}
-		return nil, false
-	})
-
 	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
@@ -387,7 +374,7 @@ func (s *server) Construct(
 		ctok := componentTypeToken(s.packageName, s.componentTypeName)
 		switch typ {
 		case string(ctok):
-			componentUrn, outputs, err := NewModuleComponentResource(ctx,
+			componentUrn, modStateResource, outputs, err := NewModuleComponentResource(ctx,
 				s.stateStore,
 				s.planStore,
 				s.packageName,
@@ -404,10 +391,13 @@ func (s *server) Construct(
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
 			}
+
 			constructResult := &pulumiprovider.ConstructResult{
 				URN: pulumi.URN(string(*componentUrn)),
-				// Note dependencies reattached here.
-				State: property.MapWithDeps(ctx.Context(), dependencyURNs, outputs),
+				// Every Output needs to depend on the modStateResource.
+				State: pulumix.MapWithBroadcastDependencies(ctx.Context(), []pulumi.Resource{
+					modStateResource,
+				}, outputs),
 			}
 			return constructResult, nil
 		default:

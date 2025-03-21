@@ -15,7 +15,7 @@
 // Package property exposes PropertyMap/PropertyValue helpers that did not make it into the official Pulumi Go SDK yet.
 //
 // See also: https://github.com/pulumi/pulumi/issues/18447
-package property
+package pulumix
 
 import (
 	"context"
@@ -35,7 +35,6 @@ import (
 //
 // Known limitations:
 //
-// - first-class Output values with dependencies are not supported
 // - resource references are not supported
 // - PropertyMap{"foo": NewNullProperty()} may not turnaround but drop "foo"
 func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.Map, error) {
@@ -123,10 +122,10 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 			}
 
 			if o.Secret {
-				return WithDeps(ctx.Context(), o.Dependencies, pulumi.ToSecret(element)), nil
+				return withDeps(ctx.Context(), o.Dependencies, pulumi.ToSecret(element)), nil
 			}
 
-			return WithDeps(ctx.Context(), o.Dependencies, pulumi.ToOutput(element)), nil
+			return withDeps(ctx.Context(), o.Dependencies, pulumi.ToOutput(element)), nil
 		}
 
 		return nil, fmt.Errorf("unknown property value %v", v)
@@ -144,48 +143,25 @@ func UnmarshalPropertyMap(ctx *pulumi.Context, v resource.PropertyMap) (pulumi.M
 }
 
 // Helper function to attach dependency URNs to an existing output.
-func WithDeps(ctx context.Context, urns []resource.URN, out pulumi.Input) pulumi.Input {
+func withDeps(ctx context.Context, urns []resource.URN, out pulumi.Output) pulumi.Input {
 	if len(urns) == 0 {
 		return out
 	}
-	return pulumi.OutputWithDependencies(ctx, pulumi.ToOutputWithContext(ctx, out), deps(urns)...)
+	return pulumi.OutputWithDependencies(ctx, out, deps(urns)...)
 }
 
-// Broadcast deps to every element of a map.
-func MapWithDeps(ctx context.Context, urns []resource.URN, out pulumi.Map) pulumi.Map {
-	if len(urns) == 0 {
-		return out
-	}
-	result := pulumi.Map{}
-	for k, v := range out {
-		result[k] = WithDeps(ctx, urns, v)
-	}
-	return result
-}
-
+// Helper function to lift URNs to dependency resources.
 func deps(urns []resource.URN) []pulumi.Resource {
 	rr := []pulumi.Resource{}
-	seen := map[resource.URN]struct{}{}
-
 	for _, u := range urns {
-		if _, ok := seen[u]; ok {
-			continue
-		}
-		rr = append(rr, &depResource{urn: pulumi.URN(u)})
-		seen[u] = struct{}{}
+		rr = append(rr, NewDependencyResource(NewUrnOutput(u)))
 	}
 	return rr
 }
 
-type depResource struct {
-	pulumi.CustomResourceState
-	urn pulumi.URN
-}
-
-func (d *depResource) URN() pulumi.URNOutput {
-	return pulumi.URNPtr(d.urn).ToURNPtrOutput().Elem()
-}
-
+// This got copied from pulumi Go SDK but is likely not entirely suitable for the purposes of this package, note how in
+// particular it drops dependencies of Output values. Is only currently used to process Archive values though so this
+// incompleteness seems benign.
 func unmarshalPropertyValue(ctx *pulumi.Context, v resource.PropertyValue) (interface{}, bool, error) {
 	switch {
 	case v.IsComputed():

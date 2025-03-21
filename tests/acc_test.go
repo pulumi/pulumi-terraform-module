@@ -1196,14 +1196,6 @@ func Test_Dependencies(t *testing.T) {
 
 	for _, r := range deployment.Resources {
 		if r.URN.Type() == "randmod:index:Module" {
-			// Inputs are not stored in the state. That must be a current Pulumi CLI limitation.
-			autogold.Expect(map[string]interface{}{}).Equal(t, r.Inputs)
-			// Not sure why these are not first-class outputs copying the dependencies of the inputs. Could
-			// be lost in the plumbing, but must be benign for now.
-			autogold.Expect(map[string]interface{}{"random_priority": 2, "random_seed": map[string]interface{}{
-				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				"plaintext":                        `"9"`,
-			}}).Equal(t, r.Outputs)
 			// It does not seem the current engine records dependencies here, but it still figures out the
 			// dependencies in the "dependent" state record.
 			autogold.Expect([]urn.URN{}).Equal(t, r.Dependencies)
@@ -1211,17 +1203,9 @@ func Test_Dependencies(t *testing.T) {
 		}
 
 		if r.URN.Type() == "randmod:index:ModuleState" {
-			// r.Outputs are too large, ignore for now in this test
-			autogold.Expect(map[string]interface{}{
-				"__module": "urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod",
-				"moduleInputs": map[string]interface{}{
-					"maxlen": 10,
-					"randseed": map[string]interface{}{
-						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-						"plaintext":                        `"9"`,
-					},
-				},
-			}).Equal(t, r.Inputs)
+			// If dependencies are implemented correctly, this resource must depend on resource
+			// dependencies that are flowing through the module inputs such as the "seed" resource.
+
 			//nolint:lll
 			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
@@ -1232,21 +1216,25 @@ func Test_Dependencies(t *testing.T) {
 		}
 
 		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
-			autogold.Expect(map[string]interface{}{"max": 16, "min": 1, "seed": "the-most-random-seed"}).Equal(t, r.Inputs)
-			//nolint:lll
-			autogold.Expect(map[string]interface{}{"id": "9", "max": 16, "min": 1, "result": 9, "seed": "the-most-random-seed"}).Equal(t, r.Outputs)
+			// If dependencies are implemented correctly, this resource must depend on the ModuleState
+			// resource, which in turn depends on the "seed" resource.
 
-			// This resource must depend on "seed" resource if Pulumi understands transitive dependencies.
+			slices.Sort(r.Dependencies)
+
 			//nolint:lll
 			autogold.Expect([]urn.URN{
-				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
 				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
 			}).Equal(t, r.Dependencies)
 
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
+
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
 				resource.PropertyKey("max"): {
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
 					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
-					urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
 				},
 				resource.PropertyKey("min"):  {},
 				resource.PropertyKey("seed"): {},
