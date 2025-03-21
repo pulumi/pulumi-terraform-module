@@ -1196,9 +1196,14 @@ func Test_Dependencies(t *testing.T) {
 
 	for _, r := range deployment.Resources {
 		if r.URN.Type() == "randmod:index:Module" {
-			// It does not seem the current engine records dependencies here, but it still figures out the
-			// dependencies in the "dependent" state record.
-			autogold.Expect([]urn.URN{}).Equal(t, r.Dependencies)
+			slices.Sort(r.Dependencies)
+
+			// The Component depends on the union of things passed in dependsOn by the user and things
+			// flowing through the input dependencies.
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
+			}).Equal(t, r.Dependencies)
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{}).Equal(t, r.PropertyDependencies)
 		}
 

@@ -369,7 +369,7 @@ func (s *server) Construct(
 	return pulumiprovider.Construct(ctx, req, s.hostClient.EngineConn(), func(
 		ctx *pulumi.Context, typ, name string,
 		_ pulumiprovider.ConstructInputs,
-		_ pulumi.ResourceOption,
+		resourceOptions pulumi.ResourceOption,
 	) (*pulumiprovider.ConstructResult, error) {
 		ctok := componentTypeToken(s.packageName, s.componentTypeName)
 		switch typ {
@@ -386,7 +386,9 @@ func (s *server) Construct(
 				s.inferredModuleSchema,
 				packageRef,
 				s.providerSelfURN,
-				providersConfig)
+				providersConfig,
+				resourceOptions,
+			)
 
 			if err != nil {
 				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
