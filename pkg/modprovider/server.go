@@ -374,7 +374,7 @@ func (s *server) Construct(
 		ctok := componentTypeToken(s.packageName, s.componentTypeName)
 		switch typ {
 		case string(ctok):
-			componentUrn, modStateResource, outputs, err := NewModuleComponentResource(ctx,
+			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
 				s.stateStore,
 				s.planStore,
 				s.packageName,

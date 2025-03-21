@@ -52,7 +52,7 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 	return tokens.Type(fmt.Sprintf("%s:index:%s", packageName, compTypeName))
 }
 
-func NewModuleComponentResource(
+func newModuleComponentResource(
 	ctx *pulumi.Context,
 	stateStore moduleStateStore,
 	planStore *planStore,
