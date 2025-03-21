@@ -220,6 +220,11 @@ func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Ver
 	switch parsed := parsedSource.(type) {
 	case addrs.ModuleSourceRegistry:
 		source = parsed
+	case addrs.ModuleSourceRemote:
+		// All other valid remote module sources do not support a separate version field
+		// Opentofu will resolve the source by remote address alone.
+		// See https://opentofu.org/docs/language/modules/sources
+		return &version.Version{}, nil
 	default:
 		return nil, fmt.Errorf("module source for %s is not from a remote registry", moduleSource)
 	}

@@ -153,9 +153,9 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		"required provider variables are incorrect")
 }
 
-func TestInferringModuleSchemaGitHubSource(t *testing.T) {
+func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	ctx := context.Background()
-	packageName := packageName("bucket-demo")
+	packageName := packageName("demoWebsite")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
 	demoSchema, err := InferModuleSchema(ctx, packageName, "github.com/yemisprojects/s3_website_module_demo", version)
 	assert.NoError(t, err, "failed to infer module schema for github module")
@@ -201,7 +201,7 @@ func TestResolveModuleSources(t *testing.T) {
 	})
 
 	// This test will hit the network to download a well-known module from a registry.
-	t.Run("registry remote module source", func(t *testing.T) {
+	t.Run("registry module source", func(t *testing.T) {
 		ctx := context.Background()
 		s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
 		v := TFModuleVersion("4.5.0")
@@ -215,8 +215,8 @@ func TestResolveModuleSources(t *testing.T) {
 		assert.Contains(t, string(bytes), "putin_khuylo")
 	})
 
-	// This test will attempt to resolve the source for a github-sourced module.
-	t.Run("github module source plain", func(t *testing.T) {
+	// Make a network call to resolve the source for a remote module source on GitHub.
+	t.Run("remote module source github", func(t *testing.T) {
 		ctx := context.Background()
 		moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
 		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
@@ -229,7 +229,7 @@ func TestResolveModuleSources(t *testing.T) {
 		assert.Contains(t, string(bytes), "index_document")
 	})
 
-	t.Run("github module source explicit version ref", func(t *testing.T) {
+	t.Run("remote module source with version in source path", func(t *testing.T) {
 		ctx := context.Background()
 		moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
 		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
@@ -242,7 +242,7 @@ func TestResolveModuleSources(t *testing.T) {
 		assert.Contains(t, string(bytes), "index_document")
 	})
 
-	t.Run("github module source with git path prefix", func(t *testing.T) {
+	t.Run("remote module source with git path prefix", func(t *testing.T) {
 		ctx := context.Background()
 		moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
 		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
@@ -254,5 +254,4 @@ func TestResolveModuleSources(t *testing.T) {
 		t.Logf("variables.tf: %s", bytes)
 		assert.Contains(t, string(bytes), "index_document")
 	})
-
 }
