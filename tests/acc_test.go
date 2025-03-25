@@ -176,6 +176,48 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 	}}).Equal(t, resourceDiffs)
 }
 
+func TestPartialApply(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+
+	// Module written to support the test.
+	localMod, err := filepath.Abs(filepath.Join("testdata", "programs", "ts", "partial-apply", "local_module"))
+	require.NoError(t, err)
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "partial-apply")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, localMod, "localmod")
+	_, err = integrationTest.CurrentStack().Up(integrationTest.Context(), optup.Diff(),
+		optup.ErrorProgressStreams(os.Stderr),
+		optup.ProgressStreams(os.Stdout),
+	)
+	assert.Errorf(t, err, "expected error on up")
+
+	integrationTest.SetConfig(t, "step", "2")
+
+	upRes2 := integrationTest.Up(t, optup.Diff(),
+		optup.ErrorProgressStreams(os.Stderr),
+		optup.ProgressStreams(os.Stdout),
+	)
+	changes2 := *upRes2.Summary.ResourceChanges
+	assert.Equal(t, map[string]int{
+		"update": 1,
+		"create": 1,
+		"same":   3,
+	}, changes2)
+	// now the second one is created so we get both outputs
+	assert.Contains(t, upRes2.Outputs, "roleArn")
+}
+
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
 // this makes sure that URN selection is unique enough to avoid the "dulicate URN" problem.
 func Test_TwoInstances_TypeScript(t *testing.T) {

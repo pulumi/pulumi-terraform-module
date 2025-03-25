@@ -111,12 +111,13 @@ func newModuleComponentResource(
 
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
+	var applyErr error
 	state := stateStore.AwaitOldState(urn)
 	defer func() {
 		// SetNewState must be called on every possible exit to make sure child resources do
 		// not wait indefinitely for the state. If existing normally, this should have
 		// already happened, but this code makes sure error exists are covered as well.
-		if finalError != nil {
+		if finalError != nil && applyErr == nil {
 			stateStore.SetNewState(urn, state)
 		}
 	}()
@@ -172,6 +173,7 @@ func newModuleComponentResource(
 
 	planStore.SetPlan(urn, plan)
 
+	var tfState *tfsandbox.State
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
 
@@ -206,10 +208,7 @@ func newModuleComponentResource(
 		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
-		tfState, err := tf.Apply(ctx.Context(), logger)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("Apply failed: %w", err)
-		}
+		tfState, applyErr = tf.Apply(ctx.Context(), logger)
 
 		planStore.SetState(urn, tfState)
 
@@ -255,6 +254,10 @@ func newModuleComponentResource(
 	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
 	for _, cr := range childResources {
 		cr.Await(ctx.Context())
+	}
+
+	if applyErr != nil {
+		return nil, nil, nil, fmt.Errorf("Apply failed: %w", applyErr)
 	}
 
 	marshalledOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
