@@ -112,11 +112,15 @@ func newModuleComponentResource(
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
 	var applyErr error
+	var tfState *tfsandbox.State
 	state := stateStore.AwaitOldState(urn)
 	defer func() {
 		// SetNewState must be called on every possible exit to make sure child resources do
 		// not wait indefinitely for the state. If existing normally, this should have
 		// already happened, but this code makes sure error exists are covered as well.
+		//
+		// if applyErr != nil then we've already processed the child resources
+		// and can't call `SetNewState`
 		if finalError != nil && applyErr == nil {
 			stateStore.SetNewState(urn, state)
 		}
@@ -173,7 +177,6 @@ func newModuleComponentResource(
 
 	planStore.SetPlan(urn, plan)
 
-	var tfState *tfsandbox.State
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
 

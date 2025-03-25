@@ -214,7 +214,6 @@ func TestPartialApply(t *testing.T) {
 		"create": 1,
 		"same":   3,
 	}, changes2)
-	// now the second one is created so we get both outputs
 	assert.Contains(t, upRes2.Outputs, "roleArn")
 }
 

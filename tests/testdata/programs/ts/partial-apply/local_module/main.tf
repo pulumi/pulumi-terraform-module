@@ -15,8 +15,6 @@ resource "aws_iam_role" "this" {
   })
 }
 
-data "aws_caller_identity" "current" {}
-
 locals {
   fail_arn    = "arn:aws:iam::aws:policy/ReadOnlyAccessFAIL"
   success_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
