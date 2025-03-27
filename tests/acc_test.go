@@ -335,7 +335,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			"create": expectedResourceCount,
 		})
 
-		moduleState := mustFindDeploymentResourceByType(t, pt, "vpc:tf:ModuleState")
+		moduleState := mustFindDeploymentResourceByType(t, pt, "vpc:index:ModuleState")
 
 		tfStateRaw, gotTfState := moduleState.Outputs["state"]
 		require.True(t, gotTfState)
