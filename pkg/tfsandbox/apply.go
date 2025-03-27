@@ -9,6 +9,10 @@ import (
 )
 
 // Apply runs the terraform apply command and returns the final state
+//
+// Apply can return both a non-nil State and a non-nil error. If the apply
+// fails, but some resources were created and written to the TF State we will return
+// the state and the apply error.
 func (t *Tofu) Apply(ctx context.Context, logger Logger) (*State, error) {
 	state, applyErr := t.apply(ctx, logger)
 	s, err := newState(state)

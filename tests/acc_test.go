@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 const (
@@ -97,40 +98,24 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		require.Equal(t, "9", randomSeed.Value)
 		require.True(t, randomSeed.Secret, "expected output randomSeed to be secret")
 
-		deploy := pt.ExportStack(t)
-		t.Logf("STATE: %s", string(deploy.Deployment))
-
-		var deployment apitype.DeploymentV3
-		err = json.Unmarshal(deploy.Deployment, &deployment)
-		require.NoError(t, err)
-
-		var randInt apitype.ResourceV3
-		randIntFound := 0
-		for _, r := range deployment.Resources {
-			if r.Type == "randmod:tf:random_integer" {
-				randInt = r
-				randIntFound++
-			}
-		}
-
-		require.Equal(t, 1, randIntFound)
+		randInt := mustFindDeploymentResourceByType(t, pt, "randmod:tf:random_integer")
 
 		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
 		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
-		autogold.Expect(map[string]interface{}{
+		autogold.Expect(map[string]any{
 			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
 			"id":        "2",
 			"max":       10,
 			"min":       1,
 			"result":    2,
-			"seed": map[string]interface{}{
+			"seed": map[string]any{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 				"plaintext":                        `"9"`,
 			},
 		}).Equal(t, randInt.Inputs)
-		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
+		autogold.Expect(map[string]any{}).Equal(t, randInt.Outputs)
 	})
 
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
@@ -201,6 +186,11 @@ func TestPartialApply(t *testing.T) {
 		optup.ProgressStreams(os.Stdout),
 	)
 	assert.Errorf(t, err, "expected error on up")
+	// the tf state contains the resource that succeeded
+	assertTFStateResourceExists(t, integrationTest, "localmod", "module.test-localmod.aws_iam_role.this")
+
+	// iam role child resource was created
+	mustFindDeploymentResourceByType(t, integrationTest, "localmod:tf:aws_iam_role")
 
 	integrationTest.SetConfig(t, "step", "2")
 
@@ -345,28 +335,12 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			"create": expectedResourceCount,
 		})
 
-		stack := pt.ExportStack(t)
-		t.Logf("deployment: %s", stack.Deployment)
-
-		var deployment apitype.DeploymentV3
-		err := json.Unmarshal(stack.Deployment, &deployment)
-		require.NoError(t, err)
-
-		var moduleState apitype.ResourceV3
-		moduleStateFound := 0
-		for _, r := range deployment.Resources {
-			if strings.Contains(string(r.Type), "ModuleState") {
-				moduleState = r
-				moduleStateFound++
-			}
-		}
-
-		require.Equal(t, 1, moduleStateFound)
+		moduleState := mustFindDeploymentResourceByType(t, pt, "vpc:tf:ModuleState")
 
 		tfStateRaw, gotTfState := moduleState.Outputs["state"]
 		require.True(t, gotTfState)
 
-		tfState, isMap := tfStateRaw.(map[string]interface{})
+		tfState, isMap := tfStateRaw.(map[string]any)
 		require.True(t, isMap)
 
 		//nolint:lll
@@ -395,22 +369,12 @@ func TestS3BucketModSecret(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
 	integrationTest.Up(t)
 
-	deploy := integrationTest.ExportStack(t)
-	var deployment apitype.DeploymentV3
-	err := json.Unmarshal(deploy.Deployment, &deployment)
-	require.NoError(t, err)
+	encyptionsConfig := mustFindDeploymentResourceByType(t,
+		integrationTest,
+		"bucket:tf:aws_s3_bucket_server_side_encryption_configuration",
+	)
 
-	var encyptionsConfig apitype.ResourceV3
-	encyptionsConfigFound := 0
-	for _, r := range deployment.Resources {
-		if r.Type == "bucket:tf:aws_s3_bucket_server_side_encryption_configuration" {
-			encyptionsConfig = r
-			encyptionsConfigFound++
-		}
-	}
-
-	require.Equal(t, 1, encyptionsConfigFound)
-	autogold.Expect(map[string]interface{}{
+	autogold.Expect(map[string]any{
 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		//nolint:all
 		"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
@@ -976,23 +940,9 @@ func TestRefresh(t *testing.T) {
 	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
 	expectBucketTag := func(tagvalue string) {
-		stateR := it.ExportStack(t)
-
-		var deployment apitype.DeploymentV3
-		err := json.Unmarshal(stateR.Deployment, &deployment)
-		require.NoError(t, err)
-
-		var bucket apitype.ResourceV3
-		bucketFound := 0
-		for _, r := range deployment.Resources {
-			if r.Type == "bucketmod:tf:aws_s3_bucket" {
-				bucket = r
-				bucketFound++
-			}
-		}
-		require.Equal(t, 1, bucketFound)
+		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
 		tags := bucket.Inputs["tags"]
-		require.Equal(t, map[string]interface{}{"TestTag": tagvalue}, tags)
+		require.Equal(t, map[string]any{"TestTag": tagvalue}, tags)
 	}
 
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
@@ -1008,7 +958,7 @@ func TestRefresh(t *testing.T) {
 	it.Up(t)
 	outMapB, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
-	autogold.Expect(map[string]interface{}{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
+	autogold.Expect(map[string]any{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
 
 	// Now reset Pulumi state so it expects the bucket to have tag "a".
 	it.ImportStack(t, stateA)
@@ -1301,6 +1251,67 @@ func Test_Dependencies(t *testing.T) {
 			}).Equal(t, r.PropertyDependencies)
 		}
 	}
+}
+
+// assertTFStateResourceExists checks if a resource exists in the TF state.
+// packageName should be the name of the package used in `pulumi package add`
+// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
+func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packageName string, resourceAddress string) {
+	moduleState := mustFindDeploymentResourceByType(t, pt, tokens.Type(fmt.Sprintf("%s:index:ModuleState", packageName)))
+	tfStateRaw, gotTfState := moduleState.Outputs["state"]
+	require.True(t, gotTfState)
+
+	tfState, isMap := tfStateRaw.(map[string]any)
+	require.True(t, isMap)
+	plaintext, exists := tfState["plaintext"].(string)
+	require.Truef(t, exists, "plaintext should exist in 'state' and be a string")
+	var state map[string]any
+	unescaped, err := strconv.Unquote(plaintext)
+	require.NoErrorf(t, err, "failed to unquote plaintext state: \n%s", plaintext)
+	err = json.Unmarshal([]byte(unescaped), &state)
+	require.NoErrorf(t, err, "failed to unmarshal plaintext state: \n%s", plaintext)
+
+	resources, ok := state["resources"].([]any)
+	require.Truef(t, ok, "TF state must contain 'resources': %v", state)
+	contains := slices.ContainsFunc(resources, func(res any) bool {
+		resMap, ok := res.(map[string]any)
+		require.Truef(t, ok, "resources must be a map")
+		module, ok := resMap["module"].(string)
+		require.Truef(t, ok, "module key must exist")
+		typ, ok := resMap["type"].(string)
+		require.Truef(t, ok, "type key must exist")
+		name, ok := resMap["name"].(string)
+		require.Truef(t, ok, "name key must exist")
+		fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
+		return fullName == resourceAddress
+	})
+	require.Truef(t, contains, "TF state must contain resource %s", resourceAddress)
+}
+
+// mustFindDeploymentResourceByType finds a resource in the deployment by its type.
+// It returns the resource if found, and fails the test if not found or if multiple resources are found.
+func mustFindDeploymentResourceByType(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	resourceType tokens.Type,
+) apitype.ResourceV3 {
+	t.Helper()
+	var res apitype.ResourceV3
+	found := 0
+
+	stack := pt.ExportStack(t)
+	var deployment apitype.DeploymentV3
+	err := json.Unmarshal(stack.Deployment, &deployment)
+	require.NoErrorf(t, err, "failed to unmarshal deployment")
+
+	for _, r := range deployment.Resources {
+		if r.Type == resourceType {
+			res = r
+			found++
+		}
+	}
+	require.Equalf(t, 1, found, "Expected to find only 1 resource with type: %s", resourceType.String())
+	return res
 }
 
 // runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
