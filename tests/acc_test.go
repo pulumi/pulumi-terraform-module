@@ -22,12 +22,14 @@ import (
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -205,6 +207,81 @@ func TestPartialApply(t *testing.T) {
 		"same":   3,
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
+}
+
+func TestPartialDestroy(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+
+	// Module written to support the test.
+	localMod, err := filepath.Abs(filepath.Join("testdata", "programs", "ts", "partial-destroy", "local_module"))
+	require.NoError(t, err)
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "partial-destroy")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, localMod, "localmod")
+	upRes, err := integrationTest.CurrentStack().Up(integrationTest.Context(), optup.Diff(),
+		optup.ErrorProgressStreams(os.Stderr),
+		optup.ProgressStreams(os.Stdout),
+	)
+	assert.NoErrorf(t, err, "unexpected error on up")
+	changes := *upRes.Summary.ResourceChanges
+	created := changes["create"]
+	assert.Equal(t, 5, created)
+
+	bucketName, ok := upRes.Outputs["bucketName"].Value.(string)
+	require.True(t, ok, "expected bucketName string output")
+
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx)
+	require.NoError(t, err)
+
+	// Create AWS clients
+	s3Client := s3.NewFromConfig(cfg)
+	_, err = s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: &bucketName,
+		Key:    aws.String("test.txt"),
+		Body:   strings.NewReader("test"),
+	})
+	require.NoError(t, err, "failed to put object in S3 bucket")
+
+	_, err = integrationTest.CurrentStack().Destroy(ctx,
+		optdestroy.ErrorProgressStreams(os.Stderr),
+		optdestroy.ProgressStreams(os.Stdout),
+	)
+	assert.Errorf(t, err, "expected error on destroy")
+
+	// the tf state contains the resource that failed
+	assertTFStateResourceExists(t, integrationTest, "localmod", "module.test-localmod.aws_s3_bucket.bucket")
+
+	// only the bucket that failed still exists
+	mustFindDeploymentResourceByType(t, integrationTest, "localmod:tf:aws_s3_bucket")
+
+	_, err = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: &bucketName,
+		Key:    aws.String("test.txt"),
+	})
+	require.NoError(t, err, "failed to delete object in S3 bucket")
+
+	dnRes2 := integrationTest.Destroy(t,
+		optdestroy.ErrorProgressStreams(os.Stderr),
+		optdestroy.ProgressStreams(os.Stdout),
+	)
+	changes2 := *dnRes2.Summary.ResourceChanges
+	deleted := changes2["delete"]
+	// on the first failed destroy, we don't get back the ResourceChanges, but
+	// the first destroy should have destroyed 1 resource and then failed
+	// the second destroy will succeed and delete the rest
+	assert.Equal(t, created-1, deleted)
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular

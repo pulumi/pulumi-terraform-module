@@ -303,13 +303,11 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("Init failed: %w", err)
 	}
 
-	err = tf.Destroy(ctx, logger)
-	if err != nil {
-		return nil, fmt.Errorf("Delete failed: %w", err)
-	}
+	state, destroyErr := tf.Destroy(ctx, logger)
+	h.planStore.SetState(urn, state)
 
 	// Send back empty pb if no error.
-	return &emptypb.Empty{}, nil
+	return &emptypb.Empty{}, destroyErr
 }
 
 func (h *moduleStateHandler) Read(
