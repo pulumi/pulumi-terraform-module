@@ -304,6 +304,7 @@ func (h *moduleStateHandler) Delete(
 	}
 
 	state, destroyErr := tf.Destroy(ctx, logger)
+	// always set the state because child resources are waiting for it
 	h.planStore.SetState(urn, state)
 
 	// Send back empty pb if no error.
