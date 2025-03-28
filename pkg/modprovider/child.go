@@ -131,9 +131,7 @@ type childHandler struct {
 
 // The caller should call [SetPlan] and [SetState] when this information is available.
 func newChildHandler(planStore *planStore) *childHandler {
-	return &childHandler{
-		planStore: planStore,
-	}
+	return &childHandler{planStore: planStore}
 }
 
 func (h *childHandler) Check(
