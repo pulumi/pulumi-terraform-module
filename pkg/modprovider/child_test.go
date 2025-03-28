@@ -28,6 +28,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+const modUrn = "urn:pulumi:test::prog::randmod:index:Module::mymod"
+
 func TestChildResoruceTypeToken(t *testing.T) {
 	pkgName := testPackageName()
 	tok := childResourceTypeToken(pkgName, "aws_s3_bucket")
@@ -85,8 +87,6 @@ func TestChildResourceCreate(t *testing.T) {
 	ctx := context.Background()
 	h := newChildHandler(&planStore{})
 
-	modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
-
 	h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
 		address: "module.s3_bucket.aws_s3_bucket.this[0]",
 		name:    "this",
@@ -127,7 +127,6 @@ func TestChildResourceDelete(t *testing.T) {
 	t.Run("delete successful", func(t *testing.T) {
 		ctx := context.Background()
 		h := newChildHandler(&planStore{})
-		modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
 
 		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{}})
 		properties, err := structpb.NewStruct(map[string]any{
@@ -146,7 +145,6 @@ func TestChildResourceDelete(t *testing.T) {
 	t.Run("delete failed, partial state", func(t *testing.T) {
 		ctx := context.Background()
 		h := newChildHandler(&planStore{})
-		modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
 
 		// some other resource is still in the state, but not this resource
 		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
@@ -171,7 +169,6 @@ func TestChildResourceDelete(t *testing.T) {
 	t.Run("delete failed, nil state", func(t *testing.T) {
 		ctx := context.Background()
 		h := newChildHandler(&planStore{})
-		modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
 
 		// no state
 		h.planStore.SetState(urn.URN(modUrn), nil)
@@ -191,7 +188,6 @@ func TestChildResourceDelete(t *testing.T) {
 	t.Run("delete failed, nil state 2", func(t *testing.T) {
 		ctx := context.Background()
 		h := newChildHandler(&planStore{})
-		modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
 
 		// no state
 		h.planStore.SetState(urn.URN(modUrn), newNilState())
