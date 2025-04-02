@@ -307,7 +307,16 @@ func inferModuleSchema(
 			TypeSpec:    variableType,
 		}
 
+		if variable.Name == "identifier" {
+			fmt.Println(variable.Nullable)
+			fmt.Println(variable.Default.IsNull())
+			fmt.Println(variable.Required())
+			fmt.Println("HERE HERE HERE")
+			panic("at the disco")
+		}
+
 		if variable.Default.IsNull() && !variable.Nullable {
+			panic(variable.Name)
 			inferredModuleSchema.RequiredInputs = append(inferredModuleSchema.RequiredInputs, variableName)
 		}
 	}
