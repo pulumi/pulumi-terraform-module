@@ -257,7 +257,14 @@ func (h *childHandler) Diff(
 			// without displaying them.
 			resp.Replaces = []string{"__unknown"}
 		}
-	case tfsandbox.Create, tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
+	case tfsandbox.Create:
+		// This may happen if terraform refresh finds that the resource is gone. Terraform reports this as:
+		//
+		//     Drift detected (delete).
+		//
+		// And it plans to recreate the resource. We simply mark this as a replacement.
+		resp.Replaces = []string{"__drift"}
+	case tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
 		contract.Failf("Unexpected ChangeKind in Diff: %v", rplan.ChangeKind())
 		return nil, nil
 	default:

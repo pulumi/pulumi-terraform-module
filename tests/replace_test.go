@@ -171,7 +171,7 @@ func Test_Replace_trigger_create_delete(t *testing.T) {
 		apitype.OpType("update"):  1,
 	}).Equal(t, diffResult.ChangeSummary)
 
-	// Although it is unclear which Pulumi-modelled input caused a replacement, the plan is still a replace. That
+	// Although it is unclear which Pulumi-modeled input caused a replacement, the plan is still a replace. That
 	// is the key point here.
 
 	delta := runPreviewWithPlanDiff(t, pt)
@@ -210,10 +210,10 @@ func Test_Replace_trigger_create_delete(t *testing.T) {
 	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
 }
 
-// Terraform performs and implicit refresh during apply, and sometimes it finds changes. What happens if those changes
-// are pertaining to ForceNew properties.
-func Test_Replace_ImplicitRefresh(t *testing.T) {
-	t.Skip("TODO Unexpected DiffKind panic")
+// Terraform performs an implicit refresh during apply, and sometimes it finds that the resource is gone. Terraform
+// plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
+// approximately renders this as a replacement, where the deletion of the resource is a no-op.
+func Test_Replace_drift_deleted(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacerefreshtestmod"))
@@ -236,18 +236,50 @@ func Test_Replace_ImplicitRefresh(t *testing.T) {
 	pt.SetConfig(t, "pwd", pwd)
 	pt.Up(t)
 
+	// Check that a file got provisioned as expected.
 	filePath := filepath.Join(pwd, "hello.txt")
-
 	bytes, err := os.ReadFile(filePath)
 	require.NoError(t, err)
-
 	require.Equal(t, "Hello, World!", string(bytes))
 
-	// Now change the pwd/hello.txt content
-	err = os.WriteFile(filePath, []byte("Not so fast"), 0o500)
+	// Now remove the file.
+	err = os.Remove(filePath)
 	require.NoError(t, err)
 
-	// Preview is supposed to pick up on the changes.
+	// Terraform will detect drift and try to recreate. Pulumi currently would show this as a replacement with
+	// several properties changing into unknowns. This is because all properties are projected as Pulumi inputs.
 	diffResult := pt.Preview(t, optpreview.Diff())
 	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
+	autogold.Expect(map[apitype.OpType]int{
+		apitype.OpType("replace"): 1,
+		apitype.OpType("same"):    3,
+	}).Equal(t, diffResult.ChangeSummary)
+
+	// In this situation delete-replaced is unnecessary but will be a no-op in this provider.
+	delta := runPreviewWithPlanDiff(t, pt)
+	autogold.Expect(map[string]interface{}{"module.rmod.local_file.hello": map[string]interface{}{
+		"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
+			"content_base64sha256": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"content_base64sha512": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"content_md5":          "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"content_sha1":         "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"content_sha256":       "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"content_sha512":       "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"id":                   "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		}},
+		"steps": []apitype.OpType{
+			apitype.OpType("create-replacement"),
+			apitype.OpType("replace"),
+			apitype.OpType("delete-replaced"),
+		},
+	}}).Equal(t, delta)
+
+	replaceResult := pt.Up(t)
+
+	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+
+	// Check that a file is back to being provisioned as expected.
+	filePath = filepath.Join(pwd, "hello.txt")
+	bytes, err = os.ReadFile(filePath)
+	require.NoError(t, err)
 }
