@@ -29,7 +29,9 @@ import (
 //
 // TODO discuss replacements in the context of pulumi refresh, and also in the context of implicit Terraform refresh
 // during pulumi up.
-func Test_Replace(t *testing.T) {
+//
+// The first test checks the most common case.
+func Test_Replace_ForceNew_delete_create(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacetestmod"))
@@ -70,6 +72,61 @@ func Test_Replace(t *testing.T) {
 				apitype.OpType("delete-replaced"),
 				apitype.OpType("replace"),
 				apitype.OpType("create-replacement"),
+			},
+		},
+		"replacetestmod-state": map[string]interface{}{
+			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
+			"steps": []apitype.OpType{apitype.OpType("update")},
+		},
+	}).Equal(t, delta)
+
+	replaceResult := pt.Up(t)
+
+	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+}
+
+// Now check that delete-then-create plans surface as such.
+func Test_Replace_ForceNew_create_delete(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacecbdtestmod"))
+	require.NoError(t, err)
+
+	randModProg := filepath.Join("testdata", "programs", "ts", "replacetest-program")
+
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
+
+	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt.CopyToTempDir(t)
+
+	packageName := "replacetestmod"
+
+	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
+
+	pt.SetConfig(t, "keeper", "alpha")
+	pt.Up(t)
+	pt.SetConfig(t, "keeper", "beta")
+
+	diffResult := pt.Preview(t, optpreview.Diff())
+	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
+	autogold.Expect(map[apitype.OpType]int{
+		apitype.OpType("replace"): 1,
+		apitype.OpType("same"):    2,
+		apitype.OpType("update"):  1,
+	}).Equal(t, diffResult.ChangeSummary)
+
+	delta := runPreviewWithPlanDiff(t, pt)
+	autogold.Expect(map[string]interface{}{
+		"module.replacetestmod.random_integer.r": map[string]interface{}{
+			"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
+				"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"keepers": map[string]interface{}{"keeper": "beta"},
+				"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			}},
+			"steps": []apitype.OpType{
+				apitype.OpType("create-replacement"),
+				apitype.OpType("replace"),
+				apitype.OpType("delete-replaced"),
 			},
 		},
 		"replacetestmod-state": map[string]interface{}{
