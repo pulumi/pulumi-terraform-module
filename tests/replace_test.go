@@ -6,11 +6,16 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/stretchr/testify/require"
+)
+
+const (
+	replacetestmod = "replacetestmod"
 )
 
 // There are fundamental differences between Terraform and Pulumi as to resource replacement plans.
@@ -35,7 +40,7 @@ import (
 func Test_Replace_ForceNew_delete_create(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacetestmod"))
+	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", replacetestmod))
 	require.NoError(t, err)
 
 	randModProg := filepath.Join("testdata", "programs", "ts", "replacetest-program")
@@ -45,7 +50,7 @@ func Test_Replace_ForceNew_delete_create(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "replacetestmod"
+	packageName := replacetestmod
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
 
@@ -76,6 +81,7 @@ func Test_Replace_ForceNew_delete_create(t *testing.T) {
 			},
 		},
 		"replacetestmod-state": map[string]interface{}{
+			//nolint:lll
 			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
 			"steps": []apitype.OpType{apitype.OpType("update")},
 		},
@@ -100,7 +106,7 @@ func Test_Replace_ForceNew_create_delete(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "replacetestmod"
+	packageName := replacetestmod
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
 
@@ -131,6 +137,7 @@ func Test_Replace_ForceNew_create_delete(t *testing.T) {
 			},
 		},
 		"replacetestmod-state": map[string]interface{}{
+			//nolint:lll
 			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
 			"steps": []apitype.OpType{apitype.OpType("update")},
 		},
@@ -155,7 +162,7 @@ func Test_Replace_trigger_create_delete(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "replacetestmod"
+	packageName := replacetestmod
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
 
@@ -200,6 +207,7 @@ func Test_Replace_trigger_create_delete(t *testing.T) {
 			},
 		},
 		"replacetestmod-state": map[string]interface{}{
+			//nolint:lll
 			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
 			"steps": []apitype.OpType{apitype.OpType("update")},
 		},
@@ -282,4 +290,5 @@ func Test_Replace_drift_deleted(t *testing.T) {
 	filePath = filepath.Join(pwd, "hello.txt")
 	bytes, err = os.ReadFile(filePath)
 	require.NoError(t, err)
+	require.Equal(t, "Hello, World!", string(bytes))
 }
