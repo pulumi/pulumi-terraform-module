@@ -1,4 +1,4 @@
-name: ts-randmod-program
+name: ts-replace-refresh-test-program
 runtime:
   name: nodejs
   options:

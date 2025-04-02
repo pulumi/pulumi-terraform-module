@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -207,4 +208,46 @@ func Test_Replace_trigger_create_delete(t *testing.T) {
 	replaceResult := pt.Up(t)
 
 	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+}
+
+// Terraform performs and implicit refresh during apply, and sometimes it finds changes. What happens if those changes
+// are pertaining to ForceNew properties.
+func Test_Replace_ImplicitRefresh(t *testing.T) {
+	t.Skip("TODO Unexpected DiffKind panic")
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacerefreshtestmod"))
+	require.NoError(t, err)
+
+	randModProg := filepath.Join("testdata", "programs", "ts", "replace-refresh-test-program")
+
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
+
+	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt.CopyToTempDir(t)
+
+	packageName := "rmod"
+
+	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
+
+	pwd, err := filepath.Abs(pt.WorkingDir())
+	require.NoError(t, err)
+
+	pt.SetConfig(t, "pwd", pwd)
+	pt.Up(t)
+
+	filePath := filepath.Join(pwd, "hello.txt")
+
+	bytes, err := os.ReadFile(filePath)
+	require.NoError(t, err)
+
+	require.Equal(t, "Hello, World!", string(bytes))
+
+	// Now change the pwd/hello.txt content
+	err = os.WriteFile(filePath, []byte("Not so fast"), 0o500)
+	require.NoError(t, err)
+
+	// Preview is supposed to pick up on the changes.
+	diffResult := pt.Preview(t, optpreview.Diff())
+	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
 }
