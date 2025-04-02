@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	replacetestmod = "replacetestmod"
+	// Shared module for testing replacements.
+	replacemod = "replacemod"
 )
 
 // There are fundamental differences between Terraform and Pulumi as to resource replacement plans.
@@ -33,26 +34,20 @@ const (
 // 1. delete-then-create (default mode in Terraform, but see deleteBeforeCreate option)
 // 2. create-then-delete (default mode in Pulumi, achieved by create_before_destroy=true in Terraform)
 //
-// TODO discuss replacements in the context of pulumi refresh, and also in the context of implicit Terraform refresh
-// during pulumi up.
-//
 // The first test checks the most common case.
-func Test_Replace_ForceNew_delete_create(t *testing.T) {
+func Test_replace_forcenew_delete_create(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", replacetestmod))
+	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", replacemod))
 	require.NoError(t, err)
 
-	randModProg := filepath.Join("testdata", "programs", "ts", "replacetest-program")
-
+	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := replacetestmod
-
-	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
+	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
 
 	pt.SetConfig(t, "keeper", "alpha")
 	pt.Up(t)
@@ -93,22 +88,19 @@ func Test_Replace_ForceNew_delete_create(t *testing.T) {
 }
 
 // Now check that delete-then-create plans surface as such.
-func Test_Replace_ForceNew_create_delete(t *testing.T) {
+func Test_replace_forcenew_create_delete(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacecbdtestmod"))
+	replacemodPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace2mod"))
 	require.NoError(t, err)
 
-	randModProg := filepath.Join("testdata", "programs", "ts", "replacetest-program")
-
+	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := replacetestmod
-
-	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
+	pulumiPackageAdd(t, pt, localProviderBinPath, replacemodPath, "mod")
 
 	pt.SetConfig(t, "keeper", "alpha")
 	pt.Up(t)
@@ -148,23 +140,21 @@ func Test_Replace_ForceNew_create_delete(t *testing.T) {
 	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
 }
 
-// Now check resources that are replaced with a replace_triggered_by trigger.
-func Test_Replace_trigger_create_delete(t *testing.T) {
+// Now check resources that are replaced with a replace_triggered_by trigger. It uses the default TF delete_create
+// order. There is no test for a create_delete order as it should work fine for triggers as well as normal replaces.
+func Test_replace_trigger_delete_create(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacetriggertestmod"))
+	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace3mod"))
 	require.NoError(t, err)
 
-	randModProg := filepath.Join("testdata", "programs", "ts", "replacetest-program")
-
+	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := replacetestmod
-
-	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
+	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
 
 	pt.SetConfig(t, "keeper", "alpha")
 	pt.Up(t)
@@ -221,10 +211,10 @@ func Test_Replace_trigger_create_delete(t *testing.T) {
 // Terraform performs an implicit refresh during apply, and sometimes it finds that the resource is gone. Terraform
 // plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
 // approximately renders this as a replacement, where the deletion of the resource is a no-op.
-func Test_Replace_drift_deleted(t *testing.T) {
+func Test_replace_drift_deleted(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	replaceTestMod, err := filepath.Abs(filepath.Join("testdata", "modules", "replacerefreshtestmod"))
+	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace4mod"))
 	require.NoError(t, err)
 
 	randModProg := filepath.Join("testdata", "programs", "ts", "replace-refresh-test-program")
@@ -234,9 +224,7 @@ func Test_Replace_drift_deleted(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	packageName := "rmod"
-
-	pulumiPackageAdd(t, pt, localProviderBinPath, replaceTestMod, packageName)
+	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "rmod")
 
 	pwd, err := filepath.Abs(pt.WorkingDir())
 	require.NoError(t, err)
