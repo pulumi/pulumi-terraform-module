@@ -129,7 +129,7 @@ func TestChildResourceCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	createdProperties := resp.Properties.AsMap()
-	assert.Equal(t, 0, len(createdProperties))
+	assert.Equal(t, 1, len(createdProperties))
 	assert.NotEmpty(t, resp.Id)
 }
 
