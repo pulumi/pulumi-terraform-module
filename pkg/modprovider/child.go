@@ -66,7 +66,7 @@ func registerChildResource(
 	contract.Assertf(ctx != nil, "ctx must not be nil")
 	contract.Assertf(sop != nil, "sop must not be nil")
 	var resource childResource
-	inputs := childResourceInputs(modUrn, sop.Address(), sop.PlannedValues())
+	inputs := childResourceInputs(modUrn, sop)
 	t := childResourceTypeToken(pkgName, sop.Type())
 	name := childResourceName(sop)
 	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, inputs)
@@ -107,18 +107,20 @@ func childResourceID(resource Resource) string {
 	return childResourceName(resource)
 }
 
-// Model outputs as empty in Pulumi since they are not used at present.
-func childResourceOutputs() resource.PropertyMap {
-	return resource.PropertyMap{}
+// Model outputs as a direct projection of state values.
+func childResourceOutputs(rstate ResourceState) resource.PropertyMap {
+	return rstate.AttributeValues()
+}
+
+// In preview we approximate the real values by planned values.
+func childResourcePreviewOutputs(rplan ResourcePlan) resource.PropertyMap {
+	return rplan.PlannedValues()
 }
 
 // Append address special property to the raw inputs.
-func childResourceInputs(
-	modUrn resource.URN,
-	addr ResourceAddress,
-	inputs resource.PropertyMap,
-) resource.PropertyMap {
-	m := inputs.Copy()
+func childResourceInputs(modUrn resource.URN, rp ResourcePlan) resource.PropertyMap {
+	addr := rp.Address()
+	m := rp.PlannedValues().Copy()
 	m[childResourceAddressPropName] = resource.NewStringProperty(string(addr))
 	m[moduleURNPropName] = resource.NewStringProperty(string(modUrn))
 	return m
@@ -252,27 +254,40 @@ func (h *childHandler) Create(
 	_ context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
+	modUrn, addr := h.mustParseAddress(req.GetProperties())
+
 	if req.Preview {
+		rplan := h.planStore.MustFindResourcePlan(modUrn, addr)
 		return &pulumirpc.CreateResponse{
-			Properties: h.outputsStruct(childResourceOutputs()),
+			Properties: h.outputsStruct(childResourcePreviewOutputs(rplan)),
 		}, nil
 	}
 
-	modUrn, addr := h.mustParseAddress(req.GetProperties())
 	rstate := h.planStore.MustFindResourceState(modUrn, addr)
 
 	return &pulumirpc.CreateResponse{
 		Id:         childResourceID(rstate),
-		Properties: h.outputsStruct(childResourceOutputs()),
+		Properties: h.outputsStruct(childResourceOutputs(rstate)),
 	}, nil
 }
 
 func (h *childHandler) Update(
 	_ context.Context,
-	_ *pulumirpc.UpdateRequest,
+	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
+	modUrn, addr := h.mustParseAddress(req.GetNews())
+
+	if req.Preview {
+		rplan := h.planStore.MustFindResourcePlan(modUrn, addr)
+		return &pulumirpc.UpdateResponse{
+			Properties: h.outputsStruct(childResourcePreviewOutputs(rplan)),
+		}, nil
+	}
+
+	rstate := h.planStore.MustFindResourceState(modUrn, addr)
+
 	return &pulumirpc.UpdateResponse{
-		Properties: h.outputsStruct(childResourceOutputs()),
+		Properties: h.outputsStruct(childResourceOutputs(rstate)),
 	}, nil
 }
 
@@ -297,13 +312,11 @@ func (h *childHandler) Read(
 		// Refresh has removed the resource to reflect that it can no longer be found.
 		return &pulumirpc.ReadResponse{Id: ""}, nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("Error during child resource Read: %w", err)
-	}
-	inputs := childResourceInputs(modUrn, rstate.Address(), rstate.AttributeValues())
+	props := childResourceOutputs(rstate)
 	return &pulumirpc.ReadResponse{
-		Id:         childResourceID(rstate),
-		Inputs:     h.outputsStruct(inputs),
-		Properties: h.outputsStruct(childResourceOutputs()),
+		Id: childResourceID(rstate),
+		// Assume inputs and outputs are the same here.
+		Inputs:     h.outputsStruct(props),
+		Properties: h.outputsStruct(props),
 	}, nil
 }
