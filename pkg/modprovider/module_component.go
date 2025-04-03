@@ -166,8 +166,6 @@ func newModuleComponentResource(
 		return nil, nil, nil, fmt.Errorf("Init failed: %w", err)
 	}
 
-	var childResources []*childResource
-
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
 	plan, err := tf.Plan(ctx.Context(), logger)
@@ -177,42 +175,19 @@ func newModuleComponentResource(
 
 	planStore.SetPlan(urn, plan)
 
+	childResources, err := registerChildResources(ctx, plan, pkgName, providerSelfRef, packageRef, &component, urn)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
-
 		// Make sure child resources can read the state, even though it is not changed.
 		stateStore.SetNewState(urn, state)
-
-		var errs []error
-
-		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			resourceOptions := []pulumi.ResourceOption{
-				pulumi.Parent(&component),
-			}
-
-			if providerSelfRef != nil {
-				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
-			}
-
-			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
-				packageRef,
-				resourceOptions...,
-			)
-
-			errs = append(errs, err)
-			if err == nil {
-				childResources = append(childResources, cr)
-			}
-		})
-		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
-		}
 		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
 		tfState, applyErr = tf.Apply(ctx.Context(), logger)
-
 		planStore.SetState(urn, tfState)
 
 		rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx.Context())
@@ -224,31 +199,6 @@ func newModuleComponentResource(
 
 		// Make sure child resources can read updated state.
 		stateStore.SetNewState(urn, state)
-
-		var errs []error
-		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			resourceOptions := []pulumi.ResourceOption{
-				pulumi.Parent(&component),
-			}
-
-			if providerSelfRef != nil {
-				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
-			}
-
-			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
-				packageRef,
-				resourceOptions...)
-
-			errs = append(errs, err)
-			if err == nil {
-				childResources = append(childResources, cr)
-			}
-		})
-		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
-		}
-
 		moduleOutputs = tfState.Outputs()
 	}
 
@@ -269,6 +219,43 @@ func newModuleComponentResource(
 	}
 
 	return &urn, modStateResource, marshalledOutputs, nil
+}
+
+func registerChildResources(
+	ctx *pulumi.Context,
+	plan *tfsandbox.Plan,
+	pkgName packageName,
+	providerSelfRef pulumi.ProviderResource,
+	packageRef string,
+	component *ModuleComponentResource,
+	componentURN urn.URN,
+) ([]*childResource, error) {
+	var childResources []*childResource
+
+	var errs []error
+	plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
+		resourceOptions := []pulumi.ResourceOption{
+			pulumi.Parent(component),
+		}
+
+		if providerSelfRef != nil {
+			resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
+		}
+
+		cr, err := registerChildResource(ctx, componentURN, pkgName,
+			rp,
+			packageRef,
+			resourceOptions...)
+
+		errs = append(errs, err)
+		if err == nil {
+			childResources = append(childResources, cr)
+		}
+	})
+	if err := errors.Join(errs...); err != nil {
+		return nil, fmt.Errorf("Child resource init failed: %w", err)
+	}
+	return childResources, nil
 }
 
 func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {

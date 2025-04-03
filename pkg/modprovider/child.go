@@ -55,18 +55,18 @@ func (cr *childResource) Await(ctx context.Context) {
 	contract.AssertNoErrorf(err, "URN should not fail")
 }
 
-func newChildResource(
+func registerChildResource(
 	ctx *pulumi.Context,
 	modUrn resource.URN,
 	pkgName packageName,
-	sop ResourceStateOrPlan,
+	sop ResourcePlan,
 	packageRef string,
 	opts ...pulumi.ResourceOption,
 ) (*childResource, error) {
 	contract.Assertf(ctx != nil, "ctx must not be nil")
 	contract.Assertf(sop != nil, "sop must not be nil")
 	var resource childResource
-	inputs := childResourceInputs(modUrn, sop.Address(), sop.Values())
+	inputs := childResourceInputs(modUrn, sop.Address(), sop.PlannedValues())
 	t := childResourceTypeToken(pkgName, sop.Type())
 	name := childResourceName(sop)
 	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, inputs)
