@@ -217,23 +217,87 @@ func (h *childHandler) Diff(
 		resp.Changes = pulumirpc.DiffResponse_DIFF_NONE
 	case tfsandbox.Update:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
+
 		// TODO[pulumi/pulumi-terraform-module#100] populate resp.Diffs
+		//
+		// Populating resp.Diffs does not seem to hurt, it will be made obsolete though by implementing
+		// DetailedDiff.
+		changed, err := h.computeChangedKeys(req)
+		if err != nil {
+			return nil, err
+		}
+		resp.Diffs = propertyKeysAsStrings(changed)
+
 	case tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
 		resp.Changes = pulumirpc.DiffResponse_DIFF_SOME
+
+		// As discussed in https://github.com/pulumi/pulumi/issues/19103 getting this right does not yet affect
+		// the visual diff during pulumi preview, it only affects the ordering of Delete, Create calls which is
+		// immaterial here, and the sequencing of "deleting original", "creating replacement" messages during
+		// pulumi up. Perhaps a little forward-looking but it is nice to get this right.
 		if rplan.ChangeKind() == tfsandbox.ReplaceDestroyBeforeCreate {
 			resp.DeleteBeforeReplace = true
 		}
-		// TODO[pulumi/pulumi-terraform-module#100] populate replaces
-		resp.Replaces = []string{"todo"}
-	case tfsandbox.Create, tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
+
+		// The DiffResponse needs to be marked as a replace diff, either by having entries under DetailedDiff
+		// or having at least one entry under Replaces.
+		//
+		// TODO[pulumi/pulumi-terraform-module#100] detailed diffs is still left for later.
+		//
+		// For now just mark all changed keys as Pulumi understands them as Replaces.
+		changed, err := h.computeChangedKeys(req)
+		if err != nil {
+			return nil, err
+		}
+		if len(changed) > 0 {
+			resp.Replaces = propertyKeysAsStrings(changed)
+		} else {
+			// If Pulumi thinks there are no changed keys, this is still a replace and must be marked as
+			// such lest it renders as an update. Pulumi seems to tolerate non-existent properties here
+			// without displaying them.
+			resp.Replaces = []string{"__unknown"}
+		}
+	case tfsandbox.Create:
+		// This may happen if terraform refresh finds that the resource is gone. Terraform reports this as:
+		//
+		//     Drift detected (delete).
+		//
+		// And it plans to recreate the resource. We simply mark this as a replacement.
+		resp.Replaces = []string{"__drift"}
+	case tfsandbox.Read, tfsandbox.Delete, tfsandbox.Forget:
 		contract.Failf("Unexpected ChangeKind in Diff: %v", rplan.ChangeKind())
 		return nil, nil
 	default:
 		contract.Failf("Unknown ChangeKind in Diff: %v", rplan.ChangeKind())
 		return nil, nil
 	}
-	// TODO[pulumi/pulumi-terraform-module#100] populate DetailedDiff
 	return resp, nil
+}
+
+// Helper to compute top-level changed keys between old and new Pulumi inputs.
+func (*childHandler) computeChangedKeys(req *pulumirpc.DiffRequest) ([]resource.PropertyKey, error) {
+	mopts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+
+	oldInputs, err := plugin.UnmarshalProperties(req.OldInputs, mopts)
+	if err != nil {
+		return nil, err
+	}
+
+	newInputs, err := plugin.UnmarshalProperties(req.News, mopts)
+	if err != nil {
+		return nil, err
+	}
+
+	if d := newInputs.DiffIncludeUnknowns(oldInputs); d != nil {
+		return d.ChangedKeys(), nil
+	}
+
+	return nil, nil
 }
 
 func (h *childHandler) outputsStruct(pm resource.PropertyMap) *structpb.Struct {
@@ -306,4 +370,12 @@ func (h *childHandler) Read(
 		Inputs:     h.outputsStruct(inputs),
 		Properties: h.outputsStruct(childResourceOutputs()),
 	}, nil
+}
+
+func propertyKeysAsStrings(keys []resource.PropertyKey) []string {
+	var xs []string
+	for _, x := range keys {
+		xs = append(xs, string(x))
+	}
+	return xs
 }

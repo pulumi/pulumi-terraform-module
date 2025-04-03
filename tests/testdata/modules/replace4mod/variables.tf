@@ -1,0 +1,3 @@
+variable "pwd" {
+  type = string
+}

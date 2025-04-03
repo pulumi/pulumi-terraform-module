@@ -1,0 +1,3 @@
+variable "keeper" {
+  type = string
+}

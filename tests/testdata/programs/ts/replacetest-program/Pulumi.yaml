@@ -1,0 +1,5 @@
+name: ts-replacetest-program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm

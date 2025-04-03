@@ -1,0 +1,5 @@
+name: ts-replace-refresh-test-program
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
