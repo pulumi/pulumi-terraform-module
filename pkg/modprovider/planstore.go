@@ -192,12 +192,3 @@ func (s *planStore) MustFindResourcePlan(
 	contract.AssertNoErrorf(err, "Unexpected failure in FindResourcePlan: %v", err)
 	return result
 }
-
-func (s *planStore) MustFindResourceState(
-	modUrn urn.URN,
-	addr ResourceAddress,
-) ResourceState {
-	result, err := s.FindResourceState(modUrn, addr)
-	contract.AssertNoErrorf(err, "Unexpected failure in FindResourceState: %v", err)
-	return result
-}

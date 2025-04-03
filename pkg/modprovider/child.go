@@ -263,7 +263,11 @@ func (h *childHandler) Create(
 		}, nil
 	}
 
-	rstate := h.planStore.MustFindResourceState(modUrn, addr)
+	rstate, err := h.planStore.FindResourceState(modUrn, addr)
+	if err != nil {
+		// If a resource was planned but cannot be found in the state, it may have failed to provision.
+		return nil, fmt.Errorf("Create failed")
+	}
 
 	return &pulumirpc.CreateResponse{
 		Id:         childResourceID(rstate),
@@ -284,7 +288,11 @@ func (h *childHandler) Update(
 		}, nil
 	}
 
-	rstate := h.planStore.MustFindResourceState(modUrn, addr)
+	rstate, err := h.planStore.FindResourceState(modUrn, addr)
+	if err != nil {
+		// If a resource was planned but cannot be found in the state, it may have failed to update.
+		return nil, fmt.Errorf("Update failed")
+	}
 
 	return &pulumirpc.UpdateResponse{
 		Properties: h.outputsStruct(childResourceOutputs(rstate)),
