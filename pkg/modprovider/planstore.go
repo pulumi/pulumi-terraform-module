@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -101,9 +102,20 @@ type stateEntry struct {
 	state     State
 }
 
+func isNil(i any) bool {
+	if i == nil {
+		return true
+	}
+	val := reflect.ValueOf(i)
+	return val.Kind() == reflect.Ptr && val.IsNil()
+}
+
 func (e *stateEntry) Await() State {
 	if waitTimeout == nil {
 		e.waitGroup.Wait()
+		if isNil(e.state) {
+			return nil
+		}
 		return e.state
 	}
 	ch := make(chan bool)
@@ -115,6 +127,9 @@ func (e *stateEntry) Await() State {
 
 	select {
 	case <-ch:
+		if isNil(e.state) {
+			return nil
+		}
 		return e.state
 	case <-time.After(*waitTimeout):
 		panic("Timeout waiting on planEntry")
@@ -154,6 +169,24 @@ type unknownAddressError struct {
 
 func (e unknownAddressError) Error() string {
 	return fmt.Sprintf("unknown address: %q", e.addr)
+}
+
+// IsResourceDeleted returns true if the resource is deleted (not in the state).
+//
+// If the state is nil, it means something went wrong with the state after
+// the tofu destroy operation. In that case, the ModuleState resource will
+// not be deleted and we should keep all the child resources as well so we can
+// try again (essentially treat the operation as a no-op).
+func (s *planStore) IsResourceDeleted(
+	modUrn urn.URN,
+	addr ResourceAddress,
+) bool {
+	modState := s.getOrCreateStateEntry(modUrn).Await()
+	if modState == nil {
+		return false
+	}
+	_, ok := modState.FindResourceStateOrPlan(addr)
+	return !ok
 }
 
 func (s *planStore) FindResourceState(
