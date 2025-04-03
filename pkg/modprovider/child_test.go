@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -63,11 +64,29 @@ func TestChildResourceCreatePreview(t *testing.T) {
 	ctx := context.Background()
 	h := newChildHandler(&planStore{})
 
+	modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
+	addr := "module.s3_bucket.aws_s3_bucket.this[0]"
+
 	properties, err := structpb.NewStruct(map[string]any{
-		childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+		childResourceAddressPropName: addr,
+		moduleURNPropName:            modUrn,
 		"force_destroy":              true,
 	})
 	require.NoError(t, err)
+
+	h.planStore.SetPlan(urn.URN(modUrn), &testPlan{
+		byAddress: map[tfsandbox.ResourceAddress]testResourcePlan{
+			tfsandbox.ResourceAddress(addr): testResourcePlan{
+				resourceAddress: tfsandbox.ResourceAddress(addr),
+				changeKind:      tfsandbox.Create,
+				name:            "this",
+				plannedValues: resource.PropertyMap{
+					"force_destroy": resource.NewBoolProperty(true),
+				},
+				resType: "aws_s3_bucket",
+			},
+		},
+	})
 
 	resp, err := h.Create(ctx, &pulumirpc.CreateRequest{
 		Preview:    true,
@@ -77,7 +96,7 @@ func TestChildResourceCreatePreview(t *testing.T) {
 	require.NoError(t, err)
 
 	createdProperties := resp.Properties.AsMap()
-	assert.Equal(t, 0, len(createdProperties))
+	assert.Equal(t, 1, len(createdProperties))
 	assert.Equal(t, "", resp.Id)
 }
 
