@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -38,11 +39,42 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+type ModuleSchemaOverride struct {
+	PartialSchema  *InferredModuleSchema `json:"partialSchema"`
+	MinimumVersion *string               `json:"minimumVersion,omitempty"`
+	MaximumVersion string                `json:"maximumVersion"`
+}
+
+//go:embed assets/module_schema_overrides.json
+var moduleSchemaOverrideData []byte
+
+func parseModuleSchemaOverrides() map[TFModuleSource]ModuleSchemaOverride {
+	overrides := map[TFModuleSource]ModuleSchemaOverride{}
+	if err := json.Unmarshal(moduleSchemaOverrideData, &overrides); err != nil {
+		panic(fmt.Sprintf("failed to unmarshal module schema overrides: %v", err))
+	}
+
+	for source, data := range overrides {
+		if data.MinimumVersion != nil && !isValidVersion(*data.MinimumVersion) {
+			panic(fmt.Sprintf("invalid minimum version %s for source %s",
+				*data.MinimumVersion,
+				source))
+		}
+		if !isValidVersion(data.MaximumVersion) {
+			panic(fmt.Sprintf("invalid maximum version %s for source %s",
+				data.MaximumVersion,
+				source))
+		}
+	}
+	return overrides
+}
+
 type InferredModuleSchema struct {
-	Inputs          map[string]schema.PropertySpec
-	Outputs         map[string]schema.PropertySpec
-	SupportingTypes map[string]schema.ComplexTypeSpec
-	RequiredInputs  []string
+	Inputs          map[string]schema.PropertySpec    `json:"inputs"`
+	Outputs         map[string]schema.PropertySpec    `json:"outputs"`
+	SupportingTypes map[string]schema.ComplexTypeSpec `json:"supportingTypes"`
+	RequiredInputs  []string                          `json:"requiredInputs"`
+	RequiredOutputs []string                          `json:"requiredOutputs"`
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
@@ -291,6 +323,57 @@ func InferModuleSchema(
 	}
 
 	return inferredModuleSchema, nil
+}
+
+func applyModuleSchemaOverrides(
+	moduleSource TFModuleSource,
+	moduleVersion TFModuleVersion,
+	inferredSchema *InferredModuleSchema,
+	overrides map[TFModuleSource]ModuleSchemaOverride,
+) *InferredModuleSchema {
+	for source, data := range overrides {
+		if source != moduleSource {
+			continue
+		}
+
+		modVersion, err := version.NewVersion(string(moduleVersion))
+		if err != nil {
+			continue
+		}
+
+		maximumVersion := version.Must(version.NewVersion(data.MaximumVersion))
+
+		if data.MinimumVersion != nil {
+			minimumVersion := version.Must(version.NewVersion(*data.MinimumVersion))
+			if modVersion.LessThan(minimumVersion) {
+				continue
+			}
+		}
+
+		if modVersion.GreaterThan(maximumVersion) {
+			continue
+		}
+
+		if data.PartialSchema == nil {
+			continue
+		}
+
+		for _, requiredOutput := range data.PartialSchema.RequiredOutputs {
+			alreadyExists := false
+			for _, existingRequiredOutput := range inferredSchema.RequiredOutputs {
+				if existingRequiredOutput == requiredOutput {
+					alreadyExists = true
+					break
+				}
+			}
+
+			if !alreadyExists {
+				inferredSchema.RequiredOutputs = append(inferredSchema.RequiredOutputs, requiredOutput)
+			}
+		}
+	}
+
+	return inferredSchema
 }
 
 func extractModuleContent(

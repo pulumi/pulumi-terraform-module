@@ -53,9 +53,11 @@ func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*
 			mainResourceToken: {
 				IsComponent:     true,
 				InputProperties: inferredModule.Inputs,
+				RequiredInputs:  inferredModule.RequiredInputs,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: inferredModule.Outputs,
+					Required:   inferredModule.RequiredOutputs,
 				},
 			},
 		},

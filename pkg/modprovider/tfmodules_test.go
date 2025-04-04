@@ -134,6 +134,27 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 
 }
 
+func TestParsingModuleSchemaOverrides(t *testing.T) {
+	overrides := parseModuleSchemaOverrides()
+	assert.NotNil(t, overrides, "overrides is nil")
+}
+
+func TestApplyModuleOverrides(t *testing.T) {
+	ctx := context.Background()
+	packageName := packageName("terraform-aws-modules")
+	version := TFModuleVersion("5.18.1")
+	source := TFModuleSource("terraform-aws-modules/vpc/aws")
+	awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version)
+	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
+	// We cannot infer which outputs are required or not so everything is optional, initially.
+	assert.Empty(t, awsVpcSchema.RequiredOutputs, "required outputs is empty")
+	moduleOverrides := parseModuleSchemaOverrides()
+	overridenSchema := applyModuleSchemaOverrides(source, version, awsVpcSchema, moduleOverrides)
+	assert.NotNil(t, overridenSchema, "overriden module schema is nil")
+	assert.Contains(t, overridenSchema.RequiredOutputs, "vpc_id", "vpc_id should be required")
+}
+
 func TestResolveModuleSources(t *testing.T) {
 	t.Run("local path-based module source", func(t *testing.T) {
 		ctx := context.Background()
