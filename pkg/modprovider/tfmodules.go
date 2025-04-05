@@ -70,11 +70,11 @@ func parseModuleSchemaOverrides() map[TFModuleSource]ModuleSchemaOverride {
 }
 
 type InferredModuleSchema struct {
-	Inputs          map[string]schema.PropertySpec    `json:"inputs"`
-	Outputs         map[string]schema.PropertySpec    `json:"outputs"`
-	SupportingTypes map[string]schema.ComplexTypeSpec `json:"supportingTypes"`
-	RequiredInputs  []string                          `json:"requiredInputs"`
-	RequiredOutputs []string                          `json:"requiredOutputs"`
+	Inputs          map[string]*schema.PropertySpec    `json:"inputs"`
+	Outputs         map[string]*schema.PropertySpec    `json:"outputs"`
+	SupportingTypes map[string]*schema.ComplexTypeSpec `json:"supportingTypes"`
+	RequiredInputs  []string                           `json:"requiredInputs"`
+	RequiredOutputs []string                           `json:"requiredOutputs"`
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
@@ -120,7 +120,7 @@ func convertType(
 	terraformType cty.Type,
 	typeName string,
 	packageName packageName,
-	supportingTypes map[string]schema.ComplexTypeSpec,
+	supportingTypes map[string]*schema.ComplexTypeSpec,
 ) schema.TypeSpec {
 	if terraformType.Equals(cty.String) {
 		return stringType
@@ -153,7 +153,7 @@ func convertType(
 			}
 		}
 
-		complexType := schema.ComplexTypeSpec{
+		complexType := &schema.ComplexTypeSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type:       "object",
 				Properties: propertiesMap,
@@ -287,15 +287,15 @@ func InferModuleSchema(
 	}
 
 	inferredModuleSchema := &InferredModuleSchema{
-		Inputs:          make(map[string]schema.PropertySpec),
-		Outputs:         make(map[string]schema.PropertySpec),
+		Inputs:          make(map[string]*schema.PropertySpec),
+		Outputs:         make(map[string]*schema.PropertySpec),
 		RequiredInputs:  []string{},
-		SupportingTypes: map[string]schema.ComplexTypeSpec{},
+		SupportingTypes: map[string]*schema.ComplexTypeSpec{},
 	}
 
 	for variableName, variable := range module.Variables {
 		variableType := convertType(variable.Type, variableName, packageName, inferredModuleSchema.SupportingTypes)
-		inferredModuleSchema.Inputs[variableName] = schema.PropertySpec{
+		inferredModuleSchema.Inputs[variableName] = &schema.PropertySpec{
 			Description: variable.Description,
 			Secret:      variable.Sensitive,
 			TypeSpec:    variableType,
@@ -315,7 +315,7 @@ func InferModuleSchema(
 			inferredType = inferExpressionType(output.Expr)
 		}
 
-		inferredModuleSchema.Outputs[outputName] = schema.PropertySpec{
+		inferredModuleSchema.Outputs[outputName] = &schema.PropertySpec{
 			Description: output.Description,
 			Secret:      output.Sensitive,
 			TypeSpec:    inferredType,
@@ -358,6 +358,7 @@ func applyModuleSchemaOverrides(
 			continue
 		}
 
+		// add required outputs to the inferred schema if they are not already present
 		for _, requiredOutput := range data.PartialSchema.RequiredOutputs {
 			alreadyExists := false
 			for _, existingRequiredOutput := range inferredSchema.RequiredOutputs {
@@ -369,6 +370,67 @@ func applyModuleSchemaOverrides(
 
 			if !alreadyExists {
 				inferredSchema.RequiredOutputs = append(inferredSchema.RequiredOutputs, requiredOutput)
+			}
+		}
+
+		for name, input := range data.PartialSchema.Inputs {
+			if _, ok := inferredSchema.Inputs[name]; !ok {
+				inferredSchema.Inputs[name] = input
+				continue
+			}
+
+			// if the input already exists, we need to merge the types
+			existingInput := inferredSchema.Inputs[name]
+			if input.Ref != "" {
+				existingInput.Ref = input.Ref
+			}
+
+			if input.Description != "" {
+				existingInput.Description = input.Description
+			}
+
+			if input.Secret {
+				existingInput.Secret = input.Secret
+			}
+
+			if input.TypeSpec.Type != "" {
+				existingInput.TypeSpec.Type = input.TypeSpec.Type
+			}
+
+			if input.TypeSpec.Items != nil {
+				existingInput.TypeSpec.Items = input.TypeSpec.Items
+			}
+
+			if input.TypeSpec.AdditionalProperties != nil {
+				existingInput.TypeSpec.AdditionalProperties = input.TypeSpec.AdditionalProperties
+			}
+		}
+
+		for name, output := range data.PartialSchema.Outputs {
+			if _, ok := inferredSchema.Outputs[name]; !ok {
+				inferredSchema.Outputs[name] = output
+				continue
+			}
+
+			// if the output already exists, we need to merge the types
+			existingOutput := inferredSchema.Outputs[name]
+			if output.Ref != "" {
+				existingOutput.Ref = output.Ref
+			}
+			if output.Description != "" {
+				existingOutput.Description = output.Description
+			}
+			if output.Secret {
+				existingOutput.Secret = output.Secret
+			}
+			if output.TypeSpec.Type != "" {
+				existingOutput.TypeSpec.Type = output.TypeSpec.Type
+			}
+			if output.TypeSpec.Items != nil {
+				existingOutput.TypeSpec.Items = output.TypeSpec.Items
+			}
+			if output.TypeSpec.AdditionalProperties != nil {
+				existingOutput.TypeSpec.AdditionalProperties = output.TypeSpec.AdditionalProperties
 			}
 		}
 	}

@@ -44,19 +44,40 @@ func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*
 			pargs.TFModuleSource, pargs.TFModuleVersion, err)
 	}
 
+	supportingTypes := map[string]schema.ComplexTypeSpec{}
+	for token, typeSpec := range inferredModule.SupportingTypes {
+		if typeSpec != nil {
+			supportingTypes[token] = *typeSpec
+		}
+	}
+
+	inputs := map[string]schema.PropertySpec{}
+	for token, input := range inferredModule.Inputs {
+		if input != nil {
+			inputs[token] = *input
+		}
+	}
+
+	outputs := map[string]schema.PropertySpec{}
+	for token, output := range inferredModule.Outputs {
+		if output != nil {
+			outputs[token] = *output
+		}
+	}
+
 	mainResourceToken := fmt.Sprintf("%s:index:%s", packageName, defaultComponentTypeName)
 	packageSpec := &schema.PackageSpec{
 		Name:    string(packageName),
 		Version: string(pkgVer),
-		Types:   inferredModule.SupportingTypes,
+		Types:   supportingTypes,
 		Resources: map[string]schema.ResourceSpec{
 			mainResourceToken: {
 				IsComponent:     true,
-				InputProperties: inferredModule.Inputs,
+				InputProperties: inputs,
 				RequiredInputs:  inferredModule.RequiredInputs,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
-					Properties: inferredModule.Outputs,
+					Properties: outputs,
 					Required:   inferredModule.RequiredOutputs,
 				},
 			},

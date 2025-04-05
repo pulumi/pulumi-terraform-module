@@ -141,7 +141,7 @@ func TestParsingModuleSchemaOverrides(t *testing.T) {
 
 func TestApplyModuleOverrides(t *testing.T) {
 	ctx := context.Background()
-	packageName := packageName("terraform-aws-modules")
+	packageName := packageName("vpc")
 	version := TFModuleVersion("5.18.1")
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
 	awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version)
@@ -149,10 +149,44 @@ func TestApplyModuleOverrides(t *testing.T) {
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 	// We cannot infer which outputs are required or not so everything is optional, initially.
 	assert.Empty(t, awsVpcSchema.RequiredOutputs, "required outputs is empty")
-	moduleOverrides := parseModuleSchemaOverrides()
-	overridenSchema := applyModuleSchemaOverrides(source, version, awsVpcSchema, moduleOverrides)
-	assert.NotNil(t, overridenSchema, "overriden module schema is nil")
-	assert.Contains(t, overridenSchema.RequiredOutputs, "vpc_id", "vpc_id should be required")
+
+	t.Run("required outputs are updated", func(t *testing.T) {
+		moduleOverrides := map[TFModuleSource]ModuleSchemaOverride{
+			source: {
+				MaximumVersion: "6.0.0",
+				PartialSchema: &InferredModuleSchema{
+					RequiredOutputs: []string{"vpc_id"},
+				},
+			},
+		}
+		overridenSchema := applyModuleSchemaOverrides(source, version, awsVpcSchema, moduleOverrides)
+		assert.NotNil(t, overridenSchema, "overriden module schema is nil")
+		assert.Contains(t, overridenSchema.RequiredOutputs, "vpc_id", "vpc_id should be required")
+	})
+
+	t.Run("specific fields can be updated", func(t *testing.T) {
+		moduleOverrides := map[TFModuleSource]ModuleSchemaOverride{
+			source: {
+				MaximumVersion: "6.0.0",
+				PartialSchema: &InferredModuleSchema{
+					Outputs: map[string]*schema.PropertySpec{
+						"vpc_id": {
+							Description: "The new ID field of the VPC",
+							Secret:      true,
+						},
+					},
+				},
+			},
+		}
+		overridenSchema := applyModuleSchemaOverrides(source, version, awsVpcSchema, moduleOverrides)
+		assert.NotNil(t, overridenSchema, "overriden module schema is nil")
+
+		vpcId := overridenSchema.Outputs["vpc_id"]
+		assert.Equal(t, "The new ID field of the VPC", vpcId.Description, "vpc_id description should be updated")
+		assert.True(t, vpcId.Secret, "vpc_id should be secret")
+		assert.Equal(t, "string", vpcId.TypeSpec.Type, "vpc_id type should not be changed")
+		assert.Contains(t, overridenSchema.RequiredOutputs, "vpc_id", "vpc_id should be required")
+	})
 }
 
 func TestResolveModuleSources(t *testing.T) {
