@@ -103,19 +103,23 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
 		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
-		autogold.Expect(map[string]any{
+		autogold.Expect(map[string]interface{}{
 			"__address": "module.myrandmod.random_integer.priority",
 			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
-			"id":        "2",
 			"max":       10,
 			"min":       1,
-			"result":    2,
-			"seed": map[string]any{
+			"seed": map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 				"plaintext":                        `"9"`,
 			},
 		}).Equal(t, randInt.Inputs)
-		autogold.Expect(map[string]any{}).Equal(t, randInt.Outputs)
+		autogold.Expect(map[string]interface{}{
+			"id": "2", "keepers": nil, "max": 10, "min": 1, "result": 2,
+			"seed": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `"9"`,
+			},
+		}).Equal(t, randInt.Outputs)
 	})
 
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
