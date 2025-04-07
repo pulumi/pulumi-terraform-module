@@ -304,6 +304,9 @@ func (h *moduleStateHandler) Delete(
 	}
 
 	state, destroyErr := tf.Destroy(ctx, logger)
+	if destroyErr != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running tofu destroy in delete: %v", destroyErr))
+	}
 	// always set the state because child resources are waiting for it
 	h.planStore.SetState(urn, state)
 

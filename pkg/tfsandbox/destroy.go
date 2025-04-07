@@ -2,6 +2,7 @@ package tfsandbox
 
 import (
 	"context"
+	"fmt"
 
 	tfjson "github.com/hashicorp/terraform-json"
 )
@@ -19,6 +20,7 @@ func (t *Tofu) Destroy(ctx context.Context, log Logger) (*State, error) {
 	rawState, destroyErr := t.destroy(ctx, log)
 	state, err := newDestroyState(rawState)
 	if err != nil {
+		log.Log(ctx, Debug, fmt.Sprintf("error creating destroy state: %v", err))
 		return state, err
 	}
 	return state, destroyErr
@@ -39,9 +41,13 @@ func (t *Tofu) destroy(ctx context.Context, log Logger) (state *tfjson.State, er
 	defer logWriter.Close()
 
 	err = t.tf.DestroyJSON(ctx, logWriter)
+	if err != nil {
+		log.Log(ctx, Debug, fmt.Sprintf("error running tofu destroy: %v", err))
+	}
 	var showErr error
 	state, showErr = t.Show(ctx)
 	if showErr != nil {
+		log.Log(ctx, Debug, fmt.Sprintf("error running tofu show: %v", showErr))
 		return nil, showErr
 	}
 
@@ -54,12 +60,18 @@ func (t *Tofu) destroy(ctx context.Context, log Logger) (state *tfjson.State, er
 //
 // Note that the returned State will never be nil
 func newDestroyState(rawState *tfjson.State) (*State, error) {
-	if rawState == nil || rawState.Values == nil || rawState.Values.RootModule == nil {
+	if rawState == nil {
 		return emptyState(newT), nil
 	}
-	resources, err := newStateResources(rawState.Values.RootModule)
-	if err != nil {
-		return emptyState(newT), err
+	var resources stateResources
+	var err error
+	if rawState.Values == nil || rawState.Values.RootModule == nil {
+		resources = stateResources{}
+	} else {
+		resources, err = newStateResources(rawState.Values.RootModule)
+		if err != nil {
+			return emptyState(newT), err
+		}
 	}
 	return &State{
 		Resources: Resources[*ResourceState]{

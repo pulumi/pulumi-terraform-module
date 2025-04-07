@@ -169,7 +169,6 @@ func (s *planStore) IsResourceDeleted(
 	modState := s.getOrCreateStateEntry(modUrn).Await()
 	if !modState.IsValidState() {
 		return false
-
 	}
 	_, ok := modState.FindResourceStateOrPlan(addr)
 	return !ok
