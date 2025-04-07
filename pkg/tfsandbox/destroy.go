@@ -13,78 +13,53 @@ import (
 //
 // There are two special cases that callers should be aware of:
 //  1. If the destroy was successful, we return a non-nil state with no resources
-//  2. If the destroy failed, we either return the state with the resources that failed to destroy
-//     or a nil state if something went really wrong and there is not state left
+//  2. If the destroy failed, we return the state with the resources that failed to destroy
 func (t *Tofu) Destroy(ctx context.Context, log Logger) (*State, error) {
-	rawState, success, destroyErr := t.destroy(ctx, log)
-	if success {
-		s, err := newDestroyState(rawState)
-		if err != nil {
-			return nil, err
-		}
-		return s, nil
+	var rawState *tfjson.State
+	rawState, destroyErr := t.destroy(ctx, log)
+	state, err := newDestroyState(rawState)
+	if err != nil {
+		return state, err
 	}
-	if rawState != nil {
-		s, err := newDestroyState(rawState)
-		if err != nil {
-			return nil, err
-		}
-		return s, destroyErr
-	}
-	return nil, destroyErr
+	return state, destroyErr
 }
 
 // Destroy runs the terraform destroy command
 // This handles a couple of special cases around destroy.
-//  1. If the destroy was successful, we return a nil state, success = true, nil error
+//  1. If the destroy was successful, we return the state, nil error
 //  2. If the destroy failed, then we have 2 possibilities
 //     a. Show fails, either because we have a nil state or something else.
-//     In this case, we return a nil state, success = false, and the error.
+//     In this case, we return a nil state, and the error.
 //     callers need to handle this case and decide what to do (probably just fail)
-//     b. Show succeeds, in this case we return the state, success = false, and the error.
+//     b. Show succeeds, in this case we return the state, and the error.
 //     This would most likely be a partial failure where some resources were destroyed
 //     and some were not. The resource that were not destroyed would still exist in the state
-func (t *Tofu) destroy(ctx context.Context, log Logger) (state *tfjson.State, succeeded bool, err error) {
+func (t *Tofu) destroy(ctx context.Context, log Logger) (state *tfjson.State, err error) {
 	logWriter := newJSONLogPipe(ctx, log)
 	defer logWriter.Close()
 
 	err = t.tf.DestroyJSON(ctx, logWriter)
-	if err == nil {
-		return nil, true, nil
-	}
 	var showErr error
 	state, showErr = t.Show(ctx)
 	if showErr != nil {
-		return nil, false, showErr
+		return nil, showErr
 	}
 
-	return state, false, err
+	return state, err
 }
 
 // newDestroyState creates a new destroy state from the raw state
 // This handles cases where the rawState is nil or the root values/module is nil
 // which would happen if the destroy was successful
+//
+// Note that the returned State will never be nil
 func newDestroyState(rawState *tfjson.State) (*State, error) {
-	newT := func(resource tfjson.StateResource) *ResourceState {
-		return &ResourceState{
-			Resource: Resource{
-				sr:    resource,
-				props: extractPropertyMapFromState(resource),
-			},
-		}
-	}
 	if rawState == nil || rawState.Values == nil || rawState.Values.RootModule == nil {
-		return &State{
-			Resources: Resources[*ResourceState]{
-				resources: stateResources{},
-				newT:      newT,
-			},
-			rawState: rawState,
-		}, nil
+		return emptyState(newT), nil
 	}
 	resources, err := newStateResources(rawState.Values.RootModule)
 	if err != nil {
-		return nil, err
+		return emptyState(newT), err
 	}
 	return &State{
 		Resources: Resources[*ResourceState]{

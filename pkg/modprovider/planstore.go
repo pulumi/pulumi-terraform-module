@@ -16,7 +16,6 @@ package modprovider
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -102,20 +101,9 @@ type stateEntry struct {
 	state     State
 }
 
-func isNil(i any) bool {
-	if i == nil {
-		return true
-	}
-	val := reflect.ValueOf(i)
-	return val.Kind() == reflect.Ptr && val.IsNil()
-}
-
 func (e *stateEntry) Await() State {
 	if waitTimeout == nil {
 		e.waitGroup.Wait()
-		if isNil(e.state) {
-			return nil
-		}
 		return e.state
 	}
 	ch := make(chan bool)
@@ -127,9 +115,6 @@ func (e *stateEntry) Await() State {
 
 	select {
 	case <-ch:
-		if isNil(e.state) {
-			return nil
-		}
 		return e.state
 	case <-time.After(*waitTimeout):
 		panic("Timeout waiting on planEntry")
@@ -182,8 +167,9 @@ func (s *planStore) IsResourceDeleted(
 	addr ResourceAddress,
 ) bool {
 	modState := s.getOrCreateStateEntry(modUrn).Await()
-	if modState == nil {
+	if !modState.IsValidState() {
 		return false
+
 	}
 	_, ok := modState.FindResourceStateOrPlan(addr)
 	return !ok

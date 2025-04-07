@@ -12,11 +12,12 @@ import (
 // Apply can return both a non-nil State and a non-nil error. If the apply
 // fails, but some resources were created and written to the TF State we will return
 // the state and the apply error.
+// Both the State and error can be non-nil
 func (t *Tofu) Apply(ctx context.Context, logger Logger) (*State, error) {
 	state, applyErr := t.apply(ctx, logger)
 	s, err := newState(state)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
 	return s, applyErr
 }

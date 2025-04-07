@@ -212,6 +212,10 @@ func newModuleComponentResource(
 	} else {
 		// DryRun() = false corresponds to running pulumi up
 		tfState, applyErr = tf.Apply(ctx.Context(), logger)
+		// If we don't have a state we can work with, just fail
+		if !tfState.InValidState() {
+			return nil, nil, nil, fmt.Errorf("Apply failed: %w", applyErr)
+		}
 
 		planStore.SetState(urn, tfState)
 

@@ -171,25 +171,6 @@ func TestChildResourceDelete(t *testing.T) {
 		h := newChildHandler(&planStore{})
 
 		// no state
-		h.planStore.SetState(urn.URN(modUrn), nil)
-		properties, err := structpb.NewStruct(map[string]any{
-			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
-			moduleURNPropName:            modUrn,
-			"force_destroy":              true,
-		})
-		require.NoError(t, err)
-		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
-			Type:      "terraform-aws-module:tf:aws_s3_bucket",
-			OldInputs: properties,
-		})
-		require.Errorf(t, err, "expected error, but got nil")
-	})
-
-	t.Run("delete failed, nil state 2", func(t *testing.T) {
-		ctx := context.Background()
-		h := newChildHandler(&planStore{})
-
-		// no state
 		h.planStore.SetState(urn.URN(modUrn), newNilState())
 		properties, err := structpb.NewStruct(map[string]any{
 			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
@@ -226,10 +207,16 @@ type testState struct {
 	res *testResourceState
 }
 
+func (ts *testState) IsValidState() bool {
+	return ts.res != nil
+}
+
 // newNilState can be used to test a non-nil State interface with a nil
 // underlying value
 func newNilState() *testState {
-	return nil
+	return &testState{
+		res: nil,
+	}
 }
 
 func (ts *testState) VisitResources(visitor func(ResourceState)) {
