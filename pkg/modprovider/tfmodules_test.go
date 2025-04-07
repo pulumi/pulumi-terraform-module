@@ -183,6 +183,41 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	}
 }
 
+func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
+	ctx := context.Background()
+	packageName := packageName("consulCluster")
+	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
+	consulClusterSchema, err := InferModuleSchema(ctx,
+		packageName,
+		"github.com/hashicorp/terraform-aws-consul//modules/consul-cluster",
+		version,
+	)
+	assert.NoError(t, err, "failed to infer module schema for github submodule")
+	assert.NotNil(t, consulClusterSchema, "inferred module schema for aws consul cluster submodule is nil")
+	// verify a sample of the inputs with different inferred types
+	expectedSampleInputs := map[string]*schema.PropertySpec{
+		"ami_id": {
+			Description: "The ID of the AMI to run in this cluster. " +
+				"Should be an AMI that had Consul installed and configured by the install-consul module.",
+			Secret:   false,
+			TypeSpec: stringType,
+		},
+		"spot_price": {
+			Description: "The maximum hourly price to pay for EC2 Spot Instances.",
+			Secret:      false,
+			TypeSpec:    numberType,
+		},
+	}
+
+	for name, expected := range expectedSampleInputs {
+		actual, ok := consulClusterSchema.Inputs[name]
+		assert.True(t, ok, "input %s is missing from the schema", name)
+		assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+		assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
+		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+	}
+}
+
 func TestResolveModuleSources(t *testing.T) {
 	t.Run("local path-based module source", func(t *testing.T) {
 		ctx := context.Background()
