@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -52,7 +53,20 @@ func TestTofuPlan(t *testing.T) {
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputVar": "test",
-	}), outputs, providersConfig)
+	}), outputs, providersConfig, TFInputSpec{
+		Inputs: map[string]schema.PropertySpec{
+			"input_var": {
+				TypeSpec: schema.TypeSpec{Type: "string"},
+			},
+			"input_number_var": {
+				TypeSpec: schema.TypeSpec{Type: "number"},
+			},
+			"input_input_var": {
+				TypeSpec: schema.TypeSpec{Type: "string"},
+			},
+		},
+		SupportingTypes: map[string]schema.ComplexTypeSpec{},
+	})
 	assert.NoErrorf(t, err, "error creating tf file")
 
 	err = tofu.Init(ctx, DiscardLogger)
@@ -77,7 +91,20 @@ func TestTofuApply(t *testing.T) {
 	providersConfig := map[string]resource.PropertyMap{}
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputVar": "test",
-	}), emptyOutputs, providersConfig)
+	}), emptyOutputs, providersConfig, TFInputSpec{
+		Inputs: map[string]schema.PropertySpec{
+			"input_var": {
+				TypeSpec: schema.TypeSpec{Type: "string"},
+			},
+			"input_number_var": {
+				TypeSpec: schema.TypeSpec{Type: "number"},
+			},
+			"input_input_var": {
+				TypeSpec: schema.TypeSpec{Type: "string"},
+			},
+		},
+		SupportingTypes: map[string]schema.ComplexTypeSpec{},
+	})
 	assert.NoErrorf(t, err, "error creating tf file")
 
 	err = tofu.Init(ctx, DiscardLogger)

@@ -3,10 +3,12 @@ package tfsandbox
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path"
+	"strings"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -14,6 +16,11 @@ import (
 type TFOutputSpec struct {
 	// The name of the output.
 	Name string
+}
+
+type TFInputSpec struct {
+	Inputs          map[string]schema.PropertySpec
+	SupportingTypes map[string]schema.ComplexTypeSpec
 }
 
 const (
@@ -40,6 +47,150 @@ func (l *locals) createLocal(v interface{}) string {
 	key := fmt.Sprintf("local%d", l.counter)
 	l.entries[key] = v
 	return key
+}
+
+type mapper struct {
+	supportingTypes map[string]schema.ComplexTypeSpec
+	locals          *locals
+}
+
+func (m *mapper) createLocal(v interface{}) string {
+	return m.locals.createLocal(v)
+}
+
+func (m *mapper) getType(typeRef string) *schema.ObjectTypeSpec {
+	if strings.HasPrefix(typeRef, "#/types/") {
+		ref := strings.TrimPrefix(typeRef, "#/types/")
+		if typeSpec, ok := m.supportingTypes[ref]; ok {
+			return &typeSpec.ObjectTypeSpec
+		}
+	}
+	return nil
+}
+
+func (m *mapper) mapPropertyValue(
+	propertyValue resource.PropertyValue,
+	typeSpec schema.TypeSpec,
+	replv func(resource.PropertyValue) (any, bool),
+) any {
+	// paranoid asserts
+	contract.Assertf(!propertyValue.IsAsset(), "did not expect assets here")
+	contract.Assertf(!propertyValue.IsArchive(), "did not expect archives here")
+	contract.Assertf(!propertyValue.IsResourceReference(), "did not expect resource references here")
+
+	if propertyValue.IsComputed() || (propertyValue.IsOutput() && !propertyValue.OutputValue().Known) {
+		val := "${terraform_data.unknown_proxy.output}"
+		// TODO[pulumi/pulumi-terraform-module#228] related to [pulumi/pulumi#4834] if we have
+		// an unknown list then we don't know how many elements there are. The best we can do
+		// is just return a list with a single unknown value
+		if typeSpec.Type == "array" {
+			return []any{val}
+		}
+		return val
+	}
+
+	if propertyValue.IsOutput() && propertyValue.OutputValue().Known {
+		return m.mapPropertyValue(propertyValue.OutputValue().Element, typeSpec, replv)
+	}
+
+	if propertyValue.IsSecret() {
+		result := m.mapPropertyValue(propertyValue.SecretValue().Element, typeSpec, replv)
+		key := m.createLocal(result)
+		return fmt.Sprintf("${sensitive(local.%s)}", key)
+	}
+
+	if propertyValue.IsOutput() && propertyValue.OutputValue().Secret {
+		result := m.mapPropertyValue(propertyValue.OutputValue().Element, typeSpec, replv)
+		key := m.createLocal(result)
+		return fmt.Sprintf("${sensitive(local.%s)}", key)
+	}
+
+	if typeSpec.Ref != "" {
+		objType := m.getType(typeSpec.Ref)
+		if objType == nil {
+			return propertyValue.MapRepl(nil, replv)
+		}
+		contract.Assertf(propertyValue.IsObject(), "expected object type with Ref")
+
+		return m.mapPropertyMap(propertyValue.ObjectValue(), objType.Properties, replv)
+	}
+
+	switch typeSpec.Type {
+	case "object":
+		contract.Assertf(propertyValue.IsObject(), "expected object type")
+		if typeSpec.AdditionalProperties == nil {
+			// then we don't know the types of the properties
+			// in the object, so just return the object as is
+			return propertyValue.MapRepl(nil, replv)
+		}
+		objectValue := propertyValue.ObjectValue()
+		obj := map[string]any{}
+		for _, propertyKey := range objectValue.StableKeys() {
+			val := m.mapPropertyValue(objectValue[propertyKey], *typeSpec.AdditionalProperties, replv)
+			obj[string(propertyKey)] = val
+		}
+		return obj
+	case "array":
+		contract.Assertf(propertyValue.IsArray(), "expected array type")
+		if typeSpec.Items == nil {
+			// then we don't know the types of the elements
+			// in the array, so just return the array as is
+			return propertyValue.MapRepl(nil, replv)
+		}
+		items := []any{}
+		for _, arrayValue := range propertyValue.ArrayValue() {
+			item := m.mapPropertyValue(arrayValue, *typeSpec.Items, replv)
+			items = append(items, item)
+		}
+		return items
+	case "boolean", "number", "integer", "string":
+		return propertyValue.MapRepl(nil, replv)
+	default:
+		contract.Failf("unknown type %s", typeSpec.Type)
+		return nil
+	}
+}
+
+// mapPropertyMap converts the Pulumi inputs (a resource.PropertyMap) to Terraform inputs (a map[string]any)
+// It takes into account the input types of the Terraform module.
+// It recursively processes each property in the input map, using the type information from inputTypes
+// to determine how to map each value. If a property's type is unknown, it falls back to the replv function.
+// For example, we might have a input type of list(map(any)) we can recurse until we reach the `any` type
+// and then we just fallback to the replv function because we don't have further type information.
+//
+// Parameters:
+// - inputs: The PropertyMap containing the Pulumi input properties to be mapped.
+// - inputTypes: A map of property names to their corresponding schema.PropertySpec, defining the expected types.
+// - propertyPath: The current path of the property being processed, used for tracking nested properties.
+// - replv: A function that provides a fallback mapping for unknown property types.
+//
+// Returns:
+// - A map[string]any representing the mapped properties, with types and values transformed as needed.
+//
+// Notes:
+//   - If inputTypes is empty, the function directly maps the inputs using replv.
+func (m *mapper) mapPropertyMap(
+	inputs resource.PropertyMap,
+	inputTypes map[string]schema.PropertySpec,
+	replv func(resource.PropertyValue) (any, bool),
+) map[string]any {
+	if len(inputTypes) == 0 {
+		return inputs.MapRepl(nil, replv)
+	}
+	stableKeys := inputs.StableKeys()
+	final := map[string]any{}
+	for _, k := range stableKeys {
+		objectValue := inputs[k]
+		objType, knownType := inputTypes[string(k)]
+		if !knownType {
+			mapped := objectValue.MapRepl(nil, replv)
+			final[string(k)] = mapped
+			continue
+		}
+
+		final[string(k)] = m.mapPropertyValue(objectValue, objType.TypeSpec, replv)
+	}
+	return final
 }
 
 // decode decodes a PropertyValue into a Terraform JSON value
@@ -123,6 +274,7 @@ func CreateTFFile(
 	inputs resource.PropertyMap,
 	outputs []TFOutputSpec,
 	providerConfig map[string]resource.PropertyMap,
+	inputsSpec TFInputSpec,
 ) error {
 
 	moduleProps := map[string]interface{}{
@@ -163,25 +315,18 @@ func CreateTFFile(
 		entries: make(map[string]interface{}),
 		counter: 0,
 	}
-	inputsMap := inputs.MapRepl(nil, locals.decode)
+	m := &mapper{
+		supportingTypes: inputsSpec.SupportingTypes,
+		locals:          locals,
+	}
+
+	inputsMap := m.mapPropertyMap(inputs, inputsSpec.Inputs, locals.decode)
 
 	for providerName, config := range providerConfig {
 		providers[providerName] = config.MapRepl(nil, locals.decode)
 	}
 
-	for k, v := range inputsMap {
-		// TODO: I'm only converting the top layer properties for now
-		// It doesn't look like modules have info on nested properties, typically
-		// the type looks something like `map(map(string))`.
-		// Will these be sent as `key_name` or `keyName`?
-		tfKey := tfbridge.PulumiToTerraformName(
-			k,
-			// we will never know this information
-			nil, /* shim.SchemaMap */
-			nil, /* map[string]*info.Schema */
-		)
-		moduleProps[tfKey] = v
-	}
+	maps.Copy(moduleProps, inputsMap)
 
 	if len(providers) > 0 {
 		providersField := map[string]string{}

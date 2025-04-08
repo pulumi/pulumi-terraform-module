@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -39,26 +40,60 @@ func TestCreateTFFile(t *testing.T) {
 		tfVariableType  string
 		inputsValue     resource.PropertyValue
 		outputs         []TFOutputSpec
+		inputsSpec      TFInputSpec
 		providersConfig map[string]resource.PropertyMap
 	}{
 		{
-			name:           "string",
+			name:           "simple string",
 			tfVariableType: "string",
-			inputsValue:    resource.NewStringProperty("hello"),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{Type: "string"},
+					},
+				},
+			},
+			inputsValue: resource.NewStringProperty("hello"),
 		},
 		{
-			name:           "unknown",
+			name:           "string unknown",
 			tfVariableType: "string",
-			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{Type: "string"},
+					},
+				},
+			},
+			inputsValue: resource.MakeComputed(resource.NewStringProperty("")),
 		},
 		{
 			name:           "string secret",
 			tfVariableType: "string",
 			inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{Type: "string"},
+					},
+				},
+			},
 		},
 		{
 			name:           "list(string)",
 			tfVariableType: "list(string)",
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("hello"),
 				resource.NewStringProperty("world"),
@@ -68,11 +103,25 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "bool",
 			tfVariableType: "bool",
 			inputsValue:    resource.NewBoolProperty(true),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{Type: "boolean"},
+					},
+				},
+			},
 		},
 		{
 			name:           "number",
 			tfVariableType: "number",
 			inputsValue:    resource.NewNumberProperty(42),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{Type: "number"},
+					},
+				},
+			},
 		},
 		{
 			name:           "map(string)",
@@ -80,6 +129,18 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewStringProperty("value"),
 			}),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{
+							Type: "object",
+							AdditionalProperties: &schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "list(map(string))",
@@ -89,6 +150,21 @@ func TestCreateTFFile(t *testing.T) {
 					"key": resource.NewStringProperty("value"),
 				}),
 			}),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "unknown list(map(string))",
@@ -96,6 +172,21 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
 			}),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{
+							Type: "array",
+							Items: &schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "map(map(any))",
@@ -105,6 +196,21 @@ func TestCreateTFFile(t *testing.T) {
 					"key": resource.NewStringProperty("value"),
 				}),
 			}),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{
+							Type: "object",
+							AdditionalProperties: &schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Ref: "pulumi.json#Any",
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "unknown map(map(any))",
@@ -116,6 +222,21 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			}),
+			inputsSpec: TFInputSpec{
+				Inputs: map[string]schema.PropertySpec{
+					"tf_var": {
+						TypeSpec: schema.TypeSpec{
+							Type: "object",
+							AdditionalProperties: &schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Ref: "pulumi.json#Any",
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "set(string)",
@@ -255,8 +376,8 @@ func TestCreateTFFile(t *testing.T) {
 			writeTfVarFile(t, tofu.WorkingDir(), tt.tfVariableType)
 
 			err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
-				"tfVar": tt.inputsValue,
-			}, tt.outputs, tt.providersConfig)
+				"tf_var": tt.inputsValue,
+			}, tt.outputs, tt.providersConfig, tt.inputsSpec)
 			assert.NoError(t, err)
 
 			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), "pulumi.tf.json"))
