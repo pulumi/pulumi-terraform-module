@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -34,6 +35,19 @@ type planStore struct {
 	mutex  sync.Mutex
 	plans  map[urn.URN]*planEntry
 	states map[urn.URN]*stateEntry
+}
+
+// getPlanEntry returns the plan entry for the given URN.
+// If the plan entry does not exist, it returns nil and callers
+// are responsible for handling
+// NOTE: you probably want to use `getOrCreatePlanEntry` instead of this method.
+func (s *planStore) getPlanEntry(u urn.URN) *planEntry {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.plans == nil {
+		return nil
+	}
+	return s.plans[u]
 }
 
 func (s *planStore) getOrCreatePlanEntry(u urn.URN) *planEntry {
@@ -162,16 +176,62 @@ func (e unknownAddressError) Error() string {
 // the tofu destroy operation. In that case, the ModuleState resource will
 // not be deleted and we should keep all the child resources as well so we can
 // try again (essentially treat the operation as a no-op).
+//
+// There are a couple different delete cases that this function handles:
+//  1. This is a `pulumi dn` operation and the entire stack is being deleted
+//     In this case there will be no `plan` because the `ModuleState.Delete` method does not run plan.
+//  2. This is a `pulumi up` operation and this resource is being deleted or replaced
+//     We can tell this case apart from 1 because there will be a plan (`up` runs Construct which runs Plan)
+//     - 2a. If this resources is being deleted (not replaced) then there shouldn't be a state entry
+//     - 2b. If this resource is being replaced, there will be a state entry no matter what
+//     (if the replacement failed or succeeded).
+//
+// NOTE: This should only be called from within the `Delete` method of the child resource
 func (s *planStore) IsResourceDeleted(
 	modUrn urn.URN,
 	addr ResourceAddress,
 ) bool {
 	modState := s.getOrCreateStateEntry(modUrn).Await()
+	// if we don't have a valid state, then stop here and return false
 	if !modState.IsValidState() {
 		return false
 	}
-	_, ok := modState.FindResourceStateOrPlan(addr)
-	return !ok
+
+	planEntry := s.getPlanEntry(modUrn)
+	if planEntry == nil {
+		// then this is a true delete
+		_, ok := modState.FindResourceStateOrPlan(addr)
+		return !ok
+	}
+
+	if planEntry.plan != nil && planEntry.plan.IsValidPlan() {
+		plan, ok := planEntry.plan.FindResourceStateOrPlan(addr)
+		if !ok {
+			_, ok := modState.FindResourceStateOrPlan(addr)
+			return !ok
+		}
+
+		st, ok := plan.(ResourcePlan)
+		contract.Assertf(ok, "IsResourceDeleted: ResourcePlan cast must not fail")
+		switch st.ChangeKind() {
+		case tfsandbox.Create, tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
+			// then the resource is being replaced as part of an update
+			// We don't currently have the ability to tell whether the replace succeeded so
+			// just return true. The ModuleState resource will still fail because the overall
+			// operation would have failed
+			// TODO[pulumi/pulumi-terraform-module#250] determine if the delete for this
+			// specific resource succeeded
+			return true
+		default:
+			contract.Assertf(false, "IsResourceDeleted: unexpected change kind %q", st.ChangeKind())
+		}
+	}
+
+	// otherwise this resource is being deleted as part of an update
+	// either because it is a true delete or because it is being replaced
+	// TODO[pulumi/pulumi-terraform-module#250] determine if the delete for this
+	// specific resource succeeded
+	return true
 }
 
 func (s *planStore) FindResourceState(

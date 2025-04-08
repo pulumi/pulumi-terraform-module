@@ -152,6 +152,10 @@ type Plan struct {
 	rawPlan *tfjson.Plan
 }
 
+func (p *Plan) IsValidPlan() bool {
+	return p.rawPlan != nil
+}
+
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	// TODO[pulumi/pulumi-terraform-module#61] what about PreviousAddress, can TF plan
 	// resources changing addresses? How does this work?

@@ -46,6 +46,7 @@ var _ ResourceState = (*tfsandbox.ResourceState)(nil)
 
 type Plan interface {
 	Resources
+	IsValidPlan() bool
 }
 
 var _ Plan = (*tfsandbox.Plan)(nil)
