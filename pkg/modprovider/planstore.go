@@ -19,9 +19,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Used to communicate Plan and State values in-memory.

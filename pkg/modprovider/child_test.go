@@ -22,11 +22,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 const modUrn = "urn:pulumi:test::prog::randmod:index:Module::mymod"
