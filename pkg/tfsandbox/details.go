@@ -300,13 +300,6 @@ func (s *State) outputIsSecret(outputName string) bool {
 	return false
 }
 
-// InValidState returns true if the state is valid and can be used
-// If false it means there is something wrong with the state and it
-// cannot be used
-func (s *State) InValidState() bool {
-	return s.rawState != nil
-}
-
 // Outputs returns the outputs of a terraform module state as a Pulumi property map.
 func (s *State) Outputs() resource.PropertyMap {
 	outputs := resource.PropertyMap{}

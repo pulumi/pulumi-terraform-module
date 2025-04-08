@@ -250,6 +250,7 @@ func (h *moduleStateHandler) Delete(
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
+	h.planStore.SetOperation(OperationDelete)
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
 

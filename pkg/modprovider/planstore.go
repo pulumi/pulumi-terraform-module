@@ -21,8 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Used to communicate Plan and State values in-memory.
@@ -33,10 +31,29 @@ import (
 //
 // The provider will have a single planStore instance that stores the information indexed by URNs.
 type planStore struct {
-	mutex  sync.Mutex
-	plans  map[urn.URN]*planEntry
-	states map[urn.URN]*stateEntry
+	mutex     sync.Mutex
+	plans     map[urn.URN]*planEntry
+	states    map[urn.URN]*stateEntry
+	operation Operation
 }
+
+func (s *planStore) SetOperation(op Operation) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.operation = op
+}
+
+func (s *planStore) GetOperation() Operation {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.operation
+}
+
+type Operation string
+
+const (
+	OperationDelete Operation = "DELETE"
+)
 
 // getPlanEntry returns the plan entry for the given URN.
 // If the plan entry does not exist, it returns nil and callers
@@ -132,7 +149,7 @@ func (e *stateEntry) Await() State {
 	case <-ch:
 		return e.state
 	case <-time.After(*waitTimeout):
-		panic("Timeout waiting on planEntry")
+		panic("Timeout waiting on stateEntry")
 	}
 }
 
@@ -173,65 +190,65 @@ func (e unknownAddressError) Error() string {
 
 // IsResourceDeleted returns true if the resource is deleted (not in the state).
 //
-// If the state is nil, it means something went wrong with the state after
-// the tofu destroy operation. In that case, the ModuleState resource will
-// not be deleted and we should keep all the child resources as well so we can
-// try again (essentially treat the operation as a no-op).
-//
 // There are a couple different delete cases that this function handles:
 //  1. This is a `pulumi dn` operation and the entire stack is being deleted
-//     In this case there will be no `plan` because the `ModuleState.Delete` method does not run plan.
-//  2. This is a `pulumi up` operation and this resource is being deleted or replaced
-//     We can tell this case apart from 1 because there will be a plan (`up` runs Construct which runs Plan)
-//     - 2a. If this resources is being deleted (not replaced) then there shouldn't be a state entry
-//     - 2b. If this resource is being replaced, there will be a state entry no matter what
-//     (if the replacement failed or succeeded).
+//     In this case there will be no `plan` because the `moduleStateHandler.Delete` method does not run plan.
+//  2. This is a `pulumi up` operation and this resource is being deleted or replaced.
+//     - 2a.If DeleteBeforeReplace=false (TF default) then `Delete` is being run in the same provider process
+//     and we have access to shared info (i.e. plan/state).
+//     We can tell this case apart from 1 because there will be a plan (`up` runs Construct which runs Plan).
+//     - 2b. If DeleteBeforeReplace=true then `Delete` is being run in a different provider process
+//     and we do not have access to shared info (i.e. plan/state). We don't have any info to tell
+//     if the delete succeeded or not for this resource
+//     - 2c. If this resources is being deleted and not replaced (i.e. resource is removed) then the `Delete`
+//     will happen in a separate provider process and we will not have access to shared info (state/plan)
 //
 // NOTE: This should only be called from within the `Delete` method of the child resource
+//
+// TODO[pulumi/pulumi-terraform-module#265] determine if the delete for this
+// specific resource succeeded
 func (s *planStore) IsResourceDeleted(
 	modUrn urn.URN,
 	addr ResourceAddress,
 ) bool {
-	modState := s.getOrCreateStateEntry(modUrn).Await()
-	// if we don't have a valid state, then stop here and return false
-	if !modState.IsValidState() {
-		return false
-	}
-
+	operation := s.GetOperation()
 	planEntry := s.getPlanEntry(modUrn)
-	if planEntry == nil {
-		// then this is a true delete
-		_, ok := modState.FindResourceStateOrPlan(addr)
-		return !ok
-	}
 
-	if planEntry.plan != nil && planEntry.plan.IsValidPlan() {
-		plan, ok := planEntry.plan.FindResourceStateOrPlan(addr)
+	if planEntry != nil {
+		plan := planEntry.Await()
+		// If there is a planEntry then this is not a result of `moduleStateHandler.Delete`
+		_, ok := plan.FindResourceStateOrPlan(addr)
 		if !ok {
+			modState := s.getOrCreateStateEntry(modUrn).Await()
+			// If we have a state entry, and we don't have a plan entry for this resource
+			// then this is a true delete (not a replacement). We can check
+			// for the resource in state
 			_, ok := modState.FindResourceStateOrPlan(addr)
 			return !ok
 		}
-
-		st, ok := plan.(ResourcePlan)
-		contract.Assertf(ok, "IsResourceDeleted: ResourcePlan cast must not fail")
-		switch st.ChangeKind() {
-		case tfsandbox.Create, tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
-			// then the resource is being replaced as part of an update
-			// We don't currently have the ability to tell whether the replace succeeded so
-			// just return true. The ModuleState resource will still fail because the overall
-			// operation would have failed
-			// TODO[pulumi/pulumi-terraform-module#250] determine if the delete for this
-			// specific resource succeeded
-			return true
-		default:
-			contract.Assertf(false, "IsResourceDeleted: unexpected change kind %q", st.ChangeKind())
-		}
+		// otherwise if there is an entry in the plan then this must
+		// be a replacement and we have to assume it succeeded
+		return true
 	}
-
-	// otherwise this resource is being deleted as part of an update
-	// either because it is a true delete or because it is being replaced
-	// TODO[pulumi/pulumi-terraform-module#250] determine if the delete for this
-	// specific resource succeeded
+	// Otherwise this is either a deletion triggered by `moduleStateHandler.Delete`
+	// or by a child resource not being registered (i.e. removed)
+	if operation == OperationDelete {
+		// Then this is a `Delete` triggered from `moduleStateHandler.Delete`
+		modState := s.getOrCreateStateEntry(modUrn).Await()
+		if !modState.IsValidState() {
+			// if we don't have a valid state, then stop here and return false
+			// If the underlying state is nil, it means something went wrong with the state after
+			// the tofu destroy operation. In that case, the ModuleState resource will
+			// not be deleted and we should keep all the child resources as well so we can
+			// try again (essentially treat the operation as a no-op).
+			return false
+		}
+		_, ok := modState.FindResourceStateOrPlan(addr)
+		return !ok
+	}
+	// Then this is a deletion triggered by the child resource being removed.
+	// The deletion will happen in a separate process so we can't check any
+	// shared state
 	return true
 }
 
