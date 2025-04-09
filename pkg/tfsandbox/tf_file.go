@@ -89,10 +89,6 @@ func (m *mapper) mapPropertyValue(
 		return val
 	}
 
-	if propertyValue.IsOutput() && propertyValue.OutputValue().Known {
-		return m.mapPropertyValue(propertyValue.OutputValue().Element, typeSpec, replv)
-	}
-
 	if propertyValue.IsSecret() {
 		result := m.mapPropertyValue(propertyValue.SecretValue().Element, typeSpec, replv)
 		key := m.createLocal(result)
@@ -103,6 +99,10 @@ func (m *mapper) mapPropertyValue(
 		result := m.mapPropertyValue(propertyValue.OutputValue().Element, typeSpec, replv)
 		key := m.createLocal(result)
 		return fmt.Sprintf("${sensitive(local.%s)}", key)
+	}
+
+	if propertyValue.IsOutput() && propertyValue.OutputValue().Known {
+		return m.mapPropertyValue(propertyValue.OutputValue().Element, typeSpec, replv)
 	}
 
 	if typeSpec.Ref != "" {
