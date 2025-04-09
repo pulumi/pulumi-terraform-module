@@ -11,9 +11,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func writeTfVarFile(t *testing.T, workingDir string, varType string) string {
@@ -258,13 +259,16 @@ func TestCreateTFFile(t *testing.T) {
 			ctx := context.Background()
 			tofu, err := tfsandbox.NewTofu(ctx, nil)
 			assert.NoError(t, err)
-			// t.Cleanup(func() {
-			// 	os.RemoveAll(tofu.WorkingDir())
-			// })
-			//
+			t.Cleanup(func() {
+				os.RemoveAll(tofu.WorkingDir())
+			})
+
 			moduleSource := writeTfVarFile(t, tofu.WorkingDir(), tt.tfVariableType)
 			t.Logf("Module source: %s", moduleSource)
-			inferredSchema, err := inferModuleSchema(ctx, "localmod", TFModuleSource(moduleSource), TFModuleVersion(""), tfsandbox.DiscardLogger)
+			inferredSchema, err := inferModuleSchema(ctx, "localmod",
+				TFModuleSource(moduleSource),
+				TFModuleVersion(""),
+				tfsandbox.DiscardLogger)
 			assert.NoError(t, err)
 
 			err = tfsandbox.CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{

@@ -52,7 +52,7 @@ func TestTofuPlan(t *testing.T) {
 	providersConfig := map[string]resource.PropertyMap{}
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
-		"inputVar": "test",
+		"input_var": "test",
 	}), outputs, providersConfig, TFInputSpec{
 		Inputs: map[string]schema.PropertySpec{
 			"input_var": {
@@ -90,7 +90,7 @@ func TestTofuApply(t *testing.T) {
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
 	providersConfig := map[string]resource.PropertyMap{}
 	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
-		"inputVar": "test",
+		"input_var": "test",
 	}), emptyOutputs, providersConfig, TFInputSpec{
 		Inputs: map[string]schema.PropertySpec{
 			"input_var": {
