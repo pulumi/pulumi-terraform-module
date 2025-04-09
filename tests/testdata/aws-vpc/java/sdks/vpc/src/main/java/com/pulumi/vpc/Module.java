@@ -1575,14 +1575,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * 
      */
     @Export(name="vpc_id", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> vpc_id;
+    private Output<String> vpc_id;
 
     /**
      * @return The ID of the VPC
      * 
      */
-    public Output<Optional<String>> vpc_id() {
-        return Codegen.optional(this.vpc_id);
+    public Output<String> vpc_id() {
+        return this.vpc_id;
     }
     /**
      * Tenancy of instances spin up within VPC

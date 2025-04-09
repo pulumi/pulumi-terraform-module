@@ -134,7 +134,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 
 }
 
-func TestParsingModuleSchemaOverrides(t *testing.T) {
+func TestParsingModuleSchemaOverridesDoesNotPanic(t *testing.T) {
 	overrides := parseModuleSchemaOverrides()
 	assert.NotNil(t, overrides, "overrides is nil")
 }
@@ -151,8 +151,9 @@ func TestApplyModuleOverrides(t *testing.T) {
 	assert.Empty(t, awsVpcSchema.RequiredOutputs, "required outputs is empty")
 
 	t.Run("required outputs are updated", func(t *testing.T) {
-		moduleOverrides := map[TFModuleSource]ModuleSchemaOverride{
-			source: {
+		moduleOverrides := []*ModuleSchemaOverride{
+			{
+				Source:         string(source),
 				MaximumVersion: "6.0.0",
 				PartialSchema: &InferredModuleSchema{
 					RequiredOutputs: []string{"vpc_id"},
@@ -165,8 +166,9 @@ func TestApplyModuleOverrides(t *testing.T) {
 	})
 
 	t.Run("specific fields can be updated", func(t *testing.T) {
-		moduleOverrides := map[TFModuleSource]ModuleSchemaOverride{
-			source: {
+		moduleOverrides := []*ModuleSchemaOverride{
+			{
+				Source:         string(source),
 				MaximumVersion: "6.0.0",
 				PartialSchema: &InferredModuleSchema{
 					Outputs: map[string]*schema.PropertySpec{
@@ -178,6 +180,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 				},
 			},
 		}
+
 		overridenSchema := applyModuleSchemaOverrides(source, version, awsVpcSchema, moduleOverrides)
 		assert.NotNil(t, overridenSchema, "overriden module schema is nil")
 

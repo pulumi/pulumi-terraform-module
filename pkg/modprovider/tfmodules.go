@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"context"
+	"embed"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -40,30 +41,49 @@ import (
 )
 
 type ModuleSchemaOverride struct {
+	Source         string                `json:"source"`
 	PartialSchema  *InferredModuleSchema `json:"partialSchema"`
 	MinimumVersion *string               `json:"minimumVersion,omitempty"`
 	MaximumVersion string                `json:"maximumVersion"`
 }
 
-//go:embed assets/module_schema_overrides.json
-var moduleSchemaOverrideData []byte
+//go:embed module_schema_overrides/*.json
+var moduleSchemaOverrides embed.FS
 
-func parseModuleSchemaOverrides() map[TFModuleSource]ModuleSchemaOverride {
-	overrides := map[TFModuleSource]ModuleSchemaOverride{}
-	if err := json.Unmarshal(moduleSchemaOverrideData, &overrides); err != nil {
-		panic(fmt.Sprintf("failed to unmarshal module schema overrides: %v", err))
+func parseModuleSchemaOverrides() []*ModuleSchemaOverride {
+	overrides := []*ModuleSchemaOverride{}
+	dir := "module_schema_overrides"
+	files, err := moduleSchemaOverrides.ReadDir(dir)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read module schema overrides directory: %v", err))
 	}
 
-	for source, data := range overrides {
-		if data.MinimumVersion != nil && !isValidVersion(*data.MinimumVersion) {
-			panic(fmt.Sprintf("invalid minimum version %s for source %s",
-				*data.MinimumVersion,
-				source))
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".json") {
+			continue
 		}
-		if !isValidVersion(data.MaximumVersion) {
+
+		data, err := moduleSchemaOverrides.ReadFile(filepath.Join(dir, file.Name()))
+		if err != nil {
+			panic(fmt.Sprintf("failed to read module schema overrides file %s: %v", file.Name(), err))
+		}
+		var override ModuleSchemaOverride
+		if err := json.Unmarshal(data, &override); err != nil {
+			panic(fmt.Sprintf("failed to unmarshal module schema overrides file %s: %v", file.Name(), err))
+		}
+		overrides = append(overrides, &override)
+	}
+
+	for _, override := range overrides {
+		if override.MinimumVersion != nil && !isValidVersion(*override.MinimumVersion) {
+			panic(fmt.Sprintf("invalid minimum version %s for source %s",
+				*override.MinimumVersion,
+				override.Source))
+		}
+		if !isValidVersion(override.MaximumVersion) {
 			panic(fmt.Sprintf("invalid maximum version %s for source %s",
-				data.MaximumVersion,
-				source))
+				override.MaximumVersion,
+				override.Source))
 		}
 	}
 	return overrides
@@ -326,13 +346,13 @@ func InferModuleSchema(
 }
 
 func applyModuleSchemaOverrides(
-	moduleSource TFModuleSource,
+	source TFModuleSource,
 	moduleVersion TFModuleVersion,
 	inferredSchema *InferredModuleSchema,
-	overrides map[TFModuleSource]ModuleSchemaOverride,
+	overrides []*ModuleSchemaOverride,
 ) *InferredModuleSchema {
-	for source, data := range overrides {
-		if source != moduleSource {
+	for _, data := range overrides {
+		if string(source) != data.Source {
 			continue
 		}
 

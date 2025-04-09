@@ -44,24 +44,34 @@ func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*
 			pargs.TFModuleSource, pargs.TFModuleVersion, err)
 	}
 
+	// read module schema overrides and merge them with the
+	// inferred module schema when applicable
+	overrides := parseModuleSchemaOverrides()
+	modifiedSchema := applyModuleSchemaOverrides(
+		pargs.TFModuleSource,
+		pargs.TFModuleVersion,
+		inferredModule,
+		overrides,
+	)
+
 	supportingTypes := map[string]schema.ComplexTypeSpec{}
-	for token, typeSpec := range inferredModule.SupportingTypes {
+	for token, typeSpec := range modifiedSchema.SupportingTypes {
 		if typeSpec != nil {
 			supportingTypes[token] = *typeSpec
 		}
 	}
 
 	inputs := map[string]schema.PropertySpec{}
-	for token, input := range inferredModule.Inputs {
-		if input != nil {
-			inputs[token] = *input
+	for propertyName, inputType := range modifiedSchema.Inputs {
+		if inputType != nil {
+			inputs[propertyName] = *inputType
 		}
 	}
 
 	outputs := map[string]schema.PropertySpec{}
-	for token, output := range inferredModule.Outputs {
-		if output != nil {
-			outputs[token] = *output
+	for propertyName, outputType := range modifiedSchema.Outputs {
+		if outputType != nil {
+			outputs[propertyName] = *outputType
 		}
 	}
 
@@ -74,11 +84,11 @@ func inferPulumiSchemaForModule(ctx context.Context, pargs *ParameterizeArgs) (*
 			mainResourceToken: {
 				IsComponent:     true,
 				InputProperties: inputs,
-				RequiredInputs:  inferredModule.RequiredInputs,
+				RequiredInputs:  modifiedSchema.RequiredInputs,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: outputs,
-					Required:   inferredModule.RequiredOutputs,
+					Required:   modifiedSchema.RequiredOutputs,
 				},
 			},
 		},
