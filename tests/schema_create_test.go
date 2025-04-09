@@ -489,124 +489,107 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 		// TypeMap (optional,computed) will show the entire value as computed if one of the values is computed
 		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
 			func(actual interface{}) {
-				autogold.Expect([]interface{}{
-					map[string]interface{}{
-						"abort_incomplete_multipart_upload": []interface{}{},
-						"expiration":                        []interface{}{},
-						"filter": []interface{}{
-							map[string]interface{}{
-								"and": []interface{}{
-									map[string]interface{}{
-										"object_size_greater_than": json.Number("200"),
-										"tags":                     nil,
-									},
-								},
-								"prefix": "test",
-								"tag":    []interface{}{},
-							},
+				autogold.Expect([]interface{}{map[string]interface{}{
+					"abort_incomplete_multipart_upload": []interface{}{},
+					"expiration":                        []interface{}{},
+					"filter": []interface{}{map[string]interface{}{
+						"and": []interface{}{map[string]interface{}{
+							"object_size_greater_than": json.Number("200"),
+							"object_size_less_than":    json.Number("0"),
+							"prefix":                   "",
+							"tags":                     nil,
+						}},
+						"object_size_greater_than": nil,
+						"object_size_less_than":    nil,
+						"prefix":                   "test",
+						"tag":                      []interface{}{},
+					}},
+					"id":                            "rule_id",
+					"noncurrent_version_expiration": []interface{}{},
+					"noncurrent_version_transition": []interface{}{},
+					"prefix":                        "",
+					"status":                        "Enabled",
+					"transition": []interface{}{
+						map[string]interface{}{
+							"date":          nil,
+							"days":          json.Number("0"),
+							"storage_class": "GLACIER",
 						},
-						"id":                            "rule_id",
-						"noncurrent_version_expiration": []interface{}{},
-						"noncurrent_version_transition": []interface{}{},
-						"status":                        "Enabled",
-						"transition": []interface{}{
-							map[string]interface{}{
-								"date":          nil,
-								"days":          json.Number("30"),
-								"storage_class": "GLACIER",
-							},
-							map[string]interface{}{
-								"date":          nil,
-								"storage_class": "GLACIER",
-							},
+						map[string]interface{}{
+							"date":          nil,
+							"days":          json.Number("30"),
+							"storage_class": "GLACIER",
 						},
 					},
-				}).Equal(t, actual)
+				}}).Equal(t, actual)
 			})
 
 		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
 			findUnknownChange,
 			func(actual interface{}) {
-				autogold.Expect([]interface{}{
-					map[string]interface{}{
-						"abort_incomplete_multipart_upload": []interface{}{},
-						"expiration":                        []interface{}{},
-						"filter": []interface{}{
-							map[string]interface{}{
-								"and": []interface{}{
-									map[string]interface{}{
-										"object_size_less_than": true,
-										"prefix":                true,
-									},
-								},
-								"object_size_greater_than": true,
-								"object_size_less_than":    true,
-								"tag":                      []interface{}{},
-							},
-						},
-						"noncurrent_version_expiration": []interface{}{},
-						"noncurrent_version_transition": []interface{}{},
-						"prefix":                        true, // Attribute.StringAttribute (optional,computed)
-						"transition": []interface{}{
-							map[string]interface{}{},
-							map[string]interface{}{
-								"days": true,
-							},
-						},
+				autogold.Expect([]interface{}{map[string]interface{}{
+					"abort_incomplete_multipart_upload": []interface{}{},
+					"expiration":                        []interface{}{},
+					"filter": []interface{}{map[string]interface{}{
+						"and": []interface{}{map[string]interface{}{}},
+						"tag": []interface{}{},
+					}},
+					"noncurrent_version_expiration": []interface{}{},
+					"noncurrent_version_transition": []interface{}{},
+					"transition": []interface{}{
+						map[string]interface{}{},
+						map[string]interface{}{},
 					},
-				}).Equal(t, actual)
+				}}).Equal(t, actual)
 			})
 
 		assertPlanForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", plan,
 			func(actual interface{}) {
-				autogold.Expect([]resource.PropertyValue{
-					resource.NewObjectProperty(
-						resource.PropertyMap{
-							"id":                                resource.NewStringProperty("rule_id"),
-							"status":                            resource.NewStringProperty("Enabled"),
-							"prefix":                            resource.MakeComputed(resource.NewStringProperty("")),
-							"abort_incomplete_multipart_upload": resource.NewArrayProperty([]resource.PropertyValue{}),
-							"expiration":                        resource.NewArrayProperty([]resource.PropertyValue{}),
-							"noncurrent_version_expiration":     resource.NewArrayProperty([]resource.PropertyValue{}),
-							"noncurrent_version_transition":     resource.NewArrayProperty([]resource.PropertyValue{}),
-							"transition": resource.NewArrayProperty([]resource.PropertyValue{
-								resource.NewObjectProperty(
-									resource.PropertyMap{
-										"date":          resource.NewNullProperty(),
-										"days":          resource.NewNumberProperty(30),
-										"storage_class": resource.NewStringProperty("GLACIER"),
-									},
-								),
-								resource.NewObjectProperty(
-									resource.PropertyMap{
-										"days":          resource.MakeComputed(resource.NewStringProperty("")),
-										"date":          resource.NewNullProperty(),
-										"storage_class": resource.NewStringProperty("GLACIER"),
-									},
-								),
-							}),
-							"filter": resource.NewArrayProperty([]resource.PropertyValue{
-								resource.NewObjectProperty(
-									resource.PropertyMap{
-										"and": resource.NewArrayProperty([]resource.PropertyValue{
-											resource.NewObjectProperty(
-												resource.PropertyMap{
-													"object_size_greater_than": resource.NewNumberProperty(200),
-													"tags":                     resource.NewNullProperty(),
-													"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
-													"prefix":                   resource.MakeComputed(resource.NewStringProperty("")),
-												},
-											),
-										}),
-										"prefix":                   resource.NewStringProperty("test"),
-										"tag":                      resource.NewArrayProperty([]resource.PropertyValue{}),
-										"object_size_greater_than": resource.MakeComputed(resource.NewStringProperty("")),
-										"object_size_less_than":    resource.MakeComputed(resource.NewStringProperty("")),
-									},
-								),
-							}),
-						}),
-				}).Equal(t, actual)
+				autogold.Expect([]resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("abort_incomplete_multipart_upload"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("expiration"): resource.PropertyValue{V: []resource.PropertyValue{}},
+						resource.PropertyKey("filter"): resource.PropertyValue{V: []resource.PropertyValue{{
+							V: resource.PropertyMap{
+								resource.PropertyKey("and"): resource.PropertyValue{
+									V: []resource.PropertyValue{{
+										V: resource.PropertyMap{
+											resource.PropertyKey("object_size_greater_than"): resource.PropertyValue{
+												V: 200,
+											},
+											resource.PropertyKey("object_size_less_than"): resource.PropertyValue{V: 0},
+											resource.PropertyKey("prefix"):                resource.PropertyValue{V: ""},
+											resource.PropertyKey("tags"):                  resource.PropertyValue{},
+										},
+									}},
+								},
+								resource.PropertyKey("object_size_greater_than"): resource.PropertyValue{},
+								resource.PropertyKey("object_size_less_than"):    resource.PropertyValue{},
+								resource.PropertyKey("prefix"):                   resource.PropertyValue{V: "test"},
+								resource.PropertyKey("tag"):                      resource.PropertyValue{V: []resource.PropertyValue{}},
+							},
+						}}},
+						resource.PropertyKey("id"):                            resource.PropertyValue{V: "rule_id"},
+						resource.PropertyKey("noncurrent_version_expiration"): resource.PropertyValue{V: []resource.PropertyValue{}},
+						resource.PropertyKey("noncurrent_version_transition"): resource.PropertyValue{V: []resource.PropertyValue{}},
+						resource.PropertyKey("prefix"):                        resource.PropertyValue{V: ""},
+						resource.PropertyKey("status"):                        resource.PropertyValue{V: "Enabled"},
+						resource.PropertyKey("transition"): resource.PropertyValue{V: []resource.PropertyValue{
+							{V: resource.PropertyMap{
+								resource.PropertyKey("date"):          resource.PropertyValue{},
+								resource.PropertyKey("days"):          resource.PropertyValue{V: 0},
+								resource.PropertyKey("storage_class"): resource.PropertyValue{V: "GLACIER"},
+							}},
+							{V: resource.PropertyMap{
+								resource.PropertyKey("date"):          resource.PropertyValue{},
+								resource.PropertyKey("days"):          resource.PropertyValue{V: 30},
+								resource.PropertyKey("storage_class"): resource.PropertyValue{V: "GLACIER"},
+							}},
+						}},
+					},
+				}}).Equal(t, actual)
 			})
 	})
 
