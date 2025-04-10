@@ -31,41 +31,22 @@ import (
 //
 // The provider will have a single planStore instance that stores the information indexed by URNs.
 type planStore struct {
-	mutex     sync.Mutex
-	plans     map[urn.URN]*planEntry
-	states    map[urn.URN]*stateEntry
-	operation Operation
+	mutex  sync.Mutex
+	plans  map[urn.URN]*planEntry
+	states map[urn.URN]*stateEntry
 }
-
-func (s *planStore) SetOperation(op Operation) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.operation = op
-}
-
-func (s *planStore) GetOperation() Operation {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.operation
-}
-
-type Operation string
-
-const (
-	OperationDelete Operation = "DELETE"
-)
 
 // getPlanEntry returns the plan entry for the given URN.
-// If the plan entry does not exist, it returns nil and callers
-// are responsible for handling
+// If the plan entry does not exist, callers are responsible for handling
 // NOTE: you probably want to use `getOrCreatePlanEntry` instead of this method.
-func (s *planStore) getPlanEntry(u urn.URN) *planEntry {
+func (s *planStore) getPlanEntry(u urn.URN) (*planEntry, bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if s.plans == nil {
-		return nil
+		return nil, false
 	}
-	return s.plans[u]
+	entry, ok := s.plans[u]
+	return entry, ok
 }
 
 func (s *planStore) getOrCreatePlanEntry(u urn.URN) *planEntry {
@@ -158,18 +139,6 @@ func (e *stateEntry) Set(state State) {
 	e.waitGroup.Done()
 }
 
-// Avoid memory leaks and clean the state when done.
-func (s *planStore) Forget(modUrn urn.URN) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if s.plans != nil {
-		delete(s.plans, modUrn)
-	}
-	if s.states != nil {
-		delete(s.states, modUrn)
-	}
-}
-
 func (s *planStore) SetPlan(modUrn urn.URN, plan Plan) {
 	entry := s.getOrCreatePlanEntry(modUrn)
 	entry.Set(plan)
@@ -194,14 +163,10 @@ func (e unknownAddressError) Error() string {
 //  1. This is a `pulumi dn` operation and the entire stack is being deleted
 //     In this case there will be no `plan` because the `moduleStateHandler.Delete` method does not run plan.
 //  2. This is a `pulumi up` operation and this resource is being deleted or replaced.
-//     - 2a.If DeleteBeforeReplace=false (TF default) then `Delete` is being run in the same provider process
-//     and we have access to shared info (i.e. plan/state).
-//     We can tell this case apart from 1 because there will be a plan (`up` runs Construct which runs Plan).
-//     - 2b. If DeleteBeforeReplace=true then `Delete` is being run in a different provider process
-//     and we do not have access to shared info (i.e. plan/state). We don't have any info to tell
-//     if the delete succeeded or not for this resource
-//     - 2c. If this resources is being deleted and not replaced (i.e. resource is removed) then the `Delete`
-//     will happen in a separate provider process and we will not have access to shared info (state/plan)
+//     2a. If the resource is deleted (removed) then it won't be in the plan
+//     and we can check the state to know if it was successful
+//     2b. If the resource is replaced then the resource will remain in the state
+//     for both the success and failure case. We can't know for sure
 //
 // NOTE: This should only be called from within the `Delete` method of the child resource
 //
@@ -211,15 +176,13 @@ func (s *planStore) IsResourceDeleted(
 	modUrn urn.URN,
 	addr ResourceAddress,
 ) bool {
-	operation := s.GetOperation()
-	planEntry := s.getPlanEntry(modUrn)
-
-	if planEntry != nil {
-		plan := planEntry.Await()
+	modState := s.getOrCreateStateEntry(modUrn).Await()
+	if planEntry, ok := s.getPlanEntry(modUrn); ok {
 		// If there is a planEntry then this is not a result of `moduleStateHandler.Delete`
+		// It is either a resource deletion due to removal or a resource replacement
+		plan := planEntry.Await()
 		_, ok := plan.FindResourceStateOrPlan(addr)
 		if !ok {
-			modState := s.getOrCreateStateEntry(modUrn).Await()
 			// If we have a state entry, and we don't have a plan entry for this resource
 			// then this is a true delete (not a replacement). We can check
 			// for the resource in state
@@ -230,26 +193,18 @@ func (s *planStore) IsResourceDeleted(
 		// be a replacement and we have to assume it succeeded
 		return true
 	}
-	// Otherwise this is either a deletion triggered by `moduleStateHandler.Delete`
-	// or by a child resource not being registered (i.e. removed)
-	if operation == OperationDelete {
-		// Then this is a `Delete` triggered from `moduleStateHandler.Delete`
-		modState := s.getOrCreateStateEntry(modUrn).Await()
-		if !modState.IsValidState() {
-			// if we don't have a valid state, then stop here and return false
-			// If the underlying state is nil, it means something went wrong with the state after
-			// the tofu destroy operation. In that case, the ModuleState resource will
-			// not be deleted and we should keep all the child resources as well so we can
-			// try again (essentially treat the operation as a no-op).
-			return false
-		}
-		_, ok := modState.FindResourceStateOrPlan(addr)
-		return !ok
+	// Otherwise this is a result of `moduleStateHandler.Delete`
+	// and we just need to check the state
+	if !modState.IsValidState() {
+		// if we don't have a valid state, then stop here and return false
+		// If the underlying state is nil, it means something went wrong with the state after
+		// the tofu destroy operation. In that case, the ModuleState resource will
+		// not be deleted and we should keep all the child resources as well so we can
+		// try again (essentially treat the operation as a no-op).
+		return false
 	}
-	// Then this is a deletion triggered by the child resource being removed.
-	// The deletion will happen in a separate process so we can't check any
-	// shared state
-	return true
+	_, ok := modState.FindResourceStateOrPlan(addr)
+	return !ok
 }
 
 func (s *planStore) FindResourceState(

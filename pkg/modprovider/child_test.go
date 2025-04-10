@@ -248,43 +248,6 @@ func TestChildResourceDelete(t *testing.T) {
 		})
 		require.NoErrorf(t, err, "expected destroy to succeed")
 	})
-
-	t.Run("delete failed, nil state", func(t *testing.T) {
-		ctx := context.Background()
-		h := newChildHandler(&planStore{})
-
-		// no state
-		h.planStore.SetState(urn.URN(modUrn), newNilState())
-		h.planStore.SetOperation(OperationDelete)
-		properties, err := structpb.NewStruct(map[string]any{
-			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
-			moduleURNPropName:            modUrn,
-			"force_destroy":              true,
-		})
-		require.NoError(t, err)
-		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
-			Type:      "terraform-aws-module:tf:aws_s3_bucket",
-			OldInputs: properties,
-		})
-		require.Errorf(t, err, "expected error, but got nil")
-	})
-
-	t.Run("delete successful, nil state/plan", func(t *testing.T) {
-		ctx := context.Background()
-		h := newChildHandler(&planStore{})
-
-		properties, err := structpb.NewStruct(map[string]any{
-			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
-			moduleURNPropName:            modUrn,
-			"force_destroy":              true,
-		})
-		require.NoError(t, err)
-		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
-			Type:      "terraform-aws-module:tf:aws_s3_bucket",
-			OldInputs: properties,
-		})
-		require.NoErrorf(t, err, "expected error, but got nil")
-	})
 }
 
 type testResourceState struct {
