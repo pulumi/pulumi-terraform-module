@@ -26,7 +26,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
+
+const modUrn = "urn:pulumi:test::prog::randmod:index:Module::mymod"
 
 func TestChildResoruceTypeToken(t *testing.T) {
 	pkgName := testPackageName()
@@ -85,8 +89,6 @@ func TestChildResourceCreate(t *testing.T) {
 	ctx := context.Background()
 	h := newChildHandler(&planStore{})
 
-	modUrn := "urn:pulumi:test::prog::randmod:index:Module::mymod"
-
 	h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
 		address: "module.s3_bucket.aws_s3_bucket.this[0]",
 		name:    "this",
@@ -124,8 +126,128 @@ func TestChildResourceUpdate(t *testing.T) {
 }
 
 func TestChildResourceDelete(t *testing.T) {
-	t.Skip("TODO")
+	t.Run("delete successful", func(t *testing.T) {
+		ctx := context.Background()
+		h := newChildHandler(&planStore{})
 
+		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{}})
+		properties, err := structpb.NewStruct(map[string]any{
+			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+			moduleURNPropName:            modUrn,
+			"force_destroy":              true,
+		})
+		require.NoError(t, err)
+		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
+			Type:      "terraform-aws-module:tf:aws_s3_bucket",
+			OldInputs: properties,
+		})
+		require.NoErrorf(t, err, "expected destroy to succeed")
+	})
+
+	t.Run("replacement successful", func(t *testing.T) {
+		ctx := context.Background()
+		h := newChildHandler(&planStore{})
+
+		h.planStore.SetPlan(urn.URN(modUrn), &testPlan{byAddress: map[ResourceAddress]testResourcePlan{
+			"module.s3_bucket.aws_s3_bucket.this[0]": {
+				resourceAddress: "module.s3_bucket.aws_s3_bucket.this[0]",
+				changeKind:      tfsandbox.Replace,
+				name:            "this",
+				resType:         "s3_bucket",
+				plannedValues: resource.PropertyMap{
+					"force_destroy": resource.NewBoolProperty(true),
+				},
+			},
+		}})
+		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
+			address: "module.s3_bucket.aws_s3_bucket.this[0]",
+			name:    "this",
+			index:   float64(0),
+			attrs: resource.PropertyMap{
+				"force_destroy": resource.NewBoolProperty(true),
+			},
+		}})
+		properties, err := structpb.NewStruct(map[string]any{
+			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+			moduleURNPropName:            modUrn,
+			"force_destroy":              true,
+		})
+		require.NoError(t, err)
+		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
+			Type:      "terraform-aws-module:tf:aws_s3_bucket",
+			OldInputs: properties,
+		})
+		require.NoErrorf(t, err, "expected destroy to succeed")
+	})
+
+	t.Run("delete in update successful", func(t *testing.T) {
+		ctx := context.Background()
+		h := newChildHandler(&planStore{})
+
+		h.planStore.SetPlan(urn.URN(modUrn), &testPlan{byAddress: map[ResourceAddress]testResourcePlan{}})
+		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{}})
+		properties, err := structpb.NewStruct(map[string]any{
+			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+			moduleURNPropName:            modUrn,
+			"force_destroy":              true,
+		})
+		require.NoError(t, err)
+		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
+			Type:      "terraform-aws-module:tf:aws_s3_bucket",
+			OldInputs: properties,
+		})
+		require.NoErrorf(t, err, "expected destroy to succeed")
+	})
+
+	t.Run("delete in update failed", func(t *testing.T) {
+		ctx := context.Background()
+		h := newChildHandler(&planStore{})
+
+		h.planStore.SetPlan(urn.URN(modUrn), &testPlan{byAddress: map[ResourceAddress]testResourcePlan{}})
+		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
+			address: "module.s3_bucket.aws_s3_bucket.this[0]",
+			name:    "this",
+			index:   float64(0),
+			attrs: resource.PropertyMap{
+				"force_destroy": resource.NewBoolProperty(true),
+			},
+		}})
+		properties, err := structpb.NewStruct(map[string]any{
+			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+			moduleURNPropName:            modUrn,
+			"force_destroy":              true,
+		})
+		require.NoError(t, err)
+		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
+			Type:      "terraform-aws-module:tf:aws_s3_bucket",
+			OldInputs: properties,
+		})
+		require.Errorf(t, err, "expected destroy to fail")
+	})
+
+	t.Run("delete failed, partial state", func(t *testing.T) {
+		ctx := context.Background()
+		h := newChildHandler(&planStore{})
+
+		// some other resource is still in the state, but not this resource
+		h.planStore.SetState(urn.URN(modUrn), &testState{&testResourceState{
+			address: "module.s3_bucket.aws_s3_bucket.other[0]",
+			resType: "aws_s3_bucket",
+			name:    "other",
+			index:   float64(0),
+		}})
+		properties, err := structpb.NewStruct(map[string]any{
+			childResourceAddressPropName: "module.s3_bucket.aws_s3_bucket.this[0]",
+			moduleURNPropName:            modUrn,
+			"force_destroy":              true,
+		})
+		require.NoError(t, err)
+		_, err = h.Delete(ctx, &pulumirpc.DeleteRequest{
+			Type:      "terraform-aws-module:tf:aws_s3_bucket",
+			OldInputs: properties,
+		})
+		require.NoErrorf(t, err, "expected destroy to succeed")
+	})
 }
 
 type testResourceState struct {
@@ -147,6 +269,10 @@ var _ ResourceStateOrPlan = (*testResourceState)(nil)
 
 type testState struct {
 	res *testResourceState
+}
+
+func (ts *testState) IsValidState() bool {
+	return ts.res != nil
 }
 
 func (ts *testState) VisitResources(visitor func(ResourceState)) {

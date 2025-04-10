@@ -91,7 +91,7 @@ func TestTofuApply(t *testing.T) {
 	assert.NoError(t, err, "error running tofu refresh")
 	assert.Equal(t, "module.test.terraform_data.example", state.Values.RootModule.ChildModules[0].Resources[0].Address)
 
-	err = tofu.Destroy(ctx, DiscardLogger)
+	_, err = tofu.Destroy(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu destroy")
 }
 
