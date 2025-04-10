@@ -3,6 +3,7 @@ package modprovider
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -33,7 +35,11 @@ variable "tf_var" {
 	return dir
 }
 
-func TestCreateTFFile(t *testing.T) {
+// This tests that CreateTFFile creates a valid TF file that
+// can be successfully validated by Tofu plan.
+// It also tests that the TF file is created with the correct
+// inputs structure
+func TestCreateTFFileValidInputs(t *testing.T) {
 	t.Parallel()
 
 	// Test the different types of Module variables that could exist
@@ -44,80 +50,209 @@ func TestCreateTFFile(t *testing.T) {
 		tfVariableType  string
 		inputsValue     resource.PropertyValue
 		outputs         []tfsandbox.TFOutputSpec
+		tfJSON          map[string]any
 		providersConfig map[string]resource.PropertyMap
 	}{
 		{
-			name:           "simple (string)",
+			name:           "test-simple (string)",
 			tfVariableType: "string",
 			inputsValue:    resource.NewStringProperty("hello"),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "hello",
+					},
+				},
+			},
 		},
 		{
-			name:           "string unknown",
+			name:           "test-string unknown",
 			tfVariableType: "string",
 			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
+			tfJSON: map[string]any{
+				"resource": map[string]any{
+					"terraform_data": map[string]any{
+						"unknown_proxy": map[string]any{
+							"input": "unknown",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${terraform_data.unknown_proxy.output}",
+					},
+				},
+			},
 		},
 		{
-			name:           "string secret",
+			name:           "test-string secret",
 			tfVariableType: "string",
 			inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": "hello",
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local1)}",
+					},
+				},
+			},
 		},
 		{
-			name:           "bool",
+			name:           "test-bool",
 			tfVariableType: "bool",
 			inputsValue:    resource.NewBoolProperty(true),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": true,
+					},
+				},
+			},
 		},
 		{
-			name:           "number",
+			name:           "test-number",
 			tfVariableType: "number",
 			inputsValue:    resource.NewNumberProperty(42),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": float64(42),
+					},
+				},
+			},
 		},
 		{
-			name:           "list(string)",
+			name:           "test-list(string)",
 			tfVariableType: "list(string)",
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("hello"),
 				resource.NewStringProperty("world"),
 			}),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": []any{"hello", "world"},
+					},
+				},
+			},
 		},
 		{
-			name:           "map(string)",
+			name:           "test-map(string)",
 			tfVariableType: "map(string)",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewStringProperty("value"),
 			}),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"key": "value",
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "list(map(string))",
+			name:           "test-list(map(string))",
 			tfVariableType: "list(map(string))",
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{
 					"key": resource.NewStringProperty("value"),
 				}),
 			}),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": []any{
+							map[string]any{
+								"key": "value",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "unknown list(map(string))",
+			name:           "list of unknowns list(map(string))",
 			tfVariableType: "list(map(string))",
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
 			}),
+			tfJSON: map[string]any{
+				"resource": map[string]any{
+					"terraform_data": map[string]any{
+						"unknown_proxy": map[string]any{
+							"input": "unknown",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": []any{
+							map[string]any{
+								"key": "${terraform_data.unknown_proxy.output}",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "toplevel unknown list(string)",
 			tfVariableType: "list(string)",
 			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
+			tfJSON: map[string]any{
+				"resource": map[string]any{
+					"terraform_data": map[string]any{
+						"unknown_proxy": map[string]any{
+							"input": "unknown",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": []any{
+							"${terraform_data.unknown_proxy.output}",
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "map(map(any))",
+			name:           "test-map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(resource.PropertyMap{
 					"key": resource.NewStringProperty("value"),
 				}),
 			}),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"key": map[string]any{
+								"key": "value",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "unknown map(map(any))",
+			name:           "map of unknowns map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(
@@ -126,6 +261,25 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			}),
+			tfJSON: map[string]any{
+				"resource": map[string]any{
+					"terraform_data": map[string]any{
+						"unknown_proxy": map[string]any{
+							"input": "unknown",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"key": map[string]any{
+								"key": "${terraform_data.unknown_proxy.output}",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "set(string)",
@@ -134,14 +288,36 @@ func TestCreateTFFile(t *testing.T) {
 				resource.NewStringProperty("hello"),
 				resource.NewStringProperty("world"),
 			}),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": []any{
+							"hello",
+							"world",
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "object type",
+			name:           "test-object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"string_val": resource.NewStringProperty("hello"),
 				"number_val": resource.NewNumberProperty(42),
 			}),
+			tfJSON: map[string]any{
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"string_val": "hello",
+							"number_val": float64(42),
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "unknown object type",
@@ -152,13 +328,46 @@ func TestCreateTFFile(t *testing.T) {
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
+			tfJSON: map[string]any{
+				"resource": map[string]any{
+					"terraform_data": map[string]any{
+						"unknown_proxy": map[string]any{
+							"input": "unknown",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"string_val": "${terraform_data.unknown_proxy.output}",
+							"number_val": float64(42),
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "secret list(map(string))",
+			name:           "test-secret list(map(string))",
 			tfVariableType: "list(map(string))",
 			inputsValue: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
 			})),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": []any{
+						map[string]any{
+							"key": "value",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local1)}",
+					},
+				},
+			},
 		},
 		{
 			name:           "output secret list(map(string))",
@@ -166,9 +375,24 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
 			}), Known: true, Secret: true}),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": []any{
+						map[string]any{
+							"key": "value",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local1)}",
+					},
+				},
+			},
 		},
 		{
-			name:           "secret map(map(any))",
+			name:           "test-secret map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(
@@ -177,9 +401,24 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			}),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": "value",
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"key": map[string]any{
+								"key": "${sensitive(local.local1)}",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
-			name:           "output secret map(map(any))",
+			name:           "test-output secret map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
 				"key": resource.NewObjectProperty(
@@ -192,13 +431,43 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			}),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": "value",
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"key": map[string]any{
+								"key": "${sensitive(local.local1)}",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "top level secret map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
 			})),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": map[string]any{
+						"key": map[string]any{
+							"key": "value",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local1)}",
+					},
+				},
+			},
 		},
 		{
 			name:           "top level secret nested map(map(any))",
@@ -208,16 +477,47 @@ func TestCreateTFFile(t *testing.T) {
 					"key": resource.MakeSecret(resource.NewStringProperty("value")),
 				}),
 			})),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": "value",
+					"local2": map[string]any{
+						"key": map[string]any{
+							"key": "${sensitive(local.local1)}",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local2)}",
+					},
+				},
+			},
 		},
 		{
 			name:           "top level output secret map(map(any))",
 			tfVariableType: "map(map(any))",
 			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
 			}), Known: true, Secret: true}),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": map[string]any{
+						"key": map[string]any{
+							"key": "value",
+						},
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local1)}",
+					},
+				},
+			},
 		},
 		{
-			name:           "secret object type",
+			name:           "test-secret object type",
 			tfVariableType: "object({string_val=string, number_val=number})",
 			inputsValue: resource.NewObjectProperty(
 				resource.PropertyMap{
@@ -225,6 +525,20 @@ func TestCreateTFFile(t *testing.T) {
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": "hello",
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"string_val": "${sensitive(local.local1)}",
+							"number_val": float64(42),
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "output secret object type",
@@ -239,6 +553,20 @@ func TestCreateTFFile(t *testing.T) {
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": "hello",
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": map[string]any{
+							"string_val": "${sensitive(local.local1)}",
+							"number_val": float64(42),
+						},
+					},
+				},
+			},
 		},
 		{
 			name:           "top level secret object type",
@@ -251,6 +579,20 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			),
+			tfJSON: map[string]any{
+				"locals": map[string]any{
+					"local1": map[string]any{
+						"string_val": "hello",
+						"number_val": float64(42),
+					},
+				},
+				"module": map[string]any{
+					"simple": map[string]any{
+						"source": "./local-module",
+						"tf_var": "${sensitive(local.local1)}",
+					},
+				},
+			},
 		},
 	}
 
@@ -264,7 +606,6 @@ func TestCreateTFFile(t *testing.T) {
 			})
 
 			moduleSource := writeTfVarFile(t, tofu.WorkingDir(), tt.tfVariableType)
-			t.Logf("Module source: %s", moduleSource)
 			inferredSchema, err := inferModuleSchema(ctx, "localmod",
 				TFModuleSource(moduleSource),
 				TFModuleVersion(""),
@@ -281,16 +622,17 @@ func TestCreateTFFile(t *testing.T) {
 
 			var buffer bytes.Buffer
 			logger := &testLogger{r: &buffer}
-			t.Logf("WorkingDir: %s", tofu.WorkingDir())
 			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), "pulumi.tf.json"))
 			assert.NoError(t, err)
-			t.Logf("Contents: %s", string(contents))
+			var tfFileContents map[string]any
+			err = json.Unmarshal(contents, &tfFileContents)
+			require.NoError(t, err)
+			assert.Equal(t, tt.tfJSON, tfFileContents)
 
 			err = tofu.Init(context.Background(), logger)
 			assert.NoError(t, err)
 
 			assertValidateSuccess(t, tofu, logger)
-			t.Logf("Output: %s", buffer.String())
 		})
 	}
 }
@@ -299,12 +641,12 @@ type testLogger struct {
 	r io.Writer
 }
 
-func (t *testLogger) Log(_ context.Context, _ tfsandbox.LogLevel, input string) {
-	_, err := t.r.Write([]byte(input))
+func (l *testLogger) Log(_ context.Context, _ tfsandbox.LogLevel, input string) {
+	_, err := l.r.Write([]byte(input))
 	contract.AssertNoErrorf(err, "test logger failed to write")
 }
-func (t *testLogger) LogStatus(_ context.Context, _ tfsandbox.LogLevel, input string) {
-	_, err := t.r.Write([]byte(input))
+func (l *testLogger) LogStatus(_ context.Context, _ tfsandbox.LogLevel, input string) {
+	_, err := l.r.Write([]byte(input))
 	contract.AssertNoErrorf(err, "test logger failed to write")
 }
 

@@ -37,11 +37,15 @@ func writeTerraformFilesToDirectory() (string, bool) {
 	return writeDir, writeDir != ""
 }
 
+// locals is a struct that holds information on creating local variables
+// for the Terraform JSON file.
 type locals struct {
 	entries map[string]interface{}
 	counter int
 }
 
+// createLocal creates a new local variable with a unique key
+// and stores the value in the locals map.
 func (l *locals) createLocal(v interface{}) string {
 	l.counter++
 	key := fmt.Sprintf("local%d", l.counter)
@@ -49,16 +53,18 @@ func (l *locals) createLocal(v interface{}) string {
 	return key
 }
 
-type mapper struct {
+// pulumiToTFMapper is used to map Pulumi property values to Terraform property values
+type pulumiToTFMapper struct {
 	supportingTypes map[string]schema.ComplexTypeSpec
 	locals          *locals
 }
 
-func (m *mapper) createLocal(v interface{}) string {
+func (m *pulumiToTFMapper) createLocal(v interface{}) string {
 	return m.locals.createLocal(v)
 }
 
-func (m *mapper) getType(typeRef string) *schema.ObjectTypeSpec {
+// getType finds the type specification for a given type reference
+func (m *pulumiToTFMapper) getType(typeRef string) *schema.ObjectTypeSpec {
 	if strings.HasPrefix(typeRef, "#/types/") {
 		ref := strings.TrimPrefix(typeRef, "#/types/")
 		if typeSpec, ok := m.supportingTypes[ref]; ok {
@@ -68,7 +74,10 @@ func (m *mapper) getType(typeRef string) *schema.ObjectTypeSpec {
 	return nil
 }
 
-func (m *mapper) mapPropertyValue(
+// mapPropertyValue recursively maps a Pulumi property value to a Terraform property value
+// taking into account the Terraform input type specification.
+// If no types are available, it falls back to the replv function.
+func (m *pulumiToTFMapper) mapPropertyValue(
 	propertyValue resource.PropertyValue,
 	typeSpec schema.TypeSpec,
 	replv func(resource.PropertyValue) (any, bool),
@@ -169,7 +178,7 @@ func (m *mapper) mapPropertyValue(
 //
 // Notes:
 //   - If inputTypes is empty, the function directly maps the inputs using replv.
-func (m *mapper) mapPropertyMap(
+func (m *pulumiToTFMapper) mapPropertyMap(
 	inputs resource.PropertyMap,
 	inputTypes map[string]schema.PropertySpec,
 	replv func(resource.PropertyValue) (any, bool),
@@ -315,7 +324,7 @@ func CreateTFFile(
 		entries: make(map[string]interface{}),
 		counter: 0,
 	}
-	m := &mapper{
+	m := &pulumiToTFMapper{
 		supportingTypes: inputsSpec.SupportingTypes,
 		locals:          locals,
 	}
