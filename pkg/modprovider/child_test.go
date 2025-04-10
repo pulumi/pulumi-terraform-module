@@ -275,14 +275,6 @@ func (ts *testState) IsValidState() bool {
 	return ts.res != nil
 }
 
-// newNilState can be used to test a non-nil State interface with a nil
-// underlying value
-func newNilState() *testState {
-	return &testState{
-		res: nil,
-	}
-}
-
 func (ts *testState) VisitResources(visitor func(ResourceState)) {
 	visitor(ts.res)
 }
