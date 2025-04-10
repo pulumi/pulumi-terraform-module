@@ -285,6 +285,7 @@ func (h *moduleStateHandler) Delete(
 		olds["moduleInputs"].ObjectValue(), /*inputs*/
 		[]tfsandbox.TFOutputSpec{},         /*outputs*/
 		providersConfig,
+		tfsandbox.TFInputSpec{},
 	)
 
 	if err != nil {
@@ -347,6 +348,7 @@ func (h *moduleStateHandler) Read(
 		inputs,                            /*inputs*/
 		[]tfsandbox.TFOutputSpec{},        /*outputs*/
 		map[string]resource.PropertyMap{}, /*providersConfig*/
+		tfsandbox.TFInputSpec{},           /*inputSpecs*/
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)

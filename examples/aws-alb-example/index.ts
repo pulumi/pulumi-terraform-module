@@ -56,11 +56,7 @@ const lambda = new lambdamod.Module('test-lambda', {
 new albmod.Module('test-alb', {
   enable_deletion_protection: false, // for example only
   vpc_id: vpc.vpc_id.apply(id => id!),
-  subnets: [
-    vpc.public_subnets[0],
-    vpc.public_subnets[1],
-    vpc.public_subnets[2],
-  ],
+  subnets: vpc.public_subnets,
   security_group_ingress_rules: {
     all_http: {
       from_port: 80,

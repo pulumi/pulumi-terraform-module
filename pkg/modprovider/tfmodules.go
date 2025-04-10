@@ -418,9 +418,10 @@ func resolveModuleSources(
 	key := "mymod"
 
 	inputs := resource.PropertyMap{}
+	inputConfig := tfsandbox.TFInputSpec{}
 	outputs := []tfsandbox.TFOutputSpec{}
 	providerConfig := map[string]resource.PropertyMap{}
-	err = tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
+	err = tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig, inputConfig)
 	if err != nil {
 		return "", fmt.Errorf("tofu file creation failed: %w", err)
 	}

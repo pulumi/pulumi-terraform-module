@@ -145,9 +145,13 @@ func newModuleComponentResource(
 			Name: outputName,
 		})
 	}
+	inputSpecs := tfsandbox.TFInputSpec{
+		Inputs:          inferredModule.Inputs,
+		SupportingTypes: inferredModule.SupportingTypes,
+	}
 	err = tfsandbox.CreateTFFile(tfName, tfModuleSource,
 		tfModuleVersion, tf.WorkingDir(),
-		moduleInputs, outputSpecs, providersConfig)
+		moduleInputs, outputSpecs, providersConfig, inputSpecs)
 
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
