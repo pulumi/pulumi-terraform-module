@@ -152,6 +152,10 @@ type Plan struct {
 	rawPlan *tfjson.Plan
 }
 
+func (p *Plan) IsValidPlan() bool {
+	return p.rawPlan != nil
+}
+
 func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	// TODO[pulumi/pulumi-terraform-module#61] what about PreviousAddress, can TF plan
 	// resources changing addresses? How does this work?
@@ -243,25 +247,46 @@ type State struct {
 	rawState *tfjson.State
 }
 
+var newT = func(resource tfjson.StateResource) *ResourceState {
+	return &ResourceState{
+		Resource: Resource{
+			sr:    resource,
+			props: extractPropertyMapFromState(resource),
+		},
+	}
+}
+
+// IsValidState returns true if the state is valid and can be used
+// If false it means the underlying state is nil and can't be used
+func (s *State) IsValidState() bool {
+	return s.rawState != nil
+}
+
+// newState creates a new state from the raw state
+// Both state and error can be non-nil. State.IsValidState() can be
+// used to check if the state is valid (i.e. not nil)
 func newState(rawState *tfjson.State) (*State, error) {
 	resources, err := newStateResources(rawState.Values.RootModule)
 	if err != nil {
-		return nil, err
+		return emptyState(newT), err
 	}
 	return &State{
 		Resources: Resources[*ResourceState]{
 			resources: resources,
-			newT: func(resource tfjson.StateResource) *ResourceState {
-				return &ResourceState{
-					Resource: Resource{
-						sr:    resource,
-						props: extractPropertyMapFromState(resource),
-					},
-				}
-			},
+			newT:      newT,
 		},
 		rawState: rawState,
 	}, nil
+}
+
+func emptyState(newT func(resource tfjson.StateResource) *ResourceState) *State {
+	return &State{
+		Resources: Resources[*ResourceState]{
+			resources: stateResources{},
+			newT:      newT,
+		},
+		rawState: nil,
+	}
 }
 
 // outputIsSecret returns true if the output is a secret based on the value of the

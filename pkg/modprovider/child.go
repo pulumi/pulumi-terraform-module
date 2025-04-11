@@ -342,8 +342,13 @@ func (h *childHandler) Update(
 
 func (h *childHandler) Delete(
 	_ context.Context,
-	_ *pulumirpc.DeleteRequest,
+	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
+	modUrn, addr := h.mustParseAddress(req.GetOldInputs())
+	isDeleted := h.planStore.IsResourceDeleted(modUrn, addr)
+	if !isDeleted {
+		return nil, fmt.Errorf("Deletion failed")
+	}
 	return &emptypb.Empty{}, nil
 }
 
@@ -360,9 +365,6 @@ func (h *childHandler) Read(
 	if err != nil {
 		// Refresh has removed the resource to reflect that it can no longer be found.
 		return &pulumirpc.ReadResponse{Id: ""}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("Error during child resource Read: %w", err)
 	}
 	inputs := childResourceInputs(modUrn, rstate.Address(), rstate.AttributeValues())
 	return &pulumirpc.ReadResponse{

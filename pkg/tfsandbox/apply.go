@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
@@ -13,11 +12,12 @@ import (
 // Apply can return both a non-nil State and a non-nil error. If the apply
 // fails, but some resources were created and written to the TF State we will return
 // the state and the apply error.
+// Both the State and error can be non-nil
 func (t *Tofu) Apply(ctx context.Context, logger Logger) (*State, error) {
 	state, applyErr := t.apply(ctx, logger)
 	s, err := newState(state)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
 	return s, applyErr
 }
@@ -34,11 +34,9 @@ func (t *Tofu) apply(ctx context.Context, logger Logger) (*tfjson.State, error) 
 		logger.Log(ctx, Debug, fmt.Sprintf("error running tofu apply: %v", applyErr))
 	}
 
-	// NOTE: the recommended default from terraform-json is to set JSONNumber=true
-	// otherwise some number values will lose precision when converted to float64
-	state, err := t.tf.Show(ctx, tfexec.JSONNumber(true))
+	state, err := t.Show(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error running tofu show: %w", err)
+		return nil, err
 	}
 
 	return state, applyErr
