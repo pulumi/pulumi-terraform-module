@@ -100,10 +100,6 @@ func (x *testResourcePlan) Values() resource.PropertyMap        { return x.plann
 var _ ResourcePlan = (*testResourcePlan)(nil)
 var _ ResourceStateOrPlan = (*testResourcePlan)(nil)
 
-func (p *testPlan) IsValidPlan() bool {
-	return p.byAddress != nil
-}
-
 func (p *testPlan) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
 	r, ok := p.byAddress[addr]
 	if !ok {
