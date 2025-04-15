@@ -303,15 +303,13 @@ func (h *moduleStateHandler) Delete(
 		return nil, fmt.Errorf("Init failed: %w", err)
 	}
 
-	state, destroyErr := tf.Destroy(ctx, logger)
-	if destroyErr != nil {
-		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running tofu destroy in delete: %v", destroyErr))
+	err = tf.Destroy(ctx, logger)
+	if err != nil {
+		return nil, fmt.Errorf("Delete failed: %w", err)
 	}
-	// always set the state because child resources are waiting for it
-	h.planStore.SetState(urn, state)
 
 	// Send back empty pb if no error.
-	return &emptypb.Empty{}, destroyErr
+	return &emptypb.Empty{}, nil
 }
 
 func (h *moduleStateHandler) Read(
