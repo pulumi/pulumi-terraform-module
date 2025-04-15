@@ -10,6 +10,8 @@ import (
 
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 )
@@ -43,7 +45,14 @@ func Test_RdsExample(t *testing.T) {
 		optpreview.ProgressStreams(os.Stdout),
 	)
 
-	integrationTest.Destroy(t)
+	t.Log("Destroying stack")
+	integrationTest.Destroy(t,
+		optdestroy.ProgressStreams(os.Stdout),
+		optdestroy.ErrorProgressStreams(os.Stderr),
+		optdestroy.DebugLogging(debug.LoggingOptions{
+			Debug: true,
+		}),
+	)
 }
 
 func Test_EksExample(t *testing.T) {
@@ -73,6 +82,15 @@ func Test_EksExample(t *testing.T) {
 	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(os.Stderr),
 		optpreview.ProgressStreams(os.Stdout),
+	)
+
+	t.Log("Destroying stack")
+	integrationTest.Destroy(t,
+		optdestroy.ProgressStreams(os.Stdout),
+		optdestroy.ErrorProgressStreams(os.Stderr),
+		optdestroy.DebugLogging(debug.LoggingOptions{
+			Debug: true,
+		}),
 	)
 }
 
@@ -105,4 +123,13 @@ func Test_AlbExample(t *testing.T) {
 	// TODO[pulumi/pulumi-terraform-module#166] null-resource will always show a diff
 	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
 	autogold.Expect(map[string]any{}).Equal(t, resourceDiffs)
+
+	t.Log("Destroying stack")
+	integrationTest.Destroy(t,
+		optdestroy.ProgressStreams(os.Stdout),
+		optdestroy.ErrorProgressStreams(os.Stderr),
+		optdestroy.DebugLogging(debug.LoggingOptions{
+			Debug: true,
+		}),
+	)
 }
