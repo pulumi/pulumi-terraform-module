@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -260,8 +261,10 @@ func TestCreateTFFile(t *testing.T) {
 			t.Logf("Contents: %s", string(contents))
 
 			var res bytes.Buffer
+
+			t.Logf("Running tofu init -json")
 			err = tofu.tf.InitJSON(context.Background(), &res)
-			assert.NoError(t, err)
+			assert.NoErrorf(t, err, "tofu init -json failed")
 			t.Logf("Output: %s", res.String())
 			assertValidateSuccess(t, tofu)
 		})
@@ -567,7 +570,9 @@ func Test_decode(t *testing.T) {
 // validate will fail if any of the module inputs don't match
 // the schema of the module
 func assertValidateSuccess(t *testing.T, tofu *Tofu) {
+	t.Logf("Running tofu validate")
 	val, err := tofu.tf.Validate(context.Background())
+	require.NoErrorf(t, err, "tofu validate failed")
 	for diag := range slices.Values(val.Diagnostics) {
 		t.Logf("Diagnostic: %v", diag)
 	}
@@ -575,5 +580,4 @@ func assertValidateSuccess(t *testing.T, tofu *Tofu) {
 	assert.Equalf(t, true, val.Valid, "Tofu validation - expected valid=true, got valid=false")
 	assert.Equalf(t, 0, val.ErrorCount, "Tofu validation - expected error count=0, got %d", val.ErrorCount)
 	assert.Equalf(t, 0, val.WarningCount, "Tofu validation - expected warning count=0, got %d", val.WarningCount)
-
 }
