@@ -24,33 +24,27 @@ import (
 
 type auxProvider struct{}
 
-func newAuxPrvider() func() provider.Provider {
-	return func() provider.Provider {
-		return &auxProvider{}
-	}
-}
-
-func (p *auxProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *auxProvider) Schema(context.Context, provider.SchemaRequest, *provider.SchemaResponse) {
 }
 
 func (p *auxProvider) Configure(
-	ctx context.Context,
-	req provider.ConfigureRequest,
-	resp *provider.ConfigureResponse,
+	context.Context,
+	provider.ConfigureRequest,
+	*provider.ConfigureResponse,
 ) {
 }
 
-func (p *auxProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *auxProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{}
 }
 
-func (p *auxProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *auxProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{func() resource.Resource { return &unkResource{} }}
 }
 
 func (p *auxProvider) Metadata(
-	ctx context.Context,
-	req provider.MetadataRequest,
+	_ context.Context,
+	_ provider.MetadataRequest,
 	resp *provider.MetadataResponse,
 ) {
 	resp.TypeName = name

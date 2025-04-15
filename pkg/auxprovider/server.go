@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"net"
 
-	"google.golang.org/grpc"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"google.golang.org/grpc"
 )
 
 type Server struct {
@@ -37,7 +36,7 @@ func (srv *Server) Close() error {
 }
 
 func Serve() (*Server, error) {
-	lis, err := net.Listen("tcp", ":0")
+	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return nil, fmt.Errorf("failed to net.Listen on a port: %w", err)
 	}

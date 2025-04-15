@@ -16,9 +16,10 @@ package auxprovider
 
 import (
 	"encoding/json"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"net"
 	"os"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type reattachConfigAddr struct {

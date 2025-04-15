@@ -27,11 +27,11 @@ type unkResource struct{}
 
 var _ resource.Resource = (*unkResource)(nil)
 
-func (r *unkResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *unkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_unk"
 }
 
-func (r *unkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *unkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{Attributes: map[string]schema.Attribute{
 		"input": schema.DynamicAttribute{Optional: true},
 		"value": schema.DynamicAttribute{Computed: true},

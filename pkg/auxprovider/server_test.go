@@ -50,7 +50,7 @@ resource "pulumiaux_unk" "myunk" {
 }
 `
 
-	err = os.WriteFile(filepath.Join(d, "infra.tf"), []byte(hcl), 0o700)
+	err = os.WriteFile(filepath.Join(d, "infra.tf"), []byte(hcl), 0o600)
 	require.NoError(t, err)
 
 	cmd := exec.Command("terraform", "plan")
