@@ -17,6 +17,7 @@ package auxprovider
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,6 +63,9 @@ resource "pulumiaux_unk" "myunk" {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+
+	err = tf.InitJSON(context.Background(), io.Discard, tfexec.Reattach(srv.ReattachInfo))
+	require.NoErrorf(t, err, "tofu init failed")
 
 	tf.SetStdout(&stdout)
 	tf.SetStderr(&stderr)

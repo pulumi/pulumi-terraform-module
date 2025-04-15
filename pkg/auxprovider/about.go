@@ -14,7 +14,8 @@
 package auxprovider
 
 const (
-	name    = "pulumiaux"
-	version = "0.0.1"
-	address = "registry.terraform.io/hashicorp/pulumiaux"
+	name     = "pulumiaux"
+	version  = "0.0.1"
+	address  = "registry.terraform.io/hashicorp/pulumiaux"
+	address2 = "registry.opentofu.org/hashicorp/pulumiaux"
 )

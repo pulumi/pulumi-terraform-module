@@ -35,5 +35,6 @@ func computeReattachInfo(addr net.Addr) tfexec.ReattachInfo {
 			String:  addr.String(),
 		},
 	}
+	info[address2] = info[address]
 	return info
 }

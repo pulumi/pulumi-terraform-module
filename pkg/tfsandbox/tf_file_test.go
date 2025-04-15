@@ -41,6 +41,7 @@ func TestCreateTFFile(t *testing.T) {
 		inputsValue     resource.PropertyValue
 		outputs         []TFOutputSpec
 		providersConfig map[string]resource.PropertyMap
+		usesUnknowns    bool
 	}{
 		{
 			name:           "string",
@@ -51,6 +52,7 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "unknown",
 			tfVariableType: "string",
 			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
+			usesUnknowns:   true,
 		},
 		{
 			name:           "string secret",
@@ -97,6 +99,7 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
 			}),
+			usesUnknowns: true,
 		},
 		{
 			name:           "map(map(any))",
@@ -117,6 +120,7 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			}),
+			usesUnknowns: true,
 		},
 		{
 			name:           "set(string)",
@@ -143,6 +147,7 @@ func TestCreateTFFile(t *testing.T) {
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
+			usesUnknowns: true,
 		},
 		{
 			name:           "secret list(map(string))",
@@ -263,10 +268,10 @@ func TestCreateTFFile(t *testing.T) {
 			var res bytes.Buffer
 
 			t.Logf("Running tofu init -json")
-			err = tofu.tf.InitJSON(context.Background(), &res)
+			err = tofu.tf.InitJSON(context.Background(), &res, tofu.initOptions()...)
 			assert.NoErrorf(t, err, "tofu init -json failed")
 			t.Logf("Output: %s", res.String())
-			assertValidateSuccess(t, tofu)
+			assertValidateSuccess(t, tofu, tt.usesUnknowns)
 		})
 	}
 }
@@ -567,9 +572,18 @@ func Test_decode(t *testing.T) {
 	}
 }
 
-// validate will fail if any of the module inputs don't match
-// the schema of the module
-func assertValidateSuccess(t *testing.T, tofu *Tofu) {
+// Validate will fail if any of the module inputs don't match the schema of the module.
+//
+// There is a limitation in tfexec that tofu.tf.Validate does not accept the reattach config yet. Therefore we cannot
+// validate files with unknowns relying on the reattach config. Skipping for now.
+func assertValidateSuccess(t *testing.T, tofu *Tofu, requireReattach bool) {
+	t.Helper()
+
+	if requireReattach {
+		t.Logf("Skip tofu validate because the test requires reattach")
+		return
+	}
+
 	t.Logf("Running tofu validate")
 	val, err := tofu.tf.Validate(context.Background())
 	require.NoErrorf(t, err, "tofu validate failed")
