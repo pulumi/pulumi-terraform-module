@@ -19,11 +19,11 @@ import (
 	"context"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,6 +36,7 @@ func disableTFLogging(t *testing.T) {
 
 func Test_Serve(t *testing.T) {
 	disableTFLogging(t)
+	ctx := context.Background()
 
 	srv, err := Serve()
 	require.NoError(t, err)
@@ -55,7 +56,7 @@ resource "pulumiaux_unk" "myunk" {
 	err = os.WriteFile(filepath.Join(d, "infra.tf"), []byte(hcl), 0o600)
 	require.NoError(t, err)
 
-	execPath, err := exec.LookPath("terraform")
+	execPath, err := tofuresolver.Resolve(ctx, &tofuresolver.ResolveOpts{})
 	require.NoError(t, err)
 
 	tf, err := tfexec.NewTerraform(d, execPath)
@@ -64,7 +65,7 @@ resource "pulumiaux_unk" "myunk" {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	err = tf.InitJSON(context.Background(), io.Discard, tfexec.Reattach(srv.ReattachInfo))
+	err = tf.InitJSON(ctx, io.Discard, tfexec.Reattach(srv.ReattachInfo))
 	require.NoErrorf(t, err, "tofu init failed")
 
 	tf.SetStdout(&stdout)
