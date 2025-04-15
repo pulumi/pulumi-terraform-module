@@ -23,8 +23,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 func disableTFLogging(t *testing.T) {
