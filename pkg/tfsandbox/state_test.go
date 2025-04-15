@@ -31,8 +31,7 @@ import (
 func TestState(t *testing.T) {
 	ctx := context.Background()
 
-	tofu, err := NewTofu(ctx, nil, nil)
-	require.NoError(t, err, "error initializing tofu")
+	tofu := newTestTofu(t)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
 	outputs := []TFOutputSpec{
@@ -43,7 +42,7 @@ func TestState(t *testing.T) {
 
 	providersConfig := map[string]resource.PropertyMap{}
 	ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
-	err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
+	err := CreateTFFile("test", ms, "", tofu.WorkingDir(),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"inputVar": "test",
 		}), outputs, providersConfig)
@@ -140,8 +139,7 @@ func TestStateMatchesPlan(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			tofu, err := NewTofu(ctx, nil, nil)
-			require.NoError(t, err, "error initializing tofu")
+			tofu := newTestTofu(t)
 
 			outputs := []TFOutputSpec{
 				{Name: "number_output"},
@@ -154,7 +152,7 @@ func TestStateMatchesPlan(t *testing.T) {
 				inputs["inputNumberVar"] = tc.inputNumberVar
 			}
 			emptyProviders := map[string]resource.PropertyMap{}
-			err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
+			err := CreateTFFile("test", ms, "", tofu.WorkingDir(),
 				resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 			require.NoError(t, err, "error creating tf file")
 
@@ -198,8 +196,7 @@ func TestSecretOutputs(t *testing.T) {
 	t.Run("nested secrets", func(t *testing.T) {
 		ctx := context.Background()
 
-		tofu, err := NewTofu(ctx, nil, nil)
-		require.NoError(t, err, "error initializing tofu")
+		tofu := newTestTofu(t)
 		var buffer bytes.Buffer
 		logger := &testLogger{r: &buffer}
 
@@ -212,7 +209,7 @@ func TestSecretOutputs(t *testing.T) {
 			"anotherInputVar": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("somevalue")}),
 		}
 		emptyProviders := map[string]resource.PropertyMap{}
-		err = CreateTFFile("test", ms, "", tofu.WorkingDir(),
+		err := CreateTFFile("test", ms, "", tofu.WorkingDir(),
 			resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 		require.NoError(t, err, "error creating tf file")
 
