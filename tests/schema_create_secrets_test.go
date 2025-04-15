@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // The purpose of this test is to see how the plan is generated for different schema types
@@ -24,8 +22,7 @@ func TestUnknownsInCreatePlanBySchemaTypeSecrets(t *testing.T) {
 	t.Parallel()
 	skipLocalRunsWithoutCreds(t)
 	ctx := context.Background()
-	tofu, err := tfsandbox.NewTofu(ctx, nil, nil)
-	assert.NoError(t, err)
+	tofu := newTestTofu(t)
 	tfFile := `
 provider "aws" {
   region = "us-east-2"
@@ -33,7 +30,7 @@ provider "aws" {
 module "local" {
   source = "./local_module"
 }`
-	err = os.WriteFile(
+	err := os.WriteFile(
 		path.Join(tofu.WorkingDir(), "main.tf"),
 		[]byte(tfFile),
 		0600,
@@ -41,7 +38,7 @@ module "local" {
 	assert.NoError(t, err)
 	err = os.MkdirAll(path.Join(tofu.WorkingDir(), "local_module"), 0700)
 	assert.NoError(t, err)
-	err = tofu.Init(ctx, tfsandbox.DiscardLogger)
+	err = tofu.Init(ctx, newTestLogger(t))
 	assert.NoError(t, err)
 
 	t.Run("SDKV2_TypeList", func(t *testing.T) {
