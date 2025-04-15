@@ -311,7 +311,7 @@ func Test_decode(t *testing.T) {
 				"key1": resource.MakeComputed(resource.NewStringProperty("")),
 			},
 			expected: map[string]interface{}{
-				"key1": "${terraform_data.unknown_proxy.output}",
+				"key1": "${pulumiaux_unk.unknown_proxy.value}",
 			},
 		},
 		{
@@ -320,7 +320,7 @@ func Test_decode(t *testing.T) {
 				"key1": resource.NewOutputProperty(resource.Output{Known: false}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${terraform_data.unknown_proxy.output}",
+				"key1": "${pulumiaux_unk.unknown_proxy.value}",
 			},
 		},
 		{
@@ -344,7 +344,7 @@ func Test_decode(t *testing.T) {
 			expected: map[string]interface{}{
 				"key1": []interface{}{
 					map[string]interface{}{
-						"key2": "${terraform_data.unknown_proxy.output}",
+						"key2": "${pulumiaux_unk.unknown_proxy.value}",
 					},
 				},
 			},
@@ -362,8 +362,8 @@ func Test_decode(t *testing.T) {
 			expected: map[string]interface{}{
 				"key1": []interface{}{
 					map[string]interface{}{
-						"key2": "${terraform_data.unknown_proxy.output}",
-						"key3": "${terraform_data.unknown_proxy.output}",
+						"key2": "${pulumiaux_unk.unknown_proxy.value}",
+						"key3": "${pulumiaux_unk.unknown_proxy.value}",
 					},
 				},
 			},
