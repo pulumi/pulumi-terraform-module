@@ -24,7 +24,7 @@ func TestUnknownsInCreatePlanBySchemaTypeSecrets(t *testing.T) {
 	t.Parallel()
 	skipLocalRunsWithoutCreds(t)
 	ctx := context.Background()
-	tofu, err := tfsandbox.NewTofu(ctx, nil)
+	tofu, err := tfsandbox.NewTofu(ctx, nil, nil)
 	assert.NoError(t, err)
 	tfFile := `
 provider "aws" {

@@ -24,9 +24,9 @@ import (
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 

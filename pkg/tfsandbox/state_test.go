@@ -31,7 +31,7 @@ import (
 func TestState(t *testing.T) {
 	ctx := context.Background()
 
-	tofu, err := NewTofu(ctx, nil)
+	tofu, err := NewTofu(ctx, nil, nil)
 	require.NoError(t, err, "error initializing tofu")
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
@@ -140,7 +140,7 @@ func TestStateMatchesPlan(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			tofu, err := NewTofu(ctx, nil)
+			tofu, err := NewTofu(ctx, nil, nil)
 			require.NoError(t, err, "error initializing tofu")
 
 			outputs := []TFOutputSpec{
@@ -198,7 +198,7 @@ func TestSecretOutputs(t *testing.T) {
 	t.Run("nested secrets", func(t *testing.T) {
 		ctx := context.Background()
 
-		tofu, err := NewTofu(ctx, nil)
+		tofu, err := NewTofu(ctx, nil, nil)
 		require.NoError(t, err, "error initializing tofu")
 		var buffer bytes.Buffer
 		logger := &testLogger{r: &buffer}

@@ -17,9 +17,10 @@ type TFOutputSpec struct {
 }
 
 const (
-	terraformDataResourceType     = "terraform_data"
-	terraformDataResourceName     = "unknown_proxy"
-	terraformIsSecretOutputPrefix = "internal_output_is_secret_"
+	unknownProxyResourceType       = "pulumiaux_unk"
+	unknownProxyResourceName       = "unknown_proxy"
+	unknownProxyResourceOutputProp = "value"
+	terraformIsSecretOutputPrefix  = "internal_output_is_secret_"
 )
 
 func writeTerraformFilesToDirectory() (string, bool) {
@@ -85,7 +86,11 @@ func (l *locals) decode(pv resource.PropertyValue) (interface{}, bool) {
 
 	// Replace computed's with references and stop
 	if pv.IsComputed() || (pv.IsOutput() && !pv.OutputValue().Known) {
-		return "${terraform_data.unknown_proxy.output}", true
+		return fmt.Sprintf("${%s.%s.%s}",
+			unknownProxyResourceType,
+			unknownProxyResourceName,
+			unknownProxyResourceOutputProp,
+		), true
 	}
 
 	// secret values are encoded using the sensitive function
@@ -112,9 +117,7 @@ func (l *locals) decode(pv resource.PropertyValue) (interface{}, bool) {
 }
 
 // Writes a pulumi.tf.json file in the workingDir that instructs Terraform to call a given module instance.
-// Unknown inputs (e.g. output values) are handled by using a "terraform_data" resource as a proxy
-// terraform_data resources implement the resource lifecycle, but do not perform any actions and do not
-// require you to configure a provider. see https://developer.hashicorp.com/terraform/language/resources/terraform-data
+// Unknown inputs (e.g. output values) are handled by using a "auxprovider.unk" resource as a proxy.
 func CreateTFFile(
 	name string, // name of the module instance
 	source TFModuleSource,
@@ -152,10 +155,8 @@ func CreateTFFile(
 	// NOTE: this should only happen at plan time. At apply time all computed values
 	// should be resolved
 	if containsUnknowns {
-		resources[terraformDataResourceType] = map[string]interface{}{
-			terraformDataResourceName: map[string]interface{}{
-				"input": "unknown",
-			},
+		resources[unknownProxyResourceType] = map[string]interface{}{
+			unknownProxyResourceName: map[string]interface{}{},
 		}
 	}
 
