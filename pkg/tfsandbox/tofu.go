@@ -76,6 +76,15 @@ func (t *Tofu) refreshCmdOptions() []tfexec.RefreshCmdOption {
 	return opts
 }
 
+func (t *Tofu) showOptions(opt ...tfexec.ShowOption) []tfexec.ShowOption {
+	opts := []tfexec.ShowOption{}
+	opts = append(opts, opt...)
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
 // WorkingDir returns the Terraform working directory
 // where all tofu commands will be run.
 func (t *Tofu) WorkingDir() string {

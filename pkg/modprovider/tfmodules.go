@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -263,8 +264,9 @@ func InferModuleSchema(
 	packageName packageName,
 	mod TFModuleSource,
 	ver TFModuleVersion,
+	auxServer *auxprovider.Server,
 ) (*InferredModuleSchema, error) {
-	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil))
+	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil), auxServer)
 }
 
 func inferModuleSchema(
@@ -273,9 +275,10 @@ func inferModuleSchema(
 	mod TFModuleSource,
 	tfModuleVersion TFModuleVersion,
 	logger tfsandbox.Logger,
+	auxServer *auxprovider.Server,
 ) (*InferredModuleSchema, error) {
 
-	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger)
+	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger, auxServer)
 	if err != nil {
 		return nil, err
 	}
@@ -336,8 +339,9 @@ func extractModuleContent(
 	source TFModuleSource,
 	version TFModuleVersion,
 	logger tfsandbox.Logger,
+	auxServer *auxprovider.Server,
 ) (*configs.Module, error) {
-	modDir, err := resolveModuleSources(ctx, source, version, logger)
+	modDir, err := resolveModuleSources(ctx, source, version, logger, auxServer)
 	if err != nil {
 		return nil, err
 	}
@@ -409,8 +413,9 @@ func resolveModuleSources(
 	source tfsandbox.TFModuleSource,
 	version tfsandbox.TFModuleVersion, //optional
 	logger tfsandbox.Logger,
+	auxServer *auxprovider.Server,
 ) (string, error) {
-	tf, err := tfsandbox.NewTofu(ctx, tfsandbox.ModuleWorkdir(source, version), nil)
+	tf, err := tfsandbox.NewTofu(ctx, tfsandbox.ModuleWorkdir(source, version), auxServer)
 	if err != nil {
 		return "", fmt.Errorf("tofu sandbox construction failure: %w", err)
 	}

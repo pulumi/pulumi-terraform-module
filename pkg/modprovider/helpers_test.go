@@ -1,4 +1,4 @@
-package tfsandbox
+package modprovider
 
 import (
 	"context"
@@ -8,12 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
-func newTestTofu(t *testing.T) *Tofu {
+//nolint:unused
+func newTestTofu(t *testing.T) *tfsandbox.Tofu {
 	srv := newTestAuxProviderServer(t)
 
-	tofu, err := NewTofu(context.Background(), nil, srv)
+	tofu, err := tfsandbox.NewTofu(context.Background(), nil, srv)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

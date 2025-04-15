@@ -79,10 +79,10 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly b
 		defer close(planCh)
 		// NOTE: the recommended default from terraform-json is to set JSONNumber=true
 		// otherwise some number values will lose precision when converted to float64
-		plan, planErr = t.tf.ShowPlanFile(ctx, planFile, tfexec.JSONNumber(true))
+		plan, planErr = t.tf.ShowPlanFile(ctx, planFile, t.showOptions(tfexec.JSONNumber(true))...)
 	}()
 
-	humanPlan, humanPlanErr := t.tf.ShowPlanFileRaw(ctx, planFile, tfexec.JSONNumber(true))
+	humanPlan, humanPlanErr := t.tf.ShowPlanFileRaw(ctx, planFile, t.showOptions(tfexec.JSONNumber(true))...)
 
 	// join
 	<-planCh

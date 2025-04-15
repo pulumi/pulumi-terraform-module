@@ -27,7 +27,7 @@ func (t *Tofu) refresh(ctx context.Context, log Logger) (*tfjson.State, error) {
 		return nil, fmt.Errorf("error running tofu refresh: %w", err)
 	}
 
-	state, err := t.tf.Show(ctx)
+	state, err := t.tf.Show(ctx, t.showOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("error running tofu show: %w", err)
 	}
