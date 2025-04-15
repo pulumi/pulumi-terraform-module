@@ -15,6 +15,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
@@ -22,8 +24,16 @@ import (
 )
 
 func main() {
+	disableTFLogging()
 	err := provider.Main(modprovider.Name(), modprovider.StartServer)
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}
+}
+
+func disableTFLogging() {
+	// Did not find a less intrusive way to disable logging from the auxprovider hosted in-process.
+	os.Setenv("TF_LOG_PROVIDER", "off")
+	os.Setenv("TF_LOG_SDK", "off")
+	os.Setenv("TF_LOG_SDK_PROTO", "off")
 }

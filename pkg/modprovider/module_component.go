@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
@@ -56,6 +57,7 @@ func newModuleComponentResource(
 	ctx *pulumi.Context,
 	stateStore moduleStateStore,
 	planStore *planStore,
+	auxProviderServer *auxprovider.Server,
 	pkgName packageName,
 	compTypeName componentTypeName,
 	tfModuleSource TFModuleSource,
@@ -127,7 +129,7 @@ func newModuleComponentResource(
 	}()
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-	tf, err := tfsandbox.NewTofu(ctx.Context(), wd)
+	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, auxProviderServer)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}

@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
@@ -41,7 +42,7 @@ func (t *Tofu) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
+func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server) (*Tofu, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
@@ -62,6 +63,14 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 	tf, err := tfexec.NewTerraform(workDir, execPath)
 	if err != nil {
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
+	}
+
+	env := envMap(os.Environ())
+	if auxServer != nil {
+		env[auxServer.ReattachConfig.EnvVarName] = auxServer.ReattachConfig.EnvVarValue
+	}
+	if err := tf.SetEnv(env); err != nil {
+		return nil, fmt.Errorf("failed to configure env vars for a tofu executor: %w", err)
 	}
 
 	// TODO[pulumi/pulumi-terraform-module#199] concurrent access to the plugin cache

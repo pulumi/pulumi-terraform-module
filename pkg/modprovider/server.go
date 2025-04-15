@@ -36,18 +36,27 @@ import (
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	planStore := planStore{}
-	moduleStateHandler := newModuleStateHandler(hostClient, &planStore)
+
+	auxProviderServer, err := auxprovider.Serve()
+	if err != nil {
+		return nil, err
+	}
+
+	moduleStateHandler := newModuleStateHandler(hostClient, &planStore, auxProviderServer)
+
 	srv := &server{
 		planStore:          &planStore,
 		hostClient:         hostClient,
 		stateStore:         moduleStateHandler,
 		moduleStateHandler: moduleStateHandler,
 		childHandler:       newChildHandler(&planStore),
+		auxProviderServer:  auxProviderServer,
 	}
 	return srv, nil
 }
@@ -70,6 +79,13 @@ type server struct {
 	// there are no Output values inside this map. In the current implementation this is OK as the data is only
 	// used to produce Terraform files to feed to opentofu and lacks the capability to track these dependencies.
 	providerConfig resource.PropertyMap
+
+	auxProviderServer *auxprovider.Server
+}
+
+func (s *server) Cancel(_ context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
+	err := s.auxProviderServer.Close()
+	return empty, err
 }
 
 func (s *server) Parameterize(
@@ -377,6 +393,7 @@ func (s *server) Construct(
 			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
 				s.stateStore,
 				s.planStore,
+				s.auxProviderServer,
 				s.packageName,
 				s.componentTypeName,
 				s.params.TFModuleSource,
