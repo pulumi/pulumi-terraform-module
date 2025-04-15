@@ -57,7 +57,7 @@ resource "pulumiaux_unk" "myunk" {
 	err = os.WriteFile(filepath.Join(d, "infra.tf"), []byte(hcl), 0o600)
 	require.NoError(t, err)
 
-	execPath, err := tofuresolver.Resolve(ctx, &tofuresolver.ResolveOpts{})
+	execPath, err := tofuresolver.Resolve(ctx, tofuresolver.ResolveOpts{})
 	require.NoError(t, err)
 
 	tf, err := tfexec.NewTerraform(d, execPath)
