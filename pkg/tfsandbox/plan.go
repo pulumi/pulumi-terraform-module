@@ -62,7 +62,8 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly b
 	planFile := path.Join(t.WorkingDir(), "plan.out")
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
-	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter, tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))
+	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter,
+		t.planOptions(tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))...)
 	if err != nil {
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}

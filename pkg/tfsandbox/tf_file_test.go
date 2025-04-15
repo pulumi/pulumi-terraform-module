@@ -246,15 +246,11 @@ func TestCreateTFFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tofu, err := NewTofu(context.Background(), nil, nil)
-			assert.NoError(t, err)
-			t.Cleanup(func() {
-				os.RemoveAll(tofu.WorkingDir())
-			})
+			tofu := newTestTofu(t)
 
 			writeTfVarFile(t, tofu.WorkingDir(), tt.tfVariableType)
 
-			err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
+			err := CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
 				"tfVar": tt.inputsValue,
 			}, tt.outputs, tt.providersConfig)
 			assert.NoError(t, err)

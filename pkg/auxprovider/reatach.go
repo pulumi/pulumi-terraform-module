@@ -15,48 +15,25 @@
 package auxprovider
 
 import (
-	"encoding/json"
 	"net"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
-type reattachConfigAddr struct {
-	Network string
-	String  string
-}
-
-type reattachConfig struct {
-	Protocol        string
-	ProtocolVersion int
-	Pid             int
-	Test            bool
-	Addr            reattachConfigAddr
-}
-
-type ReattachConfig struct {
-	EnvVarName  string
-	EnvVarValue string
-}
-
-func computeReattachConfig(addr net.Addr) ReattachConfig {
+func computeReattachInfo(addr net.Addr) tfexec.ReattachInfo {
 	pid := os.Getgid()
-	reattachBytes, err := json.Marshal(map[string]reattachConfig{
-		address: {
-			Protocol:        "grpc",
-			ProtocolVersion: 6,
-			Pid:             pid,
-			Test:            true, // setting this to false causes a crash somehow
-			Addr: reattachConfigAddr{
-				Network: addr.Network(),
-				String:  addr.String(),
-			},
+	info := make(tfexec.ReattachInfo)
+
+	info[address] = tfexec.ReattachConfig{
+		Protocol:        "grpc",
+		ProtocolVersion: 6,
+		Pid:             pid,
+		Test:            true, // setting this to false causes a crash somehow
+		Addr: tfexec.ReattachConfigAddr{
+			Network: addr.Network(),
+			String:  addr.String(),
 		},
-	})
-	contract.AssertNoErrorf(err, "json.Marshal should not fail")
-	return ReattachConfig{
-		EnvVarName:  "TF_REATTACH_PROVIDERS",
-		EnvVarValue: string(reattachBytes),
 	}
+	return info
 }

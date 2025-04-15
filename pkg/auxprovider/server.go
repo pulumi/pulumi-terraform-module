@@ -19,15 +19,16 @@ import (
 	"net"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	"google.golang.org/grpc"
 )
 
 type Server struct {
-	ReattachConfig ReattachConfig
-	server         *grpc.Server
-	serveError     <-chan error
+	ReattachInfo tfexec.ReattachInfo
+	server       *grpc.Server
+	serveError   <-chan error
 }
 
 func (srv *Server) Close() error {
@@ -59,9 +60,9 @@ func Serve() (*Server, error) {
 	serveError := make(chan error)
 
 	srv := &Server{
-		ReattachConfig: computeReattachConfig(lis.Addr()),
-		server:         s,
-		serveError:     serveError,
+		ReattachInfo: computeReattachInfo(lis.Addr()),
+		server:       s,
+		serveError:   serveError,
 	}
 
 	go func() {

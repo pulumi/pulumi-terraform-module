@@ -31,7 +31,49 @@ import (
 )
 
 type Tofu struct {
-	tf *tfexec.Terraform
+	tf       *tfexec.Terraform
+	reattach *tfexec.ReattachInfo
+}
+
+func (t *Tofu) applyOptions() []tfexec.ApplyOption {
+	opts := []tfexec.ApplyOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) initOptions() []tfexec.InitOption {
+	opts := []tfexec.InitOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) destroyOptions() []tfexec.DestroyOption {
+	opts := []tfexec.DestroyOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) planOptions(opt ...tfexec.PlanOption) []tfexec.PlanOption {
+	opts := []tfexec.PlanOption{}
+	opts = append(opts, opt...)
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) refreshCmdOptions() []tfexec.RefreshCmdOption {
+	opts := []tfexec.RefreshCmdOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
 }
 
 // WorkingDir returns the Terraform working directory
@@ -65,12 +107,9 @@ func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
-	env := envMap(os.Environ())
+	var reattach *tfexec.ReattachInfo
 	if auxServer != nil {
-		env[auxServer.ReattachConfig.EnvVarName] = auxServer.ReattachConfig.EnvVarValue
-	}
-	if err := tf.SetEnv(env); err != nil {
-		return nil, fmt.Errorf("failed to configure env vars for a tofu executor: %w", err)
+		reattach = &auxServer.ReattachInfo
 	}
 
 	// TODO[pulumi/pulumi-terraform-module#199] concurrent access to the plugin cache
@@ -79,7 +118,8 @@ func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server
 	// }
 
 	return &Tofu{
-		tf: tf,
+		tf:       tf,
+		reattach: reattach,
 	}, nil
 }
 

@@ -27,7 +27,7 @@ func (t *Tofu) apply(ctx context.Context, logger Logger) (*tfjson.State, error) 
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
 
-	applyErr := t.tf.ApplyJSON(ctx, logWriter)
+	applyErr := t.tf.ApplyJSON(ctx, logWriter, t.applyOptions()...)
 	// if the apply failed just log it to debug logs and continue
 	// we want to return and process the partial state from a failed apply
 	if applyErr != nil {

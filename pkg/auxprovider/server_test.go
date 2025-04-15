@@ -16,12 +16,13 @@ package auxprovider
 
 import (
 	"bytes"
-	"fmt"
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,16 +54,21 @@ resource "pulumiaux_unk" "myunk" {
 	err = os.WriteFile(filepath.Join(d, "infra.tf"), []byte(hcl), 0o600)
 	require.NoError(t, err)
 
-	cmd := exec.Command("terraform", "plan")
+	execPath, err := exec.LookPath("terraform")
+	require.NoError(t, err)
+
+	tf, err := tfexec.NewTerraform(d, execPath)
+	require.NoError(t, err)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd.Dir = d
-	cmd.Env = []string{fmt.Sprintf("%s=%s", srv.ReattachConfig.EnvVarName, srv.ReattachConfig.EnvVarValue)}
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err = cmd.Run()
+	tf.SetStdout(&stdout)
+	tf.SetStderr(&stderr)
+
+	_, err = tf.Plan(context.Background(), tfexec.Reattach(srv.ReattachInfo))
+	require.NoError(t, err)
+
 	t.Logf("#### stdout: %s", stdout.String())
 	t.Logf("#### stderr: %s", stderr.String())
 	require.NoError(t, err)
