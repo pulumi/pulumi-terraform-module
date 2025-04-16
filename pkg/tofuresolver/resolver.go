@@ -33,7 +33,7 @@ type ResolveOpts struct {
 	Version *semver.Version
 }
 
-// Resolve will try to get a tofu executable to use it will first check if tofu is already installed. If not installed,
+// Resolve will try to get a tofu executable to use. It will first check if tofu is already installed. If not installed,
 // it will download and install tofu. If successful, return an absolute path to the executable.
 func Resolve(ctx context.Context, opts ResolveOpts) (string, error) {
 	path, _, err := tryGetTofuExecutable(ctx, opts.Version)
