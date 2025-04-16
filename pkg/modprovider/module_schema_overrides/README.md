@@ -19,6 +19,7 @@ type InferredModuleSchema struct {
 	SupportingTypes map[string]*schema.ComplexTypeSpec `json:"supportingTypes"`
 	RequiredInputs  []string                           `json:"requiredInputs"`
 	NonNilOutputs   []string                           `json:"nonNilOutputs"`
+	ProvidersConfig schema.ConfigSpec                  `json:"providersConfig"`
 }
 ```
 
