@@ -39,7 +39,7 @@ func (p *auxProvider) DataSources(context.Context) []func() datasource.DataSourc
 }
 
 func (p *auxProvider) Resources(context.Context) []func() resource.Resource {
-	return []func() resource.Resource{func() resource.Resource { return &unkResource{} }}
+	return []func() resource.Resource{func() resource.Resource { return &unknownResource{} }}
 }
 
 func (p *auxProvider) Metadata(
