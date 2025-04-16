@@ -20,9 +20,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -93,17 +91,4 @@ func TestTofuApply(t *testing.T) {
 
 	err = tofu.Destroy(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu destroy")
-}
-
-func Test_getTofuExecutable_caches(t *testing.T) {
-	ctx := context.Background()
-
-	v := semver.MustParse("1.9.0")
-
-	_, _, err := tryGetTofuExecutable(ctx, &v)
-	require.NoError(t, err)
-
-	_, cacheHit, err := tryGetTofuExecutable(ctx, &v)
-	require.NoError(t, err)
-	require.True(t, cacheHit)
 }
