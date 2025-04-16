@@ -108,7 +108,82 @@ Known limitations at this point include but are not limited to:
 
 ## Bugs
 
-
 If you are having issues, we would love to hear from you as we work to make this product better:
 
 https://github.com/pulumi/pulumi-terraform-module/issues
+
+## Module configuration and schema override
+
+When using a module, we typically infer the types of the inputs and outputs from the module code automatically. However, for the types of the outputs, we don't always get it right due to limited type information available statically. 
+
+We have added a mechanism that allows users to override the inferred schema for module with an auxiliary partial schema which is then merged with the inferred schema. This is useful when you want to provide better types inputs or outputs but only want to override a few of them, not having to fully write a schema for the module from scratch.
+
+The command you execute when you want to override the schema is:
+```
+pulumi package add terraform-module -- <module> [<version-spec>] <pulumi-package> --config <path-to-config.json>
+```
+
+Where `<path-to-config.json>` is a path to a JSON file that contains the module configuration necessary to override the inferred schema. 
+
+For example, when using the Terraform AWS VPC module, you can edit the outputs such that `default_vpc_id` is always non-nil and that is it an integer as follows:
+
+first create a file called `config.json` with the following content:
+```json
+{
+  "nonNilOutputs": ["default_vpc_id"],
+  "outputs": {
+    "default_vpc_id": {
+      "type": "integer",
+      "description": "New description ID of the default VPC"
+    }
+  }
+}
+```
+
+Then run the command:
+```
+pulumi package add terraform-module -- terraform-aws-modules/vpc/aws vpc --config config.json
+```
+
+This will add the VPC module but with the `default_vpc_id` output being an integer and non-nil. Of course, this is an example and `default_vpc_id` should be a string but you get the idea.
+
+### Overriding complex types and their references
+
+When overriding the schema, it is possible to add complex types such as objects, maps or lists and refer to them via `$ref`s. Here is a full example of how that looks like:
+
+<details>
+<summary>Full example schema</summary>
+
+```json
+"inputs": {
+    "example_input": {
+        "type": "string",
+        "description": "An example input for the module."
+    },
+    "example_ref": {
+        "$ref": "#/types/[packageName]:index:MyType"
+    }
+},
+"outputs": {
+    "example_output": {
+        "type": "boolean",
+        "description": "An example output for the module."
+    }
+},
+"requiredInputs": ["example_input"],
+"nonNilOutputs": ["example_output"],
+"supportingTypes": {
+    "[packageName]:index:MyType": {
+        "type": "object",
+        "description": "An example supporting type for the module.",
+        "properties": {
+            "example_property": {
+                "type": "string",
+                "description": "An example property for the supporting type."
+            }
+        }
+    }
+}
+```
+
+</details>

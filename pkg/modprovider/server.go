@@ -15,6 +15,7 @@
 package modprovider
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -112,6 +113,31 @@ func dirExists(path string) bool {
 	return false
 }
 
+func extractConfigParamFromArgs(args []string) ([]string, string, bool) {
+	for i, arg := range args {
+		if (arg == "--config" || arg == "-c") && i+1 < len(args) {
+			return args[:i], args[i+1], true
+		}
+	}
+	return args, "", false
+}
+
+func unmarshallConfigFile(configFilePath string, packageName string) (*ModuleConfig, error) {
+	file, err := os.ReadFile(configFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %w", configFilePath, err)
+	}
+
+	modified := bytes.ReplaceAll(file, []byte("[packageName]"), []byte(packageName))
+
+	config := &ModuleConfig{}
+	if err := json.Unmarshal(modified, config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config file %s: %w", configFilePath, err)
+	}
+
+	return config, nil
+}
+
 // parseParameterizeRequest parses the parameterize request into a ParameterizeArgs struct.
 // the args in the request are from the CLI command:
 //
@@ -119,54 +145,67 @@ func dirExists(path string) bool {
 //
 // the accepted formats here are either:
 //
-//		<module-source> <version> <package-name>
-//	 	<module-source> <package-name>
-//		<local-module-source> <package-name>
+//		<module-source> <version> <package-name> [--config <config-file>]
+//	 	<module-source> <package-name> [--config <config-file>]
+//		<local-module-source> <package-name> [--config <config-file>]
 func parseParameterizeRequest(
 	ctx context.Context,
 	request *pulumirpc.ParameterizeRequest,
 ) (ParameterizeArgs, error) {
 	switch {
 	case request.GetArgs() != nil:
-		args := request.GetArgs()
-		switch len(args.Args) {
+		arguments := request.GetArgs()
+		args, configFile, hasConfig := extractConfigParamFromArgs(arguments.Args)
+
+		applyConfigWhenAvailable := func(packageName string, args ParameterizeArgs) (ParameterizeArgs, error) {
+			if hasConfig {
+				config, err := unmarshallConfigFile(configFile, packageName)
+				if err != nil {
+					return ParameterizeArgs{}, err
+				}
+				args.Config = config
+			}
+			return args, nil
+		}
+
+		switch len(args) {
 		case 2:
 			// module source is provided but second arg could either be version or package name
 			// if the module source is local (starts with dot) then the second arg is package name
 			// otherwise it invalid because package name is required
-			if dirExists(args.Args[0]) {
-				return ParameterizeArgs{
-					TFModuleSource:  TFModuleSource(args.Args[0]),
+			if dirExists(args[0]) {
+				return applyConfigWhenAvailable(args[1], ParameterizeArgs{
+					TFModuleSource:  TFModuleSource(args[0]),
 					TFModuleVersion: "",
-					PackageName:     packageName(args.Args[1]),
-				}, nil
+					PackageName:     packageName(args[1]),
+				})
 			}
 
-			if !isValidVersion(args.Args[1]) {
+			if !isValidVersion(args[1]) {
 				// if the second arg is not a version then it must be package name
 				// but the source is remote so we need to resolve the version ourselves
-				latest, err := latestModuleVersion(ctx, args.Args[0])
+				latest, err := latestModuleVersion(ctx, args[0])
 				if err != nil {
 					return ParameterizeArgs{}, err
 				}
 
-				return ParameterizeArgs{
-					TFModuleSource:  TFModuleSource(args.Args[0]),
+				return applyConfigWhenAvailable(args[1], ParameterizeArgs{
+					TFModuleSource:  TFModuleSource(args[0]),
 					TFModuleVersion: TFModuleVersion(latest.String()),
-					PackageName:     packageName(args.Args[1]),
-				}, nil
+					PackageName:     packageName(args[1]),
+				})
 			}
 
 			return ParameterizeArgs{}, fmt.Errorf("package name argument is required")
 		case 3:
 			// module source, version and package name are provided
-			return ParameterizeArgs{
-				TFModuleSource:  TFModuleSource(args.Args[0]),
-				TFModuleVersion: TFModuleVersion(args.Args[1]),
-				PackageName:     packageName(args.Args[2]),
-			}, nil
+			return applyConfigWhenAvailable(args[2], ParameterizeArgs{
+				TFModuleSource:  TFModuleSource(args[0]),
+				TFModuleVersion: TFModuleVersion(args[1]),
+				PackageName:     packageName(args[2]),
+			})
 		default:
-			return ParameterizeArgs{}, fmt.Errorf("expected 2 or 3 arguments, got %d", len(args.Args))
+			return ParameterizeArgs{}, fmt.Errorf("expected 2 or 3 arguments, got %d", len(args))
 		}
 
 	case request.GetValue() != nil:

@@ -15,7 +15,10 @@
 package modprovider
 
 import (
+	"bytes"
 	"context"
+	"embed"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -39,12 +42,64 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
+type ModuleSchemaOverride struct {
+	Source         string                `json:"source"`
+	PartialSchema  *InferredModuleSchema `json:"partialSchema"`
+	MinimumVersion *string               `json:"minimumVersion,omitempty"`
+	MaximumVersion string                `json:"maximumVersion"`
+}
+
+//go:embed module_schema_overrides/*.json
+var moduleSchemaOverrides embed.FS
+
+func parseModuleSchemaOverrides(packageName string) []*ModuleSchemaOverride {
+	overrides := []*ModuleSchemaOverride{}
+	dir := "module_schema_overrides"
+	files, err := moduleSchemaOverrides.ReadDir(dir)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read module schema overrides directory: %v", err))
+	}
+
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".json") {
+			continue
+		}
+
+		data, err := moduleSchemaOverrides.ReadFile(filepath.Join(dir, file.Name()))
+		if err != nil {
+			panic(fmt.Sprintf("failed to read module schema overrides file %s: %v", file.Name(), err))
+		}
+
+		data = bytes.ReplaceAll(data, []byte("[packageName]"), []byte(packageName))
+		var override ModuleSchemaOverride
+		if err := json.Unmarshal(data, &override); err != nil {
+			panic(fmt.Sprintf("failed to unmarshal module schema overrides file %s: %v", file.Name(), err))
+		}
+		overrides = append(overrides, &override)
+	}
+
+	for _, override := range overrides {
+		if override.MinimumVersion != nil && !isValidVersion(*override.MinimumVersion) {
+			panic(fmt.Sprintf("invalid minimum version %s for source %s",
+				*override.MinimumVersion,
+				override.Source))
+		}
+		if !isValidVersion(override.MaximumVersion) {
+			panic(fmt.Sprintf("invalid maximum version %s for source %s",
+				override.MaximumVersion,
+				override.Source))
+		}
+	}
+	return overrides
+}
+
 type InferredModuleSchema struct {
-	Inputs          map[string]schema.PropertySpec
-	Outputs         map[string]schema.PropertySpec
-	SupportingTypes map[string]schema.ComplexTypeSpec
-	RequiredInputs  []string
-	ProvidersConfig schema.ConfigSpec
+	Inputs          map[string]*schema.PropertySpec    `json:"inputs"`
+	Outputs         map[string]*schema.PropertySpec    `json:"outputs"`
+	SupportingTypes map[string]*schema.ComplexTypeSpec `json:"supportingTypes"`
+	RequiredInputs  []string                           `json:"requiredInputs"`
+	NonNilOutputs   []string                           `json:"nonNilOutputs"`
+	ProvidersConfig schema.ConfigSpec                  `json:"providersConfig"`
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
@@ -92,7 +147,7 @@ func convertType(
 	terraformType cty.Type,
 	typeName string,
 	packageName packageName,
-	supportingTypes map[string]schema.ComplexTypeSpec,
+	supportingTypes map[string]*schema.ComplexTypeSpec,
 ) schema.TypeSpec {
 	if terraformType.Equals(cty.String) {
 		return stringType
@@ -125,7 +180,7 @@ func convertType(
 			}
 		}
 
-		complexType := schema.ComplexTypeSpec{
+		complexType := &schema.ComplexTypeSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type:       "object",
 				Properties: propertiesMap,
@@ -281,10 +336,10 @@ func inferModuleSchema(
 	}
 
 	inferredModuleSchema := &InferredModuleSchema{
-		Inputs:          make(map[string]schema.PropertySpec),
-		Outputs:         make(map[string]schema.PropertySpec),
+		Inputs:          make(map[string]*schema.PropertySpec),
+		Outputs:         make(map[string]*schema.PropertySpec),
 		RequiredInputs:  []string{},
-		SupportingTypes: map[string]schema.ComplexTypeSpec{},
+		SupportingTypes: map[string]*schema.ComplexTypeSpec{},
 		ProvidersConfig: schema.ConfigSpec{
 			Variables: map[string]schema.PropertySpec{},
 		},
@@ -301,7 +356,7 @@ func inferModuleSchema(
 
 	for variableName, variable := range module.Variables {
 		variableType := convertType(variable.Type, variableName, packageName, inferredModuleSchema.SupportingTypes)
-		inferredModuleSchema.Inputs[variableName] = schema.PropertySpec{
+		inferredModuleSchema.Inputs[variableName] = &schema.PropertySpec{
 			Description: variable.Description,
 			Secret:      variable.Sensitive,
 			TypeSpec:    variableType,
@@ -321,7 +376,7 @@ func inferModuleSchema(
 			inferredType = inferExpressionType(output.Expr)
 		}
 
-		inferredModuleSchema.Outputs[outputName] = schema.PropertySpec{
+		inferredModuleSchema.Outputs[outputName] = &schema.PropertySpec{
 			Description: output.Description,
 			Secret:      output.Sensitive,
 			TypeSpec:    inferredType,
@@ -329,6 +384,148 @@ func inferModuleSchema(
 	}
 
 	return inferredModuleSchema, nil
+}
+
+// hasBuiltinModuleSchemaOverrides checks if the module source has any schema overrides
+// that are built-in and known to the provider.
+func hasBuiltinModuleSchemaOverrides(
+	source TFModuleSource,
+	moduleVersion TFModuleVersion,
+	overrides []*ModuleSchemaOverride,
+) (*InferredModuleSchema, bool) {
+	for _, data := range overrides {
+		if string(source) != data.Source {
+			continue
+		}
+
+		modVersion, err := version.NewVersion(string(moduleVersion))
+		if err != nil {
+			continue
+		}
+
+		maximumVersion := version.Must(version.NewVersion(data.MaximumVersion))
+
+		if data.MinimumVersion != nil {
+			minimumVersion := version.Must(version.NewVersion(*data.MinimumVersion))
+			if modVersion.LessThan(minimumVersion) {
+				continue
+			}
+		}
+
+		if modVersion.GreaterThan(maximumVersion) {
+			continue
+		}
+
+		return data.PartialSchema, true
+	}
+
+	return nil, false
+}
+
+// applyModuleSchemaOverrides takes an full inferred schema and adds information to it from
+// a partial schema. The partial schema is expected to be a subset of the full schema.
+func combineInferredModuleSchema(
+	inferredSchema *InferredModuleSchema,
+	partialInferredSchema *InferredModuleSchema,
+) *InferredModuleSchema {
+
+	// add required outputs to the inferred schema if they are not already present
+	for _, requiredOutput := range partialInferredSchema.NonNilOutputs {
+		alreadyExists := false
+		for _, existingRequiredOutput := range inferredSchema.NonNilOutputs {
+			if existingRequiredOutput == requiredOutput {
+				alreadyExists = true
+				break
+			}
+		}
+
+		if !alreadyExists {
+			inferredSchema.NonNilOutputs = append(inferredSchema.NonNilOutputs, requiredOutput)
+		}
+	}
+
+	for name, input := range partialInferredSchema.Inputs {
+		if _, ok := inferredSchema.Inputs[name]; !ok {
+			inferredSchema.Inputs[name] = input
+			continue
+		}
+
+		// if the input already exists, we need to merge the types
+		existingInput := inferredSchema.Inputs[name]
+		if input.Ref != "" {
+			existingInput.Ref = input.Ref
+		}
+
+		if input.Description != "" {
+			existingInput.Description = input.Description
+		}
+
+		if input.Secret {
+			existingInput.Secret = input.Secret
+		}
+
+		if input.TypeSpec.Type != "" {
+			existingInput.TypeSpec.Type = input.TypeSpec.Type
+		}
+
+		if input.TypeSpec.Items != nil {
+			existingInput.TypeSpec.Items = input.TypeSpec.Items
+		}
+
+		if input.TypeSpec.AdditionalProperties != nil {
+			existingInput.TypeSpec.AdditionalProperties = input.TypeSpec.AdditionalProperties
+		}
+	}
+
+	for name, output := range partialInferredSchema.Outputs {
+		if _, ok := inferredSchema.Outputs[name]; !ok {
+			inferredSchema.Outputs[name] = output
+			continue
+		}
+
+		// if the output already exists, we need to merge the types
+		existingOutput := inferredSchema.Outputs[name]
+		if output.Ref != "" {
+			existingOutput.Ref = output.Ref
+		}
+		if output.Description != "" {
+			existingOutput.Description = output.Description
+		}
+		if output.Secret {
+			existingOutput.Secret = output.Secret
+		}
+		if output.TypeSpec.Type != "" {
+			existingOutput.TypeSpec.Type = output.TypeSpec.Type
+		}
+		if output.TypeSpec.Items != nil {
+			existingOutput.TypeSpec.Items = output.TypeSpec.Items
+		}
+		if output.TypeSpec.AdditionalProperties != nil {
+			existingOutput.TypeSpec.AdditionalProperties = output.TypeSpec.AdditionalProperties
+		}
+	}
+
+	// add supporting types to the inferred schema
+	for token, typeSpec := range partialInferredSchema.SupportingTypes {
+		// add the type to the inferred schema if it does not exist
+		if _, ok := inferredSchema.SupportingTypes[token]; !ok {
+			inferredSchema.SupportingTypes[token] = typeSpec
+			continue
+		}
+
+		// if the type already exists, we need to merge the types
+		existingType := inferredSchema.SupportingTypes[token]
+		if typeSpec.Type != "" {
+			existingType.Type = typeSpec.Type
+		}
+
+		if typeSpec.ObjectTypeSpec.Type != "" {
+			existingType.ObjectTypeSpec.Type = typeSpec.ObjectTypeSpec.Type
+		}
+
+	}
+
+	return inferredSchema
 }
 
 func extractModuleContent(
