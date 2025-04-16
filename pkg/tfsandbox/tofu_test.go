@@ -20,20 +20,17 @@ import (
 	"path"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestTofuInit(t *testing.T) {
-	tofu, err := NewTofu(context.Background(), nil)
-	assert.NoError(t, err)
+	tofu := newTestTofu(t)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 
 	var res bytes.Buffer
-	err = tofu.tf.InitJSON(context.Background(), &res)
+	err := tofu.tf.InitJSON(context.Background(), &res)
 	assert.NoError(t, err)
 	t.Logf("Output: %s", res.String())
 
@@ -42,15 +39,14 @@ func TestTofuInit(t *testing.T) {
 }
 
 func TestTofuPlan(t *testing.T) {
-	tofu, err := NewTofu(context.Background(), nil)
-	assert.NoError(t, err)
+	tofu := newTestTofu(t)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 	ctx := context.Background()
 
 	outputs := []TFOutputSpec{}
 	providersConfig := map[string]resource.PropertyMap{}
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
-	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+	err := CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputVar": "test",
 	}), outputs, providersConfig)
 	assert.NoErrorf(t, err, "error creating tf file")
@@ -67,15 +63,14 @@ func TestTofuPlan(t *testing.T) {
 }
 
 func TestTofuApply(t *testing.T) {
-	tofu, err := NewTofu(context.Background(), nil)
-	assert.NoError(t, err)
+	tofu := newTestTofu(t)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
 	ctx := context.Background()
 
 	emptyOutputs := []TFOutputSpec{}
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
 	providersConfig := map[string]resource.PropertyMap{}
-	err = CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+	err := CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
 		"inputVar": "test",
 	}), emptyOutputs, providersConfig)
 	assert.NoErrorf(t, err, "error creating tf file")
@@ -93,17 +88,4 @@ func TestTofuApply(t *testing.T) {
 
 	err = tofu.Destroy(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu destroy")
-}
-
-func Test_getTofuExecutable_caches(t *testing.T) {
-	ctx := context.Background()
-
-	v := semver.MustParse("1.9.0")
-
-	_, _, err := tryGetTofuExecutable(ctx, &v)
-	require.NoError(t, err)
-
-	_, cacheHit, err := tryGetTofuExecutable(ctx, &v)
-	require.NoError(t, err)
-	require.True(t, cacheHit)
 }

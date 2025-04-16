@@ -10,7 +10,7 @@ func (t *Tofu) Destroy(ctx context.Context, log Logger) error {
 	logWriter := newJSONLogPipe(ctx, log)
 	defer logWriter.Close()
 
-	if err := t.tf.DestroyJSON(ctx, logWriter); err != nil {
+	if err := t.tf.DestroyJSON(ctx, logWriter, t.destroyOptions()...); err != nil {
 		return fmt.Errorf("error running tofu destroy: %w", err)
 	}
 

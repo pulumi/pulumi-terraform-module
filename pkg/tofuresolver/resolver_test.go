@@ -12,28 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package tofuresolver
 
 import (
-	"os"
+	"context"
+	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/modprovider"
+	"github.com/blang/semver"
+	"github.com/stretchr/testify/require"
 )
 
-func main() {
-	disableTFLogging()
-	err := provider.Main(modprovider.Name(), modprovider.StartServer)
-	if err != nil {
-		cmdutil.ExitError(err.Error())
-	}
-}
+func Test_Resolve_caches(t *testing.T) {
+	ctx := context.Background()
 
-func disableTFLogging() {
-	// Did not find a less intrusive way to disable logging from the auxprovider hosted in-process.
-	os.Setenv("TF_LOG_PROVIDER", "off")
-	os.Setenv("TF_LOG_SDK", "off")
-	os.Setenv("TF_LOG_SDK_PROTO", "off")
+	v := semver.MustParse("1.9.0")
+
+	_, _, err := tryGetTofuExecutable(ctx, &v)
+	require.NoError(t, err)
+
+	_, cacheHit, err := tryGetTofuExecutable(ctx, &v)
+	require.NoError(t, err)
+	require.True(t, cacheHit)
 }

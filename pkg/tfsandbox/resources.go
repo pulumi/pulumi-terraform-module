@@ -49,7 +49,7 @@ func (sr stateResources) extractResourcesFromStateModule(module *tfjson.StateMod
 		}
 		// ignore the unknown value proxy resource because we don't need to show it
 		// to the user
-		if resource.Address == fmt.Sprintf("%s.%s", terraformDataResourceType, terraformDataResourceName) {
+		if resource.Address == fmt.Sprintf("%s.%s", unknownProxyResourceType, unknownProxyResourceName) {
 			continue
 		}
 		sr[ResourceAddress(resource.Address)] = *resource

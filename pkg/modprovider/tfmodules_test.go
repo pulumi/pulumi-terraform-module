@@ -30,7 +30,9 @@ import (
 
 func TestExtractModuleContentWorks(t *testing.T) {
 	ctx := context.Background()
-	awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1", tfsandbox.DiscardLogger)
+	srv := newTestAuxProviderServer(t)
+	awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1",
+		tfsandbox.DiscardLogger, srv)
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
 }
@@ -38,7 +40,8 @@ func TestExtractModuleContentWorks(t *testing.T) {
 func TestInferringModuleSchemaWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("terraform-aws-modules")
-	awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.19.0")
+	srv := newTestAuxProviderServer(t)
+	awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.19.0", srv)
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 	// verify a sample of the inputs with different inferred types
@@ -197,7 +200,8 @@ func TestApplyModuleOverrides(t *testing.T) {
 	packageName := packageName("vpc")
 	version := TFModuleVersion("5.18.1")
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
-	awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version)
+	testServer := newTestAuxProviderServer(t)
+	awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version, testServer)
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 	// We cannot infer which outputs are required or not so everything is optional, initially.
@@ -256,8 +260,9 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
+	testServer := newTestAuxProviderServer(t)
 	logger := tfsandbox.DiscardLogger
-	mod, err := extractModuleContent(ctx, TFModuleSource(p), "", logger)
+	mod, err := extractModuleContent(ctx, TFModuleSource(p), "", logger, testServer)
 	require.NoError(t, err)
 	require.NotNil(t, mod, "module contents should not be nil")
 }
@@ -266,7 +271,8 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("demoWebsite")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
-	demoSchema, err := InferModuleSchema(ctx, packageName, "github.com/yemisprojects/s3_website_module_demo", version)
+	srv := newTestAuxProviderServer(t)
+	demoSchema, err := InferModuleSchema(ctx, packageName, "github.com/yemisprojects/s3_website_module_demo", version, srv)
 	assert.NoError(t, err, "failed to infer module schema for github module")
 	assert.NotNil(t, demoSchema, "inferred module schema for aws vpc module is nil")
 	// verify a sample of the inputs with different inferred types
@@ -300,6 +306,7 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 		packageName,
 		"github.com/hashicorp/terraform-aws-consul//modules/consul-cluster",
 		version,
+		newTestAuxProviderServer(t),
 	)
 	assert.NoError(t, err, "failed to infer module schema for github submodule")
 	assert.NotNil(t, consulClusterSchema, "inferred module schema for aws consul cluster submodule is nil")
@@ -333,7 +340,8 @@ func TestResolveModuleSources(t *testing.T) {
 		src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 		p, err := filepath.Abs(src)
 		require.NoError(t, err)
-		d, err := resolveModuleSources(ctx, TFModuleSource(p), "", tfsandbox.DiscardLogger)
+		d, err := resolveModuleSources(ctx, TFModuleSource(p), "", tfsandbox.DiscardLogger,
+			newTestAuxProviderServer(t))
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -349,7 +357,8 @@ func TestResolveModuleSources(t *testing.T) {
 		ctx := context.Background()
 		s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
 		v := TFModuleVersion("4.5.0")
-		d, err := resolveModuleSources(ctx, s, v, tfsandbox.DiscardLogger)
+		d, err := resolveModuleSources(ctx, s, v, tfsandbox.DiscardLogger,
+			newTestAuxProviderServer(t))
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -363,7 +372,8 @@ func TestResolveModuleSources(t *testing.T) {
 	t.Run("remote module source github", func(t *testing.T) {
 		ctx := context.Background()
 		moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
-		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
+		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger,
+			newTestAuxProviderServer(t))
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
@@ -376,7 +386,8 @@ func TestResolveModuleSources(t *testing.T) {
 	t.Run("remote module source with version in source path", func(t *testing.T) {
 		ctx := context.Background()
 		moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
+		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger,
+			newTestAuxProviderServer(t))
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
@@ -389,7 +400,8 @@ func TestResolveModuleSources(t *testing.T) {
 	t.Run("remote module source with git path prefix", func(t *testing.T) {
 		ctx := context.Background()
 		moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger)
+		workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger,
+			newTestAuxProviderServer(t))
 		require.NoError(t, err)
 
 		bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))

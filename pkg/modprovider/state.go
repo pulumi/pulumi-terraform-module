@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
@@ -133,20 +134,22 @@ func newModuleStateResource(
 
 // The implementation of the ModuleComponentResource life-cycle.
 type moduleStateHandler struct {
-	planStore *planStore
-	oldState  stateStore
-	newState  stateStore
-	hc        *provider.HostClient
+	planStore         *planStore
+	oldState          stateStore
+	newState          stateStore
+	hc                *provider.HostClient
+	auxProviderServer *auxprovider.Server
 }
 
 var _ moduleStateStore = (*moduleStateHandler)(nil)
 
-func newModuleStateHandler(hc *provider.HostClient, planStore *planStore) *moduleStateHandler {
+func newModuleStateHandler(hc *provider.HostClient, planStore *planStore, as *auxprovider.Server) *moduleStateHandler {
 	return &moduleStateHandler{
-		oldState:  stateStore{},
-		newState:  stateStore{},
-		hc:        hc,
-		planStore: planStore,
+		oldState:          stateStore{},
+		newState:          stateStore{},
+		hc:                hc,
+		planStore:         planStore,
+		auxProviderServer: as,
 	}
 }
 
@@ -257,7 +260,7 @@ func (h *moduleStateHandler) Delete(
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -336,7 +339,7 @@ func (h *moduleStateHandler) Read(
 	tfName := getModuleName(modUrn)
 	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}

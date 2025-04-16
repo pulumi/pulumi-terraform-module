@@ -20,20 +20,69 @@ import (
 	"math/rand/v2"
 	"os"
 	"path"
-	"path/filepath"
-	"runtime"
 	"strings"
 
-	"github.com/blang/semver"
-	"github.com/hashicorp/hc-install/fs"
-	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 type Tofu struct {
-	tf *tfexec.Terraform
+	tf       *tfexec.Terraform
+	reattach *tfexec.ReattachInfo
+}
+
+func (t *Tofu) applyOptions() []tfexec.ApplyOption {
+	opts := []tfexec.ApplyOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) initOptions() []tfexec.InitOption {
+	opts := []tfexec.InitOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) destroyOptions() []tfexec.DestroyOption {
+	opts := []tfexec.DestroyOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) planOptions(opt ...tfexec.PlanOption) []tfexec.PlanOption {
+	opts := []tfexec.PlanOption{}
+	opts = append(opts, opt...)
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) refreshCmdOptions() []tfexec.RefreshCmdOption {
+	opts := []tfexec.RefreshCmdOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) showOptions(opt ...tfexec.ShowOption) []tfexec.ShowOption {
+	opts := []tfexec.ShowOption{}
+	opts = append(opts, opt...)
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
 }
 
 // WorkingDir returns the Terraform working directory
@@ -44,7 +93,7 @@ func (t *Tofu) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
+func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server) (*Tofu, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
@@ -52,7 +101,7 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 		})
 	}
 
-	execPath, err := getTofuExecutable(ctx, nil)
+	execPath, err := tofuresolver.Resolve(ctx, tofuresolver.ResolveOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("error downloading tofu: %w", err)
 	}
@@ -67,13 +116,19 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
+	var reattach *tfexec.ReattachInfo
+	if auxServer != nil {
+		reattach = &auxServer.ReattachInfo
+	}
+
 	// TODO[pulumi/pulumi-terraform-module#199] concurrent access to the plugin cache
 	// if err := setupPluginCache(tf); err != nil {
 	// 	return nil, fmt.Errorf("error setting up plugin cache: %w", err)
 	// }
 
 	return &Tofu{
-		tf: tf,
+		tf:       tf,
+		reattach: reattach,
 	}, nil
 }
 
@@ -126,62 +181,4 @@ func envMap(environ []string) map[string]string {
 		env[k] = v
 	}
 	return env
-}
-
-// findExistingTofu checks if tofu is already installed on the machine
-// it will check against the PATH and the provided extra paths
-// TODO: [pulumi/pulumi-terraform-module#71] add more configuration options (e.g. specific version support)
-func findExistingTofu(ctx context.Context, extraPaths []string) (string, bool) {
-	anyVersion := fs.AnyVersion{
-		ExtraPaths: extraPaths,
-		Product: &product.Product{
-			Name: "tofu",
-			BinaryName: func() string {
-				if runtime.GOOS == "windows" {
-					return "tofu.exe"
-				}
-				return "tofu"
-			},
-		},
-	}
-	found, err := anyVersion.Find(ctx)
-	return found, err == nil
-}
-
-// getTofuExecutable will try to get a tofu executable to use
-// it will first check if tofu is already installed, if not it will
-// download and install tofu
-func getTofuExecutable(ctx context.Context, version *semver.Version) (string, error) {
-	path, _, err := tryGetTofuExecutable(ctx, version)
-	return path, err
-}
-
-// Like [getTofuExecutable] but additionally returns a boolean indicating whether an already installed binary was
-// located or not.
-func tryGetTofuExecutable(ctx context.Context, version *semver.Version) (string, bool, error) {
-	pulumiPath, err := workspace.GetPulumiPath("tf-modules")
-	if err != nil {
-		return "", false, fmt.Errorf("could not find pulumi path: %w", err)
-	}
-	installDir := "tofu"
-	if version != nil {
-		installDir = fmt.Sprintf("%s-%s", installDir, version.String())
-	}
-	finalDir := path.Join(pulumiPath, installDir)
-	binaryPath := path.Join(finalDir, "tofu")
-	if runtime.GOOS == "windows" {
-		binaryPath += ".exe"
-	}
-
-	// first check if we already have tofu installed
-	if found, ok := findExistingTofu(ctx, []string{filepath.Dir(binaryPath)}); ok {
-		return found, true, nil
-	}
-
-	err = installTool(ctx, finalDir, binaryPath, false)
-	if err != nil {
-		return "", false, fmt.Errorf("error installing tofu: %w", err)
-	}
-
-	return binaryPath, false, nil
 }

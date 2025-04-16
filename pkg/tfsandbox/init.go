@@ -13,7 +13,7 @@ func (t *Tofu) Init(ctx context.Context, log Logger) error {
 	defer logWriter.Close()
 
 	// Run the terraform init command
-	if err := t.tf.InitJSON(ctx, logWriter); err != nil {
+	if err := t.tf.InitJSON(ctx, logWriter, t.initOptions()...); err != nil {
 		return fmt.Errorf("error running tofu init: %w", err)
 	}
 
