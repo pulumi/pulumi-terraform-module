@@ -10,6 +10,7 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
@@ -22,8 +23,7 @@ func TestUnknownsInCreatePlanBySchemaType(t *testing.T) {
 	t.Parallel()
 	skipLocalRunsWithoutCreds(t)
 	ctx := context.Background()
-	tofu, err := tfsandbox.NewTofu(ctx, nil)
-	assert.NoError(t, err)
+	tofu := newTestTofu(t)
 	tfFile := `
 provider "aws" {
   region = "us-east-2"
@@ -32,7 +32,7 @@ module "local" {
   source = "./local_module"
 }`
 
-	err = os.WriteFile(
+	err := os.WriteFile(
 		path.Join(tofu.WorkingDir(), "main.tf"),
 		[]byte(tfFile),
 		0600,
@@ -606,8 +606,8 @@ func runPlan(t *testing.T, tofu *tfsandbox.Tofu, tfFile string) *tfsandbox.Plan 
 
 	ctx := context.Background()
 
-	plan, err := tofu.Plan(ctx, tfsandbox.DiscardLogger)
-	assert.NoError(t, err)
+	plan, err := tofu.Plan(ctx, newTestLogger(t))
+	require.NoErrorf(t, err, "tofu.Plan failed")
 	return plan
 }
 

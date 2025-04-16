@@ -23,11 +23,11 @@ func (t *Tofu) refresh(ctx context.Context, log Logger) (*tfjson.State, error) {
 	logWriter := newJSONLogPipe(ctx, log)
 	defer logWriter.Close()
 
-	if err := t.tf.RefreshJSON(ctx, logWriter); err != nil {
+	if err := t.tf.RefreshJSON(ctx, logWriter, t.refreshCmdOptions()...); err != nil {
 		return nil, fmt.Errorf("error running tofu refresh: %w", err)
 	}
 
-	state, err := t.tf.Show(ctx)
+	state, err := t.tf.Show(ctx, t.showOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("error running tofu show: %w", err)
 	}

@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package auxprovider
 
 import (
+	"net"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/modprovider"
+	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
-func main() {
-	disableTFLogging()
-	err := provider.Main(modprovider.Name(), modprovider.StartServer)
-	if err != nil {
-		cmdutil.ExitError(err.Error())
-	}
-}
+func computeReattachInfo(addr net.Addr) tfexec.ReattachInfo {
+	pid := os.Getgid()
+	info := make(tfexec.ReattachInfo)
 
-func disableTFLogging() {
-	// Did not find a less intrusive way to disable logging from the auxprovider hosted in-process.
-	os.Setenv("TF_LOG_PROVIDER", "off")
-	os.Setenv("TF_LOG_SDK", "off")
-	os.Setenv("TF_LOG_SDK_PROTO", "off")
+	info[address] = tfexec.ReattachConfig{
+		Protocol:        "grpc",
+		ProtocolVersion: 6,
+		Pid:             pid,
+		Test:            true, // setting this to false causes a crash somehow
+		Addr: tfexec.ReattachConfigAddr{
+			Network: addr.Network(),
+			String:  addr.String(),
+		},
+	}
+	info[address2] = info[address]
+	return info
 }

@@ -27,7 +27,7 @@ func (t *Tofu) apply(ctx context.Context, logger Logger) (*tfjson.State, error) 
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
 
-	applyErr := t.tf.ApplyJSON(ctx, logWriter)
+	applyErr := t.tf.ApplyJSON(ctx, logWriter, t.applyOptions()...)
 	// if the apply failed just log it to debug logs and continue
 	// we want to return and process the partial state from a failed apply
 	if applyErr != nil {
@@ -36,7 +36,7 @@ func (t *Tofu) apply(ctx context.Context, logger Logger) (*tfjson.State, error) 
 
 	// NOTE: the recommended default from terraform-json is to set JSONNumber=true
 	// otherwise some number values will lose precision when converted to float64
-	state, err := t.tf.Show(ctx, tfexec.JSONNumber(true))
+	state, err := t.tf.Show(ctx, t.showOptions(tfexec.JSONNumber(true))...)
 	if err != nil {
 		return nil, fmt.Errorf("error running tofu show: %w", err)
 	}

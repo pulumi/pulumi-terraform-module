@@ -26,11 +26,63 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 type Tofu struct {
-	tf *tfexec.Terraform
+	tf       *tfexec.Terraform
+	reattach *tfexec.ReattachInfo
+}
+
+func (t *Tofu) applyOptions() []tfexec.ApplyOption {
+	opts := []tfexec.ApplyOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) initOptions() []tfexec.InitOption {
+	opts := []tfexec.InitOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) destroyOptions() []tfexec.DestroyOption {
+	opts := []tfexec.DestroyOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) planOptions(opt ...tfexec.PlanOption) []tfexec.PlanOption {
+	opts := []tfexec.PlanOption{}
+	opts = append(opts, opt...)
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) refreshCmdOptions() []tfexec.RefreshCmdOption {
+	opts := []tfexec.RefreshCmdOption{}
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
+}
+
+func (t *Tofu) showOptions(opt ...tfexec.ShowOption) []tfexec.ShowOption {
+	opts := []tfexec.ShowOption{}
+	opts = append(opts, opt...)
+	if t.reattach != nil {
+		opts = append(opts, tfexec.Reattach(*t.reattach))
+	}
+	return opts
 }
 
 // WorkingDir returns the Terraform working directory
@@ -41,7 +93,7 @@ func (t *Tofu) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
+func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server) (*Tofu, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
@@ -64,13 +116,19 @@ func NewTofu(ctx context.Context, workdir Workdir) (*Tofu, error) {
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
+	var reattach *tfexec.ReattachInfo
+	if auxServer != nil {
+		reattach = &auxServer.ReattachInfo
+	}
+
 	// TODO[pulumi/pulumi-terraform-module#199] concurrent access to the plugin cache
 	// if err := setupPluginCache(tf); err != nil {
 	// 	return nil, fmt.Errorf("error setting up plugin cache: %w", err)
 	// }
 
 	return &Tofu{
-		tf: tf,
+		tf:       tf,
+		reattach: reattach,
 	}, nil
 }
 

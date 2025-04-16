@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -40,6 +41,7 @@ func TestCreateTFFile(t *testing.T) {
 		inputsValue     resource.PropertyValue
 		outputs         []TFOutputSpec
 		providersConfig map[string]resource.PropertyMap
+		usesUnknowns    bool
 	}{
 		{
 			name:           "string",
@@ -50,6 +52,7 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "unknown",
 			tfVariableType: "string",
 			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
+			usesUnknowns:   true,
 		},
 		{
 			name:           "string secret",
@@ -96,6 +99,7 @@ func TestCreateTFFile(t *testing.T) {
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
 			}),
+			usesUnknowns: true,
 		},
 		{
 			name:           "map(map(any))",
@@ -116,6 +120,7 @@ func TestCreateTFFile(t *testing.T) {
 					},
 				),
 			}),
+			usesUnknowns: true,
 		},
 		{
 			name:           "set(string)",
@@ -142,6 +147,7 @@ func TestCreateTFFile(t *testing.T) {
 					"number_val": resource.NewNumberProperty(42),
 				},
 			),
+			usesUnknowns: true,
 		},
 		{
 			name:           "secret list(map(string))",
@@ -246,15 +252,11 @@ func TestCreateTFFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tofu, err := NewTofu(context.Background(), nil)
-			assert.NoError(t, err)
-			t.Cleanup(func() {
-				os.RemoveAll(tofu.WorkingDir())
-			})
+			tofu := newTestTofu(t)
 
 			writeTfVarFile(t, tofu.WorkingDir(), tt.tfVariableType)
 
-			err = CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
+			err := CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
 				"tfVar": tt.inputsValue,
 			}, tt.outputs, tt.providersConfig)
 			assert.NoError(t, err)
@@ -264,10 +266,12 @@ func TestCreateTFFile(t *testing.T) {
 			t.Logf("Contents: %s", string(contents))
 
 			var res bytes.Buffer
-			err = tofu.tf.InitJSON(context.Background(), &res)
-			assert.NoError(t, err)
+
+			t.Logf("Running tofu init -json")
+			err = tofu.tf.InitJSON(context.Background(), &res, tofu.initOptions()...)
+			assert.NoErrorf(t, err, "tofu init -json failed")
 			t.Logf("Output: %s", res.String())
-			assertValidateSuccess(t, tofu)
+			assertValidateSuccess(t, tofu, tt.usesUnknowns)
 		})
 	}
 }
@@ -307,7 +311,7 @@ func Test_decode(t *testing.T) {
 				"key1": resource.MakeComputed(resource.NewStringProperty("")),
 			},
 			expected: map[string]interface{}{
-				"key1": "${terraform_data.unknown_proxy.output}",
+				"key1": "${pulumiaux_unk.unknown_proxy.value}",
 			},
 		},
 		{
@@ -316,7 +320,7 @@ func Test_decode(t *testing.T) {
 				"key1": resource.NewOutputProperty(resource.Output{Known: false}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${terraform_data.unknown_proxy.output}",
+				"key1": "${pulumiaux_unk.unknown_proxy.value}",
 			},
 		},
 		{
@@ -340,7 +344,7 @@ func Test_decode(t *testing.T) {
 			expected: map[string]interface{}{
 				"key1": []interface{}{
 					map[string]interface{}{
-						"key2": "${terraform_data.unknown_proxy.output}",
+						"key2": "${pulumiaux_unk.unknown_proxy.value}",
 					},
 				},
 			},
@@ -358,8 +362,8 @@ func Test_decode(t *testing.T) {
 			expected: map[string]interface{}{
 				"key1": []interface{}{
 					map[string]interface{}{
-						"key2": "${terraform_data.unknown_proxy.output}",
-						"key3": "${terraform_data.unknown_proxy.output}",
+						"key2": "${pulumiaux_unk.unknown_proxy.value}",
+						"key3": "${pulumiaux_unk.unknown_proxy.value}",
 					},
 				},
 			},
@@ -568,10 +572,21 @@ func Test_decode(t *testing.T) {
 	}
 }
 
-// validate will fail if any of the module inputs don't match
-// the schema of the module
-func assertValidateSuccess(t *testing.T, tofu *Tofu) {
+// Validate will fail if any of the module inputs don't match the schema of the module.
+//
+// There is a limitation in tfexec that tofu.tf.Validate does not accept the reattach config yet. Therefore we cannot
+// validate files with unknowns relying on the reattach config. Skipping for now.
+func assertValidateSuccess(t *testing.T, tofu *Tofu, requireReattach bool) {
+	t.Helper()
+
+	if requireReattach {
+		t.Logf("Skip tofu validate because the test requires reattach")
+		return
+	}
+
+	t.Logf("Running tofu validate")
 	val, err := tofu.tf.Validate(context.Background())
+	require.NoErrorf(t, err, "tofu validate failed")
 	for diag := range slices.Values(val.Diagnostics) {
 		t.Logf("Diagnostic: %v", diag)
 	}
@@ -579,5 +594,4 @@ func assertValidateSuccess(t *testing.T, tofu *Tofu) {
 	assert.Equalf(t, true, val.Valid, "Tofu validation - expected valid=true, got valid=false")
 	assert.Equalf(t, 0, val.ErrorCount, "Tofu validation - expected error count=0, got %d", val.ErrorCount)
 	assert.Equalf(t, 0, val.WarningCount, "Tofu validation - expected warning count=0, got %d", val.WarningCount)
-
 }
