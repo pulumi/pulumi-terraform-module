@@ -221,7 +221,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 		partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
 		assert.True(t, ok, "module schema overrides should be found")
 		overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
-		assert.NotNil(t, overridenSchema, "overriden module schema is nil")
+		assert.NotNil(t, overridenSchema, "overridden module schema is nil")
 		assert.Contains(t, overridenSchema.NonNilOutputs, "vpc_id", "vpc_id should be required")
 	})
 
@@ -244,13 +244,13 @@ func TestApplyModuleOverrides(t *testing.T) {
 		partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
 		assert.True(t, ok, "module schema overrides should be found")
 		overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
-		assert.NotNil(t, overridenSchema, "overriden module schema is nil")
+		assert.NotNil(t, overridenSchema, "overridden module schema is nil")
 		assert.Contains(t, overridenSchema.NonNilOutputs, "vpc_id", "vpc_id should be non-nil")
 
-		vpcId := overridenSchema.Outputs["vpc_id"]
-		assert.Equal(t, "The new ID field of the VPC", vpcId.Description, "vpc_id description should be updated")
-		assert.True(t, vpcId.Secret, "vpc_id should be secret")
-		assert.Equal(t, "string", vpcId.TypeSpec.Type, "vpc_id type should not be changed")
+		vpcID := overridenSchema.Outputs["vpc_id"]
+		assert.Equal(t, "The new ID field of the VPC", vpcID.Description, "vpc_id description should be updated")
+		assert.True(t, vpcID.Secret, "vpc_id should be secret")
+		assert.Equal(t, "string", vpcID.TypeSpec.Type, "vpc_id type should not be changed")
 		assert.Contains(t, overridenSchema.NonNilOutputs, "vpc_id", "vpc_id should be non-nil")
 	})
 }
