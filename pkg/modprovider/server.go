@@ -55,6 +55,7 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 		planStore:          &planStore,
 		hostClient:         hostClient,
 		stateStore:         moduleStateHandler,
+		moduleHandler:      newModuleHandler(hostClient, auxProviderServer),
 		moduleStateHandler: moduleStateHandler,
 		childHandler:       newChildHandler(&planStore),
 		auxProviderServer:  auxProviderServer,
@@ -68,6 +69,7 @@ type server struct {
 	params               *ParameterizeArgs
 	hostClient           *provider.HostClient
 	stateStore           moduleStateStore
+	moduleHandler        *moduleHandler
 	moduleStateHandler   *moduleStateHandler
 	childHandler         *childHandler
 	packageName          packageName
@@ -410,6 +412,10 @@ func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
+	if useCustomResource {
+		return nil, fmt.Errorf("Unsupported typ=%q", req.GetType())
+	}
+
 	inputProps, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -474,6 +480,15 @@ func (s *server) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
+	if useCustomResource {
+		switch {
+		case req.GetType() == string(moduleTypeToken(s.packageName)):
+			return s.moduleHandler.Check(ctx, req)
+		default:
+			return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
+		}
+	}
+
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		return s.moduleStateHandler.Check(ctx, req)
@@ -518,6 +533,16 @@ func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+	if useCustomResource {
+		switch {
+		case req.GetType() == string(moduleTypeToken(s.packageName)):
+			providersConfig := cleanProvidersConfig(s.providerConfig)
+			return s.moduleHandler.Diff(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
+		default:
+			return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
+		}
+	}
+
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		return s.moduleStateHandler.Diff(ctx, req)
@@ -532,6 +557,17 @@ func (s *server) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
+	if useCustomResource {
+		switch {
+		case req.GetType() == string(moduleTypeToken(s.packageName)):
+			providersConfig := cleanProvidersConfig(s.providerConfig)
+			return s.moduleHandler.Create(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
+				s.inferredModuleSchema, s.packageName)
+		default:
+			return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
+		}
+	}
+
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		return s.moduleStateHandler.Create(ctx, req)
@@ -546,6 +582,17 @@ func (s *server) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
+	if useCustomResource {
+		switch {
+		case req.GetType() == string(moduleTypeToken(s.packageName)):
+			providersConfig := cleanProvidersConfig(s.providerConfig)
+			return s.moduleHandler.Update(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
+				s.inferredModuleSchema, s.packageName)
+		default:
+			return nil, fmt.Errorf("[Update]: type %q is not supported yet", req.GetType())
+		}
+	}
+
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		return s.moduleStateHandler.Update(ctx, req)
@@ -560,6 +607,16 @@ func (s *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
+	if useCustomResource {
+		switch {
+		case req.GetType() == string(moduleTypeToken(s.packageName)):
+			providersConfig := cleanProvidersConfig(s.providerConfig)
+			return s.moduleHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
+		default:
+			return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())
+		}
+	}
+
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
@@ -584,6 +641,15 @@ func (s *server) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
 ) (*pulumirpc.ReadResponse, error) {
+	if useCustomResource {
+		switch {
+		case req.GetType() == string(moduleTypeToken(s.packageName)):
+			return s.moduleHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+		default:
+			return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
+		}
+	}
+
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
