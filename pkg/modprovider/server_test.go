@@ -149,6 +149,34 @@ func TestParseParameterizeRequest(t *testing.T) {
 	})
 }
 
+func TestParseParameterizeRequestWithConfig(t *testing.T) {
+	ctx := context.Background()
+	t.Run("parses args with path to config file", func(t *testing.T) {
+		configFilePath := "testdata/module_configuration/simple-config.json"
+		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: []string{
+						"hashicorp/consul/aws",
+						"consul",
+						"--config",
+						configFilePath,
+					},
+				},
+			},
+		})
+		assert.NoError(t, err)
+		// we do not assert on the version because latest is resolved when version isn't specified
+		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
+		assert.Equal(t, packageName("consul"), args.PackageName)
+		assert.NotNil(t, args.Config)
+		assert.NotNil(t, args.Config.InferredModuleSchema)
+		assert.Equal(t, args.Config.InferredModuleSchema, &InferredModuleSchema{
+			NonNilOutputs: []string{"output_name"},
+		})
+	})
+}
+
 // Implements pulumirpc.EngineServer for testing.
 type testEngineServer struct {
 	t *testing.T

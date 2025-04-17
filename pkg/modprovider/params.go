@@ -23,9 +23,18 @@ type (
 	TFModuleVersion = tfsandbox.TFModuleVersion
 )
 
+// the module configuration to be provided via --config <file>
+// where the file is a JSON file. It inlines the inferred module schema
+// to override inputs, outputs etc. but also can have more fields in the future
+// if needed to customize the behavior of the provider.
+type ModuleConfig struct {
+	*InferredModuleSchema `json:",inline"`
+}
+
 // The parameters for the provider identify the Terraform module to specialize to.
 type ParameterizeArgs struct {
 	TFModuleSource  TFModuleSource  `json:"module"`
 	TFModuleVersion TFModuleVersion `json:"version,omitempty"`
 	PackageName     packageName     `json:"packageName"`
+	Config          *ModuleConfig   `json:"config,omitempty"`
 }

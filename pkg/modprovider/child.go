@@ -361,9 +361,6 @@ func (h *childHandler) Read(
 		// Refresh has removed the resource to reflect that it can no longer be found.
 		return &pulumirpc.ReadResponse{Id: ""}, nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("Error during child resource Read: %w", err)
-	}
 	inputs := childResourceInputs(modUrn, rstate.Address(), rstate.AttributeValues())
 	return &pulumirpc.ReadResponse{
 		Id:         childResourceID(rstate),

@@ -143,17 +143,128 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		assert.Equal(t, expected.Secret, actual.Secret, "output %s secret is incorrect", name)
 		assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "output %s type is incorrect", name)
 	}
+}
 
-	expectedConfigVariables := map[string]schema.PropertySpec{
-		"aws": {
-			TypeSpec:    mapType(anyType),
-			Description: "provider configuration for aws",
-		},
+func TestParsingModuleSchemaOverrides(t *testing.T) {
+	packageName := "vpc"
+	overrides := parseModuleSchemaOverrides(packageName)
+	assert.NotNil(t, overrides, "overrides is nil")
+
+	var testSchemaOverride *ModuleSchemaOverride
+	for _, override := range overrides {
+		if override.Source == "example-module-source-for-testing" {
+			testSchemaOverride = override
+			break
+		}
 	}
-	assert.Equal(t,
-		expectedConfigVariables,
-		awsVpcSchema.ProvidersConfig.Variables,
-		"required provider variables are incorrect")
+	assert.NotNil(t, testSchemaOverride, "test schema override is nil")
+	assert.NotNil(t, testSchemaOverride.MinimumVersion, "partial schema is nil")
+	assert.Equal(t, *testSchemaOverride.MinimumVersion, "0.1.0", "minimum version is incorrect")
+	assert.Equal(t, testSchemaOverride.MaximumVersion, "6.0.0", "maximum version is incorrect")
+	assert.NotNil(t, testSchemaOverride.PartialSchema, "partial schema is nil")
+	assert.Equal(t, testSchemaOverride.PartialSchema.Inputs, map[string]*schema.PropertySpec{
+		"example_input": {
+			Description: "An example input for the module.",
+			TypeSpec:    stringType,
+		},
+		"example_ref": {
+			TypeSpec: refType("#/types/vpc:index:MyType"),
+		},
+	})
+
+	assert.Equal(t, testSchemaOverride.PartialSchema.Outputs, map[string]*schema.PropertySpec{
+		"example_output": {
+			TypeSpec:    boolType,
+			Description: "An example output for the module.",
+		},
+	})
+
+	assert.Equal(t, testSchemaOverride.PartialSchema.SupportingTypes, map[string]*schema.ComplexTypeSpec{
+		"vpc:index:MyType": {
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type:        "object",
+				Description: "An example supporting type for the module.",
+				Properties: map[string]schema.PropertySpec{
+					"example_property": {
+						Description: "An example property for the supporting type.",
+						TypeSpec:    stringType,
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestApplyModuleOverrides(t *testing.T) {
+	ctx := context.Background()
+	packageName := packageName("vpc")
+	version := TFModuleVersion("5.18.1")
+	source := TFModuleSource("terraform-aws-modules/vpc/aws")
+	testServer := newTestAuxProviderServer(t)
+	awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version, testServer)
+	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
+	// We cannot infer which outputs are required or not so everything is optional, initially.
+	assert.Empty(t, awsVpcSchema.NonNilOutputs, "required outputs is empty")
+
+	t.Run("required outputs are updated", func(t *testing.T) {
+		moduleOverrides := []*ModuleSchemaOverride{
+			{
+				Source:         string(source),
+				MaximumVersion: "6.0.0",
+				PartialSchema: &InferredModuleSchema{
+					NonNilOutputs: []string{"vpc_id"},
+				},
+			},
+		}
+
+		partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
+		assert.True(t, ok, "module schema overrides should be found")
+		overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
+		assert.NotNil(t, overridenSchema, "overridden module schema is nil")
+		assert.Contains(t, overridenSchema.NonNilOutputs, "vpc_id", "vpc_id should be required")
+	})
+
+	t.Run("specific fields can be updated", func(t *testing.T) {
+		moduleOverrides := []*ModuleSchemaOverride{
+			{
+				Source:         string(source),
+				MaximumVersion: "6.0.0",
+				PartialSchema: &InferredModuleSchema{
+					Outputs: map[string]*schema.PropertySpec{
+						"vpc_id": {
+							Description: "The new ID field of the VPC",
+							Secret:      true,
+						},
+					},
+				},
+			},
+		}
+
+		partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
+		assert.True(t, ok, "module schema overrides should be found")
+		overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
+		assert.NotNil(t, overridenSchema, "overridden module schema is nil")
+		assert.Contains(t, overridenSchema.NonNilOutputs, "vpc_id", "vpc_id should be non-nil")
+
+		vpcID := overridenSchema.Outputs["vpc_id"]
+		assert.Equal(t, "The new ID field of the VPC", vpcID.Description, "vpc_id description should be updated")
+		assert.True(t, vpcID.Secret, "vpc_id should be secret")
+		assert.Equal(t, "string", vpcID.TypeSpec.Type, "vpc_id type should not be changed")
+		assert.Contains(t, overridenSchema.NonNilOutputs, "vpc_id", "vpc_id should be non-nil")
+	})
+}
+
+func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
+	ctx := context.Background()
+	src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
+	p, err := filepath.Abs(src)
+	require.NoError(t, err)
+	testServer := newTestAuxProviderServer(t)
+	logger := tfsandbox.DiscardLogger
+	mod, err := extractModuleContent(ctx, TFModuleSource(p), "", logger, testServer)
+	require.NoError(t, err)
+	require.NotNil(t, mod, "module contents should not be nil")
 }
 
 func TestInferModuleSchemaFromGitHubSource(t *testing.T) {

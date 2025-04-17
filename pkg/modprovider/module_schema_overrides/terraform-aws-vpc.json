@@ -1,0 +1,7 @@
+{
+    "source": "terraform-aws-modules/vpc/aws",
+    "maximumVersion": "6.0.0",
+    "partialSchema": {
+        "nonNilOutputs": ["vpc_id"]
+    }
+}
