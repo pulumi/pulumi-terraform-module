@@ -17,8 +17,9 @@ package modprovider
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"path"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
 	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -68,22 +69,59 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		return nil, err
 	}
 
+	// read module schema overrides and merge them with the
+	// inferred module schema when applicable
+	overrides := parseModuleSchemaOverrides(string(packageName))
+
+	override, hasOverride := hasBuiltinModuleSchemaOverrides(
+		pargs.TFModuleSource,
+		pargs.TFModuleVersion,
+		overrides)
+
+	if pargs.Config != nil && pargs.Config.InferredModuleSchema != nil {
+		suppliedSchemaOverride := pargs.Config.InferredModuleSchema
+		inferredModule = combineInferredModuleSchema(inferredModule, suppliedSchemaOverride)
+	} else if hasOverride {
+		inferredModule = combineInferredModuleSchema(inferredModule, override)
+	}
+
+	supportingTypes := map[string]schema.ComplexTypeSpec{}
+	for token, typeSpec := range inferredModule.SupportingTypes {
+		if typeSpec != nil {
+			supportingTypes[token] = *typeSpec
+		}
+	}
+
+	inputs := map[string]schema.PropertySpec{}
+	for propertyName, inputType := range inferredModule.Inputs {
+		if inputType != nil {
+			inputs[propertyName] = *inputType
+		}
+	}
+
+	outputs := map[string]schema.PropertySpec{}
+	for propertyName, outputType := range inferredModule.Outputs {
+		if outputType != nil {
+			outputs[propertyName] = *outputType
+		}
+	}
+
 	packageSpec := &schema.PackageSpec{
-		Name:       packageName,
-		Namespace:  "pulumi",
-		Repository: repository,
-		Version:    string(pkgVer),
-		Types:      inferredModule.SupportingTypes,
+		Name:    string(packageName),
+		Version: string(pkgVer),
+		Types:   supportingTypes,
 		Provider: schema.ResourceSpec{
 			InputProperties: inferredModule.ProvidersConfig.Variables,
 		},
 		Resources: map[string]schema.ResourceSpec{
 			mainResourceToken: {
 				IsComponent:     true,
-				InputProperties: inferredModule.Inputs,
+				InputProperties: inputs,
+				RequiredInputs:  inferredModule.RequiredInputs,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
-					Properties: inferredModule.Outputs,
+					Properties: outputs,
+					Required:   inferredModule.NonNilOutputs,
 				},
 			},
 		},

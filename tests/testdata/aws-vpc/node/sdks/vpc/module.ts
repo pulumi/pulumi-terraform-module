@@ -468,7 +468,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * The ID of the VPC
      */
-    public /*out*/ readonly vpc_id!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly vpc_id!: pulumi.Output<string>;
     /**
      * Tenancy of instances spin up within VPC
      */

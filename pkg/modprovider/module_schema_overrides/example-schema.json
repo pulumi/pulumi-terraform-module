@@ -1,0 +1,36 @@
+{
+    "source": "example-module-source-for-testing",
+    "maximumVersion": "6.0.0",
+    "minimumVersion": "0.1.0",
+    "partialSchema": {
+        "inputs": {
+            "example_input": {
+                "type": "string",
+                "description": "An example input for the module."
+            },
+            "example_ref": {
+                "$ref": "#/types/[packageName]:index:MyType"
+            }
+        },
+        "outputs": {
+            "example_output": {
+                "type": "boolean",
+                "description": "An example output for the module."
+            }
+        },
+        "requiredInputs": ["example_input"],
+        "nonNilOutputs": ["example_output"],
+        "supportingTypes": {
+            "[packageName]:index:MyType": {
+                "type": "object",
+                "description": "An example supporting type for the module.",
+                "properties": {
+                    "example_property": {
+                        "type": "string",
+                        "description": "An example property for the supporting type."
+                    }
+                }
+            }
+        }
+    }
+}
