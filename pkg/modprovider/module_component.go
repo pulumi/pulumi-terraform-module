@@ -79,15 +79,6 @@ func newModuleComponentResource(
 
 	urn := component.MustURN(ctx.Context())
 
-	defer func() {
-		// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
-		//
-		// This is only safe to run after all the children are done processing.
-		// Perhaps when fixing 108 this method will stop blocking to wait on that,
-		// in that case this cleanup has to move accordingly.
-		planStore.Forget(urn)
-	}()
-
 	var providerSelfRef pulumi.ProviderResource
 	if providerSelfURN != "" {
 		providerSelfRef = newProviderSelfReference(ctx, providerSelfURN)
