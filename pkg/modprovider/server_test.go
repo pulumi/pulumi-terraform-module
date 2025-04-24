@@ -382,17 +382,22 @@ func Test_cleanProvidersConfigUnwrapsSecrets(t *testing.T) {
 	inputConfig := resource.PropertyMap{
 		"aws": resource.PropertyValue{
 			V: &resource.Secret{
-				Element: resource.NewStringProperty(`{"region":"us-west-2"}`),
+				Element: resource.PropertyValue{
+					V: `{"region":"us-west-2"}`,
+				},
 			},
 		},
-		"version": resource.NewStringProperty("0.0.0-alpha.0+dev"),
+		"version": resource.PropertyValue{
+			V: "0.0.0-alpha.0+dev",
+		},
 	}
-
 	cleaned := cleanProvidersConfig(inputConfig)
 	expected := map[string]resource.PropertyMap{
-		"aws": {
-			"region": resource.NewStringProperty("us-west-2"),
-		},
+		"aws": resource.NewPropertyMap(&resource.Secret{
+			Element: resource.PropertyValue{
+				V: `{"region":"us-west-2"}`,
+			},
+		}),
 	}
 	assert.Equal(t, expected, cleaned)
 }

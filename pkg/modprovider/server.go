@@ -397,19 +397,8 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 		if serializedConfig.IsSecret() {
 			// When a provider passes in terraformConfig.Result from a previously configured provider,
 			// that result is a resource.PropertyValue wrapped in a secret.
-			// Unwrap this secret and parse the JSON string inside it.
-			secretValue := serializedConfig.SecretValue().Element
-			if secretValue.IsString() {
-				value := secretValue.StringValue()
-				deserialized := map[string]interface{}{}
-				if err := json.Unmarshal([]byte(value), &deserialized); err != nil {
-					contract.Failf("failed to deserialize provider config from secret into a map: %v", err)
-				}
-
-				if len(deserialized) > 0 {
-					providersConfig[string(propertyKey)] = resource.NewPropertyMapFromMap(deserialized)
-				}
-			}
+			// Unwrap this secret and return the underlying object.
+			providersConfig[string(propertyKey)] = resource.NewPropertyMap(serializedConfig.SecretValue())
 			continue
 		}
 
@@ -431,7 +420,6 @@ func (s *server) Construct(
 	})
 
 	providersConfig := cleanProvidersConfig(s.providerConfig)
-
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
