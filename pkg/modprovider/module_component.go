@@ -105,19 +105,7 @@ func newModuleComponentResource(
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
 	var applyErr error
-	var tfState *tfsandbox.State
 	state := stateStore.AwaitOldState(urn)
-	defer func() {
-		// SetNewState must be called on every possible exit to make sure child resources do
-		// not wait indefinitely for the state. If existing normally, this should have
-		// already happened, but this code makes sure error exists are covered as well.
-		//
-		// if applyErr != nil then we've already processed the child resources
-		// and can't call `SetNewState`
-		if finalError != nil && applyErr == nil {
-			stateStore.SetNewState(urn, state)
-		}
-	}()
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, auxProviderServer)
@@ -173,11 +161,10 @@ func newModuleComponentResource(
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
 
-		// Make sure child resources can read the state, even though it is not changed.
+		// State is not changing, but child resources may await it to be set, so set it here.
 		stateStore.SetNewState(urn, state)
 
 		var errs []error
-
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
 			cr, err := newChildResource(ctx, urn, pkgName,
 				rp,
@@ -195,39 +182,15 @@ func newModuleComponentResource(
 		}
 		moduleOutputs = plan.Outputs()
 	} else {
-		// DryRun() = false corresponds to running pulumi up
-		tfState, applyErr = tf.Apply(ctx.Context(), logger)
-
-		planStore.SetState(urn, tfState)
-
-		rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx.Context())
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
+		m := module{
+			logger:     logger,
+			planStore:  planStore,
+			stateStore: stateStore,
+			modUrn:     urn,
+			pkgName:    pkgName,
+			packageRef: packageRef,
 		}
-		state.rawState = rawState
-		state.rawLockFile = rawLockFile
-
-		// Make sure child resources can read updated state.
-		stateStore.SetNewState(urn, state)
-
-		var errs []error
-		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-
-			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
-				packageRef,
-				resourceOptions...)
-
-			errs = append(errs, err)
-			if err == nil {
-				childResources = append(childResources, cr)
-			}
-		})
-		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
-		}
-
-		moduleOutputs = tfState.Outputs()
+		childResources, state, moduleOutputs, applyErr = m.apply(ctx, tf, resourceOptions)
 	}
 
 	// Wait for all child resources to complete provisioning.
