@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -118,7 +119,11 @@ func newModuleComponentResource(
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
+
+		logger.Log(ctx.Context(), tfsandbox.Warn, "Waiting on plan entry")
 		plan := m.planStore.getOrCreatePlanEntry(urn).Await()
+		logger.Log(ctx.Context(), tfsandbox.Warn, "Plan entry acquired")
+		panic("Plan Entry ACQUIRED")
 		var errs []error
 		plan.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
 			cr, err := newChildResource(ctx, m.modUrn, m.pkgName, sop, m.packageRef, resourceOptions...)

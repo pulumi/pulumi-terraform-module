@@ -49,7 +49,19 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 		return nil, err
 	}
 
-	moduleStateHandler := newModuleStateHandler(hostClient, &planStore, auxProviderServer)
+	m := &module{
+		logger:            nil,
+		planStore:         &planStore,
+		modUrn:            "",
+		pkgName:           "",
+		packageRef:        "",
+		tfModuleSource:    "",
+		tfModuleVersion:   "",
+		inferredModule:    nil,
+		auxProviderServer: auxProviderServer,
+	}
+
+	moduleStateHandler := newModuleStateHandler(hostClient, mod)
 
 	srv := &server{
 		planStore:          &planStore,

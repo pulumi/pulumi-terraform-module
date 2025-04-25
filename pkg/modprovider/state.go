@@ -134,19 +134,17 @@ func newModuleStateResource(
 
 // The implementation of the ModuleComponentResource life-cycle.
 type moduleStateHandler struct {
-	mod               *module
-	planStore         *planStore
-	hc                *provider.HostClient
-	auxProviderServer *auxprovider.Server
-	tofuCache         map[urn.URN]*tfsandbox.Tofu
+	mod *module
+	hc  *provider.HostClient
+	//	auxProviderServer *auxprovider.Server
+	tofuCache map[urn.URN]*tfsandbox.Tofu
 }
 
-func newModuleStateHandler(hc *provider.HostClient, planStore *planStore, as *auxprovider.Server) *moduleStateHandler {
+func newModuleStateHandler(hc *provider.HostClient, mod *module) *moduleStateHandler {
 	return &moduleStateHandler{
-		hc:                hc,
-		planStore:         planStore,
-		auxProviderServer: as,
-		tofuCache:         map[urn.URN]*tfsandbox.Tofu{},
+		mod:       mod,
+		hc:        hc,
+		tofuCache: map[urn.URN]*tfsandbox.Tofu{},
 	}
 }
 
@@ -210,26 +208,44 @@ func (h *moduleStateHandler) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
+	opts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+	modUrn := h.mustParseModURN(req.Properties)
+	moduleInputs, err := plugin.UnmarshalProperties(req.Properties, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Diff does not run before Create, but it is paramount to have a TF plan. Therefore run the plan here.
+	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.mod.auxProviderServer)
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
+	h.tofuCache[modUrn] = tf
+
+	if _, err := h.mod.plan(ctx, tf, moduleInputs, moduleState{}); err != nil {
+		return nil, err
+	}
+
 	if req.Preview {
-		// This could be enhanced by looking up planned module outputs from the tofu plan.
 		return &pulumirpc.CreateResponse{
 			Id: moduleStateResourceID,
 		}, nil
 	}
-
-	modUrn := h.mustParseModURN(req.Properties)
-	tf, ok := h.tofuCache[modUrn]
-	contract.Assertf(ok, "expected a tofuCache entry from Diff")
 
 	newState, _, applyErr := h.mod.apply(ctx, tf)
 	if applyErr != nil {
 		return nil, applyErr // should this be handled better for partial apply?
 	}
 
-	props := newState.Marshal()
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
-		Properties: props,
+		Properties: newState.Marshal(),
 	}, nil
 }
 
@@ -271,7 +287,7 @@ func (h *moduleStateHandler) Delete(
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.mod.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -350,7 +366,7 @@ func (h *moduleStateHandler) Read(
 	tfName := getModuleName(modUrn)
 	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.mod.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -382,7 +398,7 @@ func (h *moduleStateHandler) Read(
 	}
 
 	// Child resources will need the plan to figure out their diffs.
-	h.planStore.SetPlan(modUrn, plan)
+	h.mod.planStore.SetPlan(modUrn, plan)
 
 	// Now actually apply the refresh.
 	state, err := tf.Refresh(ctx, logger)
@@ -391,7 +407,7 @@ func (h *moduleStateHandler) Read(
 	}
 
 	// Child resources need to access the state in their Read() implementation.
-	h.planStore.SetState(modUrn, state)
+	h.mod.planStore.SetState(modUrn, state)
 
 	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
 	if err != nil {
