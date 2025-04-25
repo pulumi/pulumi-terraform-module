@@ -454,7 +454,6 @@ func (s *server) Construct(
 		case string(ctok):
 			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
 				s.planStore,
-				s.auxProviderServer,
 				s.packageName,
 				s.componentTypeName,
 				s.params.TFModuleSource,

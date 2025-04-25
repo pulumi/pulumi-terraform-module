@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
@@ -56,7 +55,6 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 func newModuleComponentResource(
 	ctx *pulumi.Context,
 	planStore *planStore,
-	auxProviderServer *auxprovider.Server,
 	pkgName packageName,
 	compTypeName componentTypeName,
 	tfModuleSource TFModuleSource,
@@ -107,28 +105,18 @@ func newModuleComponentResource(
 
 	logger := newComponentLogger(ctx.Log, &component)
 
-	m := module{
-		planStore:            planStore,
-		modUrn:               urn,
-		packageName:          pkgName,
-		packageRef:           packageRef,
-		tfModuleSource:       tfModuleSource,
-		tfModuleVersion:      tfModuleVersion,
-		inferredModuleSchema: inferredModule,
-	}
-
 	var childResources []*childResource
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
 
 		logger.Log(ctx.Context(), tfsandbox.Warn, "Waiting on plan entry")
-		plan := m.planStore.getOrCreatePlanEntry(urn).Await()
+		plan := planStore.getOrCreatePlanEntry(urn).Await()
 		logger.Log(ctx.Context(), tfsandbox.Warn, "Plan entry acquired")
 
 		var errs []error
 		plan.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
-			cr, err := newChildResource(ctx, m.modUrn, m.packageName, sop, m.packageRef, resourceOptions...)
+			cr, err := newChildResource(ctx, urn, pkgName, sop, packageRef, resourceOptions...)
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
@@ -138,10 +126,10 @@ func newModuleComponentResource(
 			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
 	} else {
-		state := m.planStore.getOrCreateStateEntry(urn).Await()
+		state := planStore.getOrCreateStateEntry(urn).Await()
 		var errs []error
 		state.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
-			cr, err := newChildResource(ctx, m.modUrn, m.packageName, sop, m.packageRef, resourceOptions...)
+			cr, err := newChildResource(ctx, urn, pkgName, sop, packageRef, resourceOptions...)
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
