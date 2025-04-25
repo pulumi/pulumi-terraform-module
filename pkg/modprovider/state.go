@@ -240,11 +240,17 @@ func (h *moduleStateHandler) Diff(
 		return nil, err
 	}
 
-	if plan.HasChanges() {
-		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
+	if !plan.HasChanges() {
+		// Since Create/Update will not be called after this, to avoid hangs we need to make sure the unchanged
+		// TF state is propagated to the rest of the system. Currently this is done approximately by running a
+		// no-op apply for its side-effects.  It would be more efficient to do mod.planStore.SetState if
+		// we had the capacity to hydrate the State from the serialized form in oldState.
+		mod.apply(ctx, logger, tf)
+
+		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
 	}
 
-	return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
+	return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
 }
 
 // Create runs tofu apply.

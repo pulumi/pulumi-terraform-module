@@ -119,13 +119,11 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
-		t.Skip()
 		previewResult := pt.Preview(t)
 		autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 5}).Equal(t, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up should be no-op", func(t *testing.T) {
-		t.Skip()
 		upResult := pt.Up(t)
 		autogold.Expect(&map[string]int{"same": 5}).Equal(t, upResult.Summary.ResourceChanges)
 	})
