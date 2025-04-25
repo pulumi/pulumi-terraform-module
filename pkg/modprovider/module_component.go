@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -99,16 +98,19 @@ func newModuleComponentResource(
 
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
-	logger := newComponentLogger(ctx.Log, &component)
+	var (
+		childResources []*childResource
 
-	var childResources []*childResource
+		// Cannot thread outputs the recommended way, such as modeling them as a pulumi.MapOutput on the
+		// modStateResource, because secret bits float and destroy precise secret information.
+		moduleOutputs resource.PropertyMap
+	)
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
 
-		logger.Log(ctx.Context(), tfsandbox.Warn, "Waiting on plan entry")
 		plan := planStore.getOrCreatePlanEntry(urn).Await()
-		logger.Log(ctx.Context(), tfsandbox.Warn, "Plan entry acquired")
+		moduleOutputs = plan.Outputs()
 
 		var errs []error
 		plan.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
@@ -123,6 +125,8 @@ func newModuleComponentResource(
 		}
 	} else {
 		state := planStore.getOrCreateStateEntry(urn).Await()
+		moduleOutputs = state.Outputs()
+
 		var errs []error
 		state.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
 			cr, err := newChildResource(ctx, urn, pkgName, sop, packageRef, resourceOptions...)
@@ -152,10 +156,7 @@ func newModuleComponentResource(
 		cr.Await(ctx.Context())
 	}
 
-	modOutputs, err := pulumix.UnsafeMapOutputToMap(ctx.Context(), modStateResource.ModuleOutputs)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	modOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
 
 	if err := ctx.RegisterResourceOutputs(&component, modOutputs); err != nil {
 		return nil, nil, nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)

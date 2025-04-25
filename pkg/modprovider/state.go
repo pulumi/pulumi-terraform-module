@@ -85,10 +85,11 @@ func (ms *moduleState) Marshal() *structpb.Struct {
 		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
 		"state":         resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
 		"lock":          resource.NewStringProperty(string(ms.rawLockFile)),
-		"moduleOutputs": resource.MakeSecret(resource.NewObjectProperty(ms.moduleOutputs)),
+		"moduleOutputs": resource.NewObjectProperty(ms.moduleOutputs),
 	}
 	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
-		KeepSecrets: true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
 	})
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 	return value
@@ -98,11 +99,6 @@ func (ms *moduleState) Marshal() *structpb.Struct {
 // Pulumi Engine into storing state for the component that otherwise would not be available.
 type ModuleStateResource struct {
 	pulumi.CustomResourceState
-
-	ModuleOutputs pulumi.MapOutput `pulumi:"moduleOutputs"`
-
-	// Besides moduleOutputs, the resource will have inline result of moduleState.Marshal as outputs, though it is
-	// not yet an explicit model here directly. This includes "state" and "lock" properties.
 }
 
 type moduleStateResourceArgs struct {
