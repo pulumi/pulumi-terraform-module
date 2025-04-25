@@ -16,14 +16,12 @@ package modprovider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type module struct {
@@ -99,8 +97,9 @@ func (m *module) apply(
 		return moduleState{}, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
 	}
 	newState := moduleState{
-		rawState:    rawState,
-		rawLockFile: rawLockFile,
+		rawState:      rawState,
+		rawLockFile:   rawLockFile,
+		moduleOutputs: tfState.Outputs(),
 	}
 	return newState, tfState, applyErr
 }

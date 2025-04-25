@@ -47,6 +47,8 @@ type moduleState struct {
 	rawState []byte
 	// Intended to store contents of TF lock file exactly.
 	rawLockFile []byte
+	// The map of module outputs gets passed explicitly with the state.
+	moduleOutputs resource.PropertyMap
 }
 
 func (ms *moduleState) Equal(other moduleState) bool {
@@ -71,15 +73,18 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 	}
 	stateString := state.StringValue()
 	ms.rawState = []byte(stateString)
+	if v, ok := props["moduleOutputs"]; ok && v.IsObject() {
+		ms.moduleOutputs = v.ObjectValue()
+	}
 }
 
 func (ms *moduleState) Marshal() *structpb.Struct {
 	state := resource.PropertyMap{
 		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
-		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
-		"lock":  resource.NewStringProperty(string(ms.rawLockFile)),
+		"state":         resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
+		"lock":          resource.NewStringProperty(string(ms.rawLockFile)),
+		"moduleOutputs": resource.MakeSecret(resource.NewObjectProperty(ms.moduleOutputs)),
 	}
-
 	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets: true,
 	})
@@ -94,7 +99,8 @@ type moduleStateResource struct {
 
 	ModuleOutputs pulumi.Map `pulumi:"moduleOutputs"`
 
-	// Could also consider modeling a "state" output here but omitting for now.
+	// Besides moduleOutputs, the resource will have inline result of moduleState.Marshal as outputs, though it is
+	// not yet an explicit model here directly. This includes "state" and "lock" properties.
 }
 
 func moduleStateTypeToken(pkgName packageName) tokens.Type {
@@ -393,8 +399,9 @@ func (h *moduleStateHandler) Read(
 	}
 
 	refreshedModuleState := moduleState{
-		rawState:    rawState,
-		rawLockFile: rawLockFile,
+		rawState:      rawState,
+		rawLockFile:   rawLockFile,
+		moduleOutputs: state.Outputs(),
 	}
 
 	// TODO figure out the Diff() after Read() scenario?
