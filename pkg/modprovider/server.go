@@ -59,25 +59,14 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 
 	mkMod := func(modUrn urn.URN) *module {
 		return &module{
-			modUrn:      modUrn,
-			planStore:   &planStore,
-			packageName: srv.packageName,
-			// packageRef
+			modUrn:               modUrn,
+			planStore:            &planStore,
+			packageName:          srv.packageName,
 			tfModuleSource:       srv.params.TFModuleSource,
 			tfModuleVersion:      srv.params.TFModuleVersion,
 			inferredModuleSchema: srv.inferredModuleSchema,
 			auxProviderServer:    auxProviderServer,
 			providersConfig:      cleanProvidersConfig(srv.providerConfig),
-			// 		logger            tfsandbox.Logger
-			// 		planStore         *planStore
-			// modUrn            urn.URN
-			// pkgName           packageName
-			// packageRef        string
-			// tfModuleSource    TFModuleSource
-			// tfModuleVersion   TFModuleVersion
-			// inferredModule    *InferredModuleSchema
-			// 		auxProviderServer *auxprovider.Server
-			// providersConfig   map[string]resource.PropertyMap
 		}
 	}
 
