@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 )
 
 // Constructs an updated Map where every Input is augmented with the same set of additional dependencies.
@@ -31,4 +32,26 @@ func MapWithBroadcastDependencies(ctx context.Context, dependencies []pulumi.Res
 		result[k] = pulumi.OutputWithDependencies(ctx, output, dependencies...)
 	}
 	return result
+}
+
+func UnsafeMapOutputToMap(ctx context.Context, mo pulumi.MapOutput) (pulumi.Map, error) {
+	result, err := internals.UnsafeAwaitOutput(ctx, mo)
+	if err != nil {
+		return nil, err
+	}
+	if !result.Known {
+		// Unknown maps become empty maps.
+		return pulumi.Map{}, nil
+	}
+
+	var keys []string
+	for k := range result.Value.(map[string]any) {
+		keys = append(keys, k)
+	}
+
+	m := pulumi.Map{}
+	for _, k := range keys {
+		m[k] = mo.MapIndex(pulumi.String(k))
+	}
+	return m, nil
 }

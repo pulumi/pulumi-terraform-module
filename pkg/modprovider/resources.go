@@ -47,6 +47,8 @@ var _ ResourceState = (*tfsandbox.ResourceState)(nil)
 
 type Plan interface {
 	Resources
+
+	Outputs() resource.PropertyMap
 }
 
 var _ Plan = (*tfsandbox.Plan)(nil)

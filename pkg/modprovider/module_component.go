@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -67,7 +68,7 @@ func newModuleComponentResource(
 	providerSelfURN pulumi.URN,
 	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
-) (componentUrn *urn.URN, moduleStateResource *moduleStateResource, outputs pulumi.Map, finalError error) {
+) (componentUrn *urn.URN, moduleStateResource *ModuleStateResource, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}
 	tok := componentTypeToken(pkgName, compTypeName)
 	err := ctx.RegisterComponentResource(string(tok), name, &component, opts...)
@@ -94,9 +95,11 @@ func newModuleComponentResource(
 		// Needs to be prefixed by parent to avoid "duplicate URN".
 		fmt.Sprintf("%s-state", name),
 		pkgName,
-		urn,
 		packageRef,
-		moduleInputs,
+		moduleStateResourceArgs{
+			ModuleURN:    urn,
+			ModuleInputs: moduleInputs,
+		},
 		resourceOptions...,
 	)
 
@@ -105,14 +108,13 @@ func newModuleComponentResource(
 	logger := newComponentLogger(ctx.Log, &component)
 
 	m := module{
-		logger:          logger,
-		planStore:       planStore,
-		modUrn:          urn,
-		pkgName:         pkgName,
-		packageRef:      packageRef,
-		tfModuleSource:  tfModuleSource,
-		tfModuleVersion: tfModuleVersion,
-		inferredModule:  inferredModule,
+		planStore:            planStore,
+		modUrn:               urn,
+		packageName:          pkgName,
+		packageRef:           packageRef,
+		tfModuleSource:       tfModuleSource,
+		tfModuleVersion:      tfModuleVersion,
+		inferredModuleSchema: inferredModule,
 	}
 
 	var childResources []*childResource
@@ -123,10 +125,10 @@ func newModuleComponentResource(
 		logger.Log(ctx.Context(), tfsandbox.Warn, "Waiting on plan entry")
 		plan := m.planStore.getOrCreatePlanEntry(urn).Await()
 		logger.Log(ctx.Context(), tfsandbox.Warn, "Plan entry acquired")
-		panic("Plan Entry ACQUIRED")
+
 		var errs []error
 		plan.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
-			cr, err := newChildResource(ctx, m.modUrn, m.pkgName, sop, m.packageRef, resourceOptions...)
+			cr, err := newChildResource(ctx, m.modUrn, m.packageName, sop, m.packageRef, resourceOptions...)
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
@@ -139,7 +141,7 @@ func newModuleComponentResource(
 		state := m.planStore.getOrCreateStateEntry(urn).Await()
 		var errs []error
 		state.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
-			cr, err := newChildResource(ctx, m.modUrn, m.pkgName, sop, m.packageRef, resourceOptions...)
+			cr, err := newChildResource(ctx, m.modUrn, m.packageName, sop, m.packageRef, resourceOptions...)
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
@@ -166,11 +168,16 @@ func newModuleComponentResource(
 		cr.Await(ctx.Context())
 	}
 
-	if err := ctx.RegisterResourceOutputs(&component, modStateResource.ModuleOutputs); err != nil {
+	modOutputs, err := pulumix.UnsafeMapOutputToMap(ctx.Context(), modStateResource.ModuleOutputs)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if err := ctx.RegisterResourceOutputs(&component, modOutputs); err != nil {
 		return nil, nil, nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
 	}
 
-	return &urn, modStateResource, modStateResource.ModuleOutputs, nil
+	return &urn, modStateResource, modOutputs, nil
 }
 
 func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {

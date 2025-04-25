@@ -39,6 +39,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -49,27 +50,38 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 		return nil, err
 	}
 
-	m := &module{
-		logger:            nil,
+	srv := &server{
 		planStore:         &planStore,
-		modUrn:            "",
-		pkgName:           "",
-		packageRef:        "",
-		tfModuleSource:    "",
-		tfModuleVersion:   "",
-		inferredModule:    nil,
+		hostClient:        hostClient,
+		childHandler:      newChildHandler(&planStore),
 		auxProviderServer: auxProviderServer,
 	}
 
-	moduleStateHandler := newModuleStateHandler(hostClient, mod)
-
-	srv := &server{
-		planStore:          &planStore,
-		hostClient:         hostClient,
-		moduleStateHandler: moduleStateHandler,
-		childHandler:       newChildHandler(&planStore),
-		auxProviderServer:  auxProviderServer,
+	mkMod := func(modUrn urn.URN) *module {
+		return &module{
+			modUrn:      modUrn,
+			planStore:   &planStore,
+			packageName: srv.packageName,
+			// packageRef
+			tfModuleSource:       srv.params.TFModuleSource,
+			tfModuleVersion:      srv.params.TFModuleVersion,
+			inferredModuleSchema: srv.inferredModuleSchema,
+			auxProviderServer:    auxProviderServer,
+			providersConfig:      cleanProvidersConfig(srv.providerConfig),
+			// 		logger            tfsandbox.Logger
+			// 		planStore         *planStore
+			// modUrn            urn.URN
+			// pkgName           packageName
+			// packageRef        string
+			// tfModuleSource    TFModuleSource
+			// tfModuleVersion   TFModuleVersion
+			// inferredModule    *InferredModuleSchema
+			// 		auxProviderServer *auxprovider.Server
+			// providersConfig   map[string]resource.PropertyMap
+		}
 	}
+
+	srv.moduleStateHandler = newModuleStateHandler(hostClient, auxProviderServer, &planStore, mkMod)
 	return srv, nil
 }
 
