@@ -16,7 +16,6 @@ package modprovider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -158,38 +157,19 @@ func newModuleComponentResource(
 
 	planStore.SetPlan(urn, plan)
 
+	m := module{
+		logger:     logger,
+		planStore:  planStore,
+		stateStore: stateStore,
+		modUrn:     urn,
+		pkgName:    pkgName,
+		packageRef: packageRef,
+	}
+
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
-
-		// State is not changing, but child resources may await it to be set, so set it here.
-		stateStore.SetNewState(urn, state)
-
-		var errs []error
-		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
-				packageRef,
-				resourceOptions...,
-			)
-
-			errs = append(errs, err)
-			if err == nil {
-				childResources = append(childResources, cr)
-			}
-		})
-		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
-		}
-		moduleOutputs = plan.Outputs()
+		childResources, moduleOutputs, err = m.preview(ctx, plan, state, resourceOptions)
 	} else {
-		m := module{
-			logger:     logger,
-			planStore:  planStore,
-			stateStore: stateStore,
-			modUrn:     urn,
-			pkgName:    pkgName,
-			packageRef: packageRef,
-		}
 		childResources, state, moduleOutputs, applyErr = m.apply(ctx, tf, resourceOptions)
 	}
 

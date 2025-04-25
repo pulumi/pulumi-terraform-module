@@ -19,6 +19,33 @@ type module struct {
 	packageRef string
 }
 
+func (m *module) preview(
+	ctx *pulumi.Context,
+	plan *tfsandbox.Plan,
+	priorState moduleState,
+	childResourceOptions []pulumi.ResourceOption,
+) ([]*childResource, resource.PropertyMap, error) {
+	// State is not changing, but child resources may await it to be set, so set it here.
+	m.stateStore.SetNewState(m.modUrn, priorState)
+
+	var childResources []*childResource
+
+	var errs []error
+
+	plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
+		cr, err := newChildResource(ctx, m.modUrn, m.pkgName, rp, m.packageRef, childResourceOptions...)
+
+		errs = append(errs, err)
+		if err == nil {
+			childResources = append(childResources, cr)
+		}
+	})
+	if err := errors.Join(errs...); err != nil {
+		return nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+	}
+	return childResources, plan.Outputs(), nil
+}
+
 func (m *module) apply(
 	ctx *pulumi.Context,
 	tf *tfsandbox.Tofu,
