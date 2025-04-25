@@ -104,29 +104,3 @@ func (m *module) apply(
 	}
 	return newState, tfState, applyErr
 }
-
-func (m *module) applyAndRegisterChildren(
-	ctx *pulumi.Context,
-	tf *tfsandbox.Tofu,
-	childResourceOptions []pulumi.ResourceOption,
-) ([]*childResource, moduleState, resource.PropertyMap, error) {
-	newState, tfState, applyErr := m.apply(ctx.Context(), tf)
-
-	// Ensure the state is available for the child resources to read.
-	//m.stateStore.SetNewState(m.modUrn, newState)
-
-	var childResources []*childResource
-	var errs []error
-	tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-		cr, err := newChildResource(ctx, m.modUrn, m.pkgName, rp, m.packageRef, childResourceOptions...)
-		errs = append(errs, err)
-		if err == nil {
-			childResources = append(childResources, cr)
-		}
-	})
-	if err := errors.Join(errs...); err != nil {
-		return nil, moduleState{}, nil, fmt.Errorf("Child resource init failed: %w", err)
-	}
-
-	return childResources, newState, tfState.Outputs(), applyErr
-}
