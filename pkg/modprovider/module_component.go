@@ -103,7 +103,7 @@ func newModuleComponentResource(
 
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
-	var applyErr error
+	logger := newComponentLogger(ctx.Log, &component)
 	state := stateStore.AwaitOldState(urn)
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
@@ -112,59 +112,28 @@ func newModuleComponentResource(
 		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
-	// Important: the name of the module instance in TF must be at least unique enough to
-	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the
-	// Pulumi name as present in the module URN.
-	// The name chosen here will proliferate into ResourceAddress of every child resource as well,
-	// which will get further reused for Pulumi URNs.
-	tfName := getModuleName(urn)
-
-	outputSpecs := []tfsandbox.TFOutputSpec{}
-	for outputName := range inferredModule.Outputs {
-		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name: outputName,
-		})
-	}
-	err = tfsandbox.CreateTFFile(tfName, tfModuleSource,
-		tfModuleVersion, tf.WorkingDir(),
-		moduleInputs, outputSpecs, providersConfig)
-
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
-	}
-
-	var moduleOutputs resource.PropertyMap
-	err = tf.PushStateAndLockFile(ctx.Context(), state.rawState, state.rawLockFile)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
-	}
-
-	logger := newComponentLogger(ctx.Log, &component)
-
-	err = tf.Init(ctx.Context(), logger)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Init failed: %w", err)
-	}
-
-	var childResources []*childResource
-
-	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
-	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx.Context(), logger)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Plan failed: %w", err)
-	}
-
-	planStore.SetPlan(urn, plan)
-
 	m := module{
-		logger:     logger,
-		planStore:  planStore,
-		stateStore: stateStore,
-		modUrn:     urn,
-		pkgName:    pkgName,
-		packageRef: packageRef,
+		logger:          logger,
+		planStore:       planStore,
+		stateStore:      stateStore,
+		modUrn:          urn,
+		pkgName:         pkgName,
+		packageRef:      packageRef,
+		tfModuleSource:  tfModuleSource,
+		tfModuleVersion: tfModuleVersion,
+		inferredModule:  inferredModule,
 	}
+
+	plan, err := m.plan(ctx, tf, moduleInputs, providersConfig, state)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var (
+		applyErr       error
+		childResources []*childResource
+		moduleOutputs  resource.PropertyMap
+	)
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
