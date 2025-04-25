@@ -139,6 +139,7 @@ func newModuleComponentResource(
 		// DryRun() = true corresponds to running pulumi preview
 		childResources, moduleOutputs, err = m.preview(ctx, plan, state, resourceOptions)
 	} else {
+		// Intentionally not immediately failing on applyErr so Await below completes.
 		childResources, state, moduleOutputs, applyErr = m.apply(ctx, tf, resourceOptions)
 	}
 
