@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -25,15 +26,72 @@ import (
 )
 
 type module struct {
-	logger          tfsandbox.Logger
-	planStore       *planStore
-	stateStore      moduleStateStore
-	modUrn          urn.URN
-	pkgName         packageName
-	packageRef      string
-	tfModuleSource  TFModuleSource
-	tfModuleVersion TFModuleVersion
-	inferredModule  *InferredModuleSchema
+	logger            tfsandbox.Logger
+	planStore         *planStore
+	stateStore        moduleStateStore
+	modUrn            urn.URN
+	pkgName           packageName
+	packageRef        string
+	tfModuleSource    TFModuleSource
+	tfModuleVersion   TFModuleVersion
+	inferredModule    *InferredModuleSchema
+	auxProviderServer *auxprovider.Server
+}
+
+func (m *module) CreateOrUpdate(
+	ctx *pulumi.Context,
+	moduleInputs resource.PropertyMap,
+	providersConfig map[string]resource.PropertyMap,
+	childResourceOptions []pulumi.ResourceOption,
+) (moduleOutputs resource.PropertyMap, finalError error) {
+	state := m.stateStore.AwaitOldState(m.modUrn)
+
+	wd := tfsandbox.ModuleInstanceWorkdir(m.modUrn)
+	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, m.auxProviderServer)
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
+
+	plan, err := m.plan(ctx, tf, moduleInputs, providersConfig, state)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		applyErr       error
+		childResources []*childResource
+	)
+
+	if ctx.DryRun() {
+		// DryRun() = true corresponds to running pulumi preview
+		childResources, moduleOutputs, err = m.registerPreviewChildren(ctx, plan, state, childResourceOptions)
+	} else {
+		// Intentionally not immediately failing on applyErr so Await below completes.
+		childResources, state, moduleOutputs, applyErr = m.applyAndRegisterChildren(
+			ctx, tf, childResourceOptions)
+	}
+
+	// Wait for all child resources to complete provisioning.
+	//
+	// There seems to be a subtle race condition here that arises when removing this code, for example
+	// TestPartialApply starts failing. The root cause it not yet pinned down, but one hypothesis is a race. The
+	// problem could be that although at this point in the code we know that the resource registrations for
+	// sub-resources have been scheduled, we do not know that these requests have made it over the gRPC divide.
+	// Exiting early with an error may kill the provider and stop those from completing.
+	//
+	// To avoid force-waiting, one other possibility would be to chain some outputs from all child resources to the
+	// outputs of the module, so the dependency is explicit in the data flow.
+	//
+	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
+	for _, cr := range childResources {
+		cr.Await(ctx.Context())
+	}
+
+	if applyErr != nil {
+		return nil, fmt.Errorf("Apply failed: %w", applyErr)
+	}
+
+	return moduleOutputs, nil
 }
 
 func (m *module) plan(
@@ -85,7 +143,7 @@ func (m *module) plan(
 	return plan, nil
 }
 
-func (m *module) preview(
+func (m *module) registerPreviewChildren(
 	ctx *pulumi.Context,
 	plan *tfsandbox.Plan,
 	priorState moduleState,
@@ -112,7 +170,7 @@ func (m *module) preview(
 	return childResources, plan.Outputs(), nil
 }
 
-func (m *module) apply(
+func (m *module) applyAndRegisterChildren(
 	ctx *pulumi.Context,
 	tf *tfsandbox.Tofu,
 	childResourceOptions []pulumi.ResourceOption,

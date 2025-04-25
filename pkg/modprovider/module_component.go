@@ -27,7 +27,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -104,13 +103,6 @@ func newModuleComponentResource(
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
 	logger := newComponentLogger(ctx.Log, &component)
-	state := stateStore.AwaitOldState(urn)
-
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, auxProviderServer)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
-	}
 
 	m := module{
 		logger:          logger,
@@ -124,43 +116,9 @@ func newModuleComponentResource(
 		inferredModule:  inferredModule,
 	}
 
-	plan, err := m.plan(ctx, tf, moduleInputs, providersConfig, state)
+	moduleOutputs, err := m.CreateOrUpdate(ctx, moduleInputs, providersConfig, resourceOptions)
 	if err != nil {
 		return nil, nil, nil, err
-	}
-
-	var (
-		applyErr       error
-		childResources []*childResource
-		moduleOutputs  resource.PropertyMap
-	)
-
-	if ctx.DryRun() {
-		// DryRun() = true corresponds to running pulumi preview
-		childResources, moduleOutputs, err = m.preview(ctx, plan, state, resourceOptions)
-	} else {
-		// Intentionally not immediately failing on applyErr so Await below completes.
-		childResources, state, moduleOutputs, applyErr = m.apply(ctx, tf, resourceOptions)
-	}
-
-	// Wait for all child resources to complete provisioning.
-	//
-	// There seems to be a subtle race condition here that arises when removing this code, for example
-	// TestPartialApply starts failing. The root cause it not yet pinned down, but one hypothesis is a race. The
-	// problem could be that although at this point in the code we know that the resource registrations for
-	// sub-resources have been scheduled, we do not know that these requests have made it over the gRPC divide.
-	// Exiting early with an error may kill the provider and stop those from completing.
-	//
-	// To avoid force-waiting, one other possibility would be to chain some outputs from all child resources to the
-	// outputs of the module, so the dependency is explicit in the data flow.
-	//
-	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
-	for _, cr := range childResources {
-		cr.Await(ctx.Context())
-	}
-
-	if applyErr != nil {
-		return nil, nil, nil, fmt.Errorf("Apply failed: %w", applyErr)
 	}
 
 	marshalledOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
