@@ -18,17 +18,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 type module struct {
 	modUrn               urn.URN
 	planStore            *planStore
 	packageName          packageName
-	packageRef           string
 	tfModuleSource       TFModuleSource
 	tfModuleVersion      TFModuleVersion
 	inferredModuleSchema *InferredModuleSchema
@@ -43,7 +43,9 @@ func (m *module) plan(
 	moduleInputs resource.PropertyMap,
 	state moduleState,
 ) (*tfsandbox.Plan, error) {
-	m.writeSources(tf, moduleInputs)
+	if err := m.writeSources(tf, moduleInputs); err != nil {
+		return nil, err
+	}
 
 	err := tf.PushStateAndLockFile(ctx, state.rawState, state.rawLockFile)
 	if err != nil {

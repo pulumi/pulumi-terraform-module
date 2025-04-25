@@ -57,14 +57,10 @@ func newModuleComponentResource(
 	planStore *planStore,
 	pkgName packageName,
 	compTypeName componentTypeName,
-	tfModuleSource TFModuleSource,
-	tfModuleVersion TFModuleVersion,
 	name string,
 	moduleInputs resource.PropertyMap,
-	inferredModule *InferredModuleSchema,
 	packageRef string,
 	providerSelfURN pulumi.URN,
-	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, moduleStateResource *ModuleStateResource, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}

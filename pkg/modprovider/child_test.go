@@ -145,20 +145,20 @@ func (s *testResourceState) Values() resource.PropertyMap          { return s.at
 
 var _ ResourceStateOrPlan = (*testResourceState)(nil)
 
-type testState struct {
-	res *testResourceState
-}
+// type testState struct {
+// 	res *testResourceState
+// }
 
-func (ts *testState) VisitResources(visitor func(ResourceState)) {
-	visitor(ts.res)
-}
+// func (ts *testState) VisitResources(visitor func(ResourceState)) {
+// 	visitor(ts.res)
+// }
 
-func (ts *testState) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
-	if addr == ts.res.Address() {
-		return ts.res, true
-	}
-	return nil, false
-}
+// func (ts *testState) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
+// 	if addr == ts.res.Address() {
+// 		return ts.res, true
+// 	}
+// 	return nil, false
+// }
 
 //var _ State = (*testState)(nil)
 

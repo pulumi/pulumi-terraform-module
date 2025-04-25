@@ -75,9 +75,9 @@ import (
 // 	require.Equal(t, float64(42), st.AttributeValues()["result"].NumberValue())
 // }
 
-type testPlan struct {
-	byAddress map[ResourceAddress]testResourcePlan
-}
+// type testPlan struct {
+// 	byAddress map[ResourceAddress]testResourcePlan
+// }
 
 //var _ Plan = (*testPlan)(nil)
 
@@ -99,10 +99,10 @@ func (x *testResourcePlan) Values() resource.PropertyMap        { return x.plann
 var _ ResourcePlan = (*testResourcePlan)(nil)
 var _ ResourceStateOrPlan = (*testResourcePlan)(nil)
 
-func (p *testPlan) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
-	r, ok := p.byAddress[addr]
-	if !ok {
-		return nil, false
-	}
-	return &r, true
-}
+// func (p *testPlan) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
+// 	r, ok := p.byAddress[addr]
+// 	if !ok {
+// 		return nil, false
+// 	}
+// 	return &r, true
+// }

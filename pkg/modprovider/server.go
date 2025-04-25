@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -39,7 +40,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -433,10 +433,8 @@ func (s *server) Construct(
 		KeepResources:    true,
 		KeepOutputValues: true,
 	})
-
-	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
+		return nil, err
 	}
 
 	packageRef, err := s.acquirePackageReference(ctx, req.MonitorEndpoint)
@@ -456,14 +454,10 @@ func (s *server) Construct(
 				s.planStore,
 				s.packageName,
 				s.componentTypeName,
-				s.params.TFModuleSource,
-				s.params.TFModuleVersion,
 				name,
 				inputProps,
-				s.inferredModuleSchema,
 				packageRef,
 				s.providerSelfURN,
-				providersConfig,
 				resourceOptions,
 			)
 

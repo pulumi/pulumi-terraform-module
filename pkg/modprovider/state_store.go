@@ -15,88 +15,15 @@
 package modprovider
 
 import (
-	"fmt"
 	"os"
-	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var (
 	waitTimeout = parseWaitTimeoutFromEnv()
 )
-
-// Provides an in-memory side-channel to communicate moduleState indexed by the URN of the component
-// resource (modURN) across the goroutines handling separate resource life-cycles.
-type stateStore struct {
-	mutex   sync.Mutex
-	entries map[urn.URN]*stateStoreEntry
-}
-
-// See [stateStore].
-type stateStoreEntry struct {
-	waitGroup   sync.WaitGroup
-	moduleState moduleState
-}
-
-// Await the moduleState for a given modUrn.
-//
-// This will wait indefinitely unless stateStore.Put is called for the same modUrn.
-func (s *stateStore) Await(modUrn urn.URN) moduleState {
-	e := s.getOrCreateEntry(modUrn)
-	if waitTimeout == nil {
-		e.waitGroup.Wait()
-		return e.moduleState
-	}
-	ch := make(chan bool)
-
-	go func() {
-		e.waitGroup.Wait()
-		ch <- true
-	}()
-
-	select {
-	case <-ch:
-		return e.moduleState
-	case <-time.After(*waitTimeout):
-		panic(fmt.Sprintf("Timeout waiting on %s", modUrn))
-	}
-}
-
-// Store the moduleState for a given modUrn.
-//
-// This will panic if called twice with the same modUrn.
-func (s *stateStore) Put(modUrn urn.URN, state moduleState) {
-	e := s.getOrCreateEntry(modUrn)
-	e.moduleState = state
-	e.waitGroup.Done()
-}
-
-// Intended to free up memory after we are certain Put and Await are no longer needed.
-func (s *stateStore) Forget(modUrn urn.URN) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if s.entries != nil {
-		delete(s.entries, modUrn)
-	}
-}
-
-// Find an entry matching u, or create one if it does not exist yet.
-func (s *stateStore) getOrCreateEntry(u urn.URN) *stateStoreEntry {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if s.entries == nil {
-		s.entries = map[urn.URN]*stateStoreEntry{}
-	}
-	if _, ok := s.entries[u]; !ok {
-		e := &stateStoreEntry{}
-		e.waitGroup.Add(1)
-		s.entries[u] = e
-	}
-	return s.entries[u]
-}
 
 func parseWaitTimeoutFromEnv() *time.Duration {
 	waitTimeout, ok := os.LookupEnv("PULUMI_TERRAFORM_MODULE_WAIT_TIMEOUT")
