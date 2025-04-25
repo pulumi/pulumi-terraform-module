@@ -40,6 +40,7 @@ type ResourceState interface {
 
 type Resources interface {
 	FindResourceStateOrPlan(ResourceAddress) (tfsandbox.ResourceStateOrPlan, bool)
+	VisitResourcesStateOrPlans(func(ResourceStateOrPlan))
 }
 
 var _ ResourceState = (*tfsandbox.ResourceState)(nil)

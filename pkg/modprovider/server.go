@@ -54,7 +54,6 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 	srv := &server{
 		planStore:          &planStore,
 		hostClient:         hostClient,
-		stateStore:         moduleStateHandler,
 		moduleStateHandler: moduleStateHandler,
 		childHandler:       newChildHandler(&planStore),
 		auxProviderServer:  auxProviderServer,
@@ -67,7 +66,6 @@ type server struct {
 	planStore            *planStore
 	params               *ParameterizeArgs
 	hostClient           *provider.HostClient
-	stateStore           moduleStateStore
 	moduleStateHandler   *moduleStateHandler
 	childHandler         *childHandler
 	packageName          packageName
@@ -431,7 +429,6 @@ func (s *server) Construct(
 		switch typ {
 		case string(ctok):
 			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
-				s.stateStore,
 				s.planStore,
 				s.auxProviderServer,
 				s.packageName,

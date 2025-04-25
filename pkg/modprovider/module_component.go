@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -26,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
-	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -53,7 +53,6 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 
 func newModuleComponentResource(
 	ctx *pulumi.Context,
-	stateStore moduleStateStore,
 	planStore *planStore,
 	auxProviderServer *auxprovider.Server,
 	pkgName packageName,
@@ -107,7 +106,6 @@ func newModuleComponentResource(
 	m := module{
 		logger:          logger,
 		planStore:       planStore,
-		stateStore:      stateStore,
 		modUrn:          urn,
 		pkgName:         pkgName,
 		packageRef:      packageRef,
@@ -116,17 +114,58 @@ func newModuleComponentResource(
 		inferredModule:  inferredModule,
 	}
 
-	moduleOutputs, err := m.CreateOrUpdate(ctx, moduleInputs, providersConfig, resourceOptions)
-	if err != nil {
-		return nil, nil, nil, err
+	var childResources []*childResource
+
+	if ctx.DryRun() {
+		// DryRun() = true corresponds to running pulumi preview
+		plan := m.planStore.getOrCreatePlanEntry(urn).Await()
+		var errs []error
+		plan.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
+			cr, err := newChildResource(ctx, m.modUrn, m.pkgName, sop, m.packageRef, resourceOptions...)
+			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
+		})
+		if err := errors.Join(errs...); err != nil {
+			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
+	} else {
+		state := m.planStore.getOrCreateStateEntry(urn).Await()
+		var errs []error
+		state.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
+			cr, err := newChildResource(ctx, m.modUrn, m.pkgName, sop, m.packageRef, resourceOptions...)
+			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
+		})
+		if err := errors.Join(errs...); err != nil {
+			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
 	}
 
-	marshalledOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
-	if err := ctx.RegisterResourceOutputs(&component, marshalledOutputs); err != nil {
+	// Wait for all child resources to complete provisioning.
+	//
+	// There seems to be a subtle race condition here that arises when removing this code, for example
+	// TestPartialApply starts failing. The root cause it not yet pinned down, but one hypothesis is a race. The
+	// problem could be that although at this point in the code we know that the resource registrations for
+	// sub-resources have been scheduled, we do not know that these requests have made it over the gRPC divide.
+	// Exiting early with an error may kill the provider and stop those from completing.
+	//
+	// To avoid force-waiting, one other possibility would be to chain some outputs from all child resources to the
+	// outputs of the module, so the dependency is explicit in the data flow.
+	//
+	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
+	for _, cr := range childResources {
+		cr.Await(ctx.Context())
+	}
+
+	if err := ctx.RegisterResourceOutputs(&component, modStateResource.ModuleOutputs); err != nil {
 		return nil, nil, nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
 	}
 
-	return &urn, modStateResource, marshalledOutputs, nil
+	return &urn, modStateResource, modStateResource.ModuleOutputs, nil
 }
 
 func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {

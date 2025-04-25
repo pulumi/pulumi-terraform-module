@@ -15,6 +15,7 @@
 package modprovider
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -28,7 +29,6 @@ import (
 type module struct {
 	logger            tfsandbox.Logger
 	planStore         *planStore
-	stateStore        moduleStateStore
 	modUrn            urn.URN
 	pkgName           packageName
 	packageRef        string
@@ -36,69 +36,13 @@ type module struct {
 	tfModuleVersion   TFModuleVersion
 	inferredModule    *InferredModuleSchema
 	auxProviderServer *auxprovider.Server
-}
-
-func (m *module) CreateOrUpdate(
-	ctx *pulumi.Context,
-	moduleInputs resource.PropertyMap,
-	providersConfig map[string]resource.PropertyMap,
-	childResourceOptions []pulumi.ResourceOption,
-) (moduleOutputs resource.PropertyMap, finalError error) {
-	state := m.stateStore.AwaitOldState(m.modUrn)
-
-	wd := tfsandbox.ModuleInstanceWorkdir(m.modUrn)
-	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, m.auxProviderServer)
-	if err != nil {
-		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
-	}
-
-	plan, err := m.plan(ctx, tf, moduleInputs, providersConfig, state)
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		applyErr       error
-		childResources []*childResource
-	)
-
-	if ctx.DryRun() {
-		// DryRun() = true corresponds to running pulumi preview
-		childResources, moduleOutputs, err = m.registerPreviewChildren(ctx, plan, state, childResourceOptions)
-	} else {
-		// Intentionally not immediately failing on applyErr so Await below completes.
-		childResources, state, moduleOutputs, applyErr = m.applyAndRegisterChildren(
-			ctx, tf, childResourceOptions)
-	}
-
-	// Wait for all child resources to complete provisioning.
-	//
-	// There seems to be a subtle race condition here that arises when removing this code, for example
-	// TestPartialApply starts failing. The root cause it not yet pinned down, but one hypothesis is a race. The
-	// problem could be that although at this point in the code we know that the resource registrations for
-	// sub-resources have been scheduled, we do not know that these requests have made it over the gRPC divide.
-	// Exiting early with an error may kill the provider and stop those from completing.
-	//
-	// To avoid force-waiting, one other possibility would be to chain some outputs from all child resources to the
-	// outputs of the module, so the dependency is explicit in the data flow.
-	//
-	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
-	for _, cr := range childResources {
-		cr.Await(ctx.Context())
-	}
-
-	if applyErr != nil {
-		return nil, fmt.Errorf("Apply failed: %w", applyErr)
-	}
-
-	return moduleOutputs, nil
+	providersConfig   map[string]resource.PropertyMap
 }
 
 func (m *module) plan(
-	ctx *pulumi.Context,
+	ctx context.Context,
 	tf *tfsandbox.Tofu,
 	moduleInputs resource.PropertyMap,
-	providersConfig map[string]resource.PropertyMap,
 	state moduleState,
 ) (*tfsandbox.Plan, error) {
 	// Important: the name of the module instance in TF must be at least unique enough to
@@ -116,25 +60,25 @@ func (m *module) plan(
 	}
 	err := tfsandbox.CreateTFFile(tfName, m.tfModuleSource,
 		m.tfModuleVersion, tf.WorkingDir(),
-		moduleInputs, outputSpecs, providersConfig)
+		moduleInputs, outputSpecs, m.providersConfig)
 
 	if err != nil {
 		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
 
-	err = tf.PushStateAndLockFile(ctx.Context(), state.rawState, state.rawLockFile)
+	err = tf.PushStateAndLockFile(ctx, state.rawState, state.rawLockFile)
 	if err != nil {
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
-	err = tf.Init(ctx.Context(), m.logger)
+	err = tf.Init(ctx, m.logger)
 	if err != nil {
 		return nil, fmt.Errorf("Init failed: %w", err)
 	}
 
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx.Context(), m.logger)
+	plan, err := tf.Plan(ctx, m.logger)
 	if err != nil {
 		return nil, fmt.Errorf("Plan failed: %w", err)
 	}
@@ -143,31 +87,22 @@ func (m *module) plan(
 	return plan, nil
 }
 
-func (m *module) registerPreviewChildren(
-	ctx *pulumi.Context,
-	plan *tfsandbox.Plan,
-	priorState moduleState,
-	childResourceOptions []pulumi.ResourceOption,
-) ([]*childResource, resource.PropertyMap, error) {
-	// State is not changing, but child resources may await it to be set, so set it here.
-	m.stateStore.SetNewState(m.modUrn, priorState)
-
-	var childResources []*childResource
-
-	var errs []error
-
-	plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-		cr, err := newChildResource(ctx, m.modUrn, m.pkgName, rp, m.packageRef, childResourceOptions...)
-
-		errs = append(errs, err)
-		if err == nil {
-			childResources = append(childResources, cr)
-		}
-	})
-	if err := errors.Join(errs...); err != nil {
-		return nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+func (m *module) apply(
+	ctx context.Context,
+	tf *tfsandbox.Tofu,
+) (moduleState, *tfsandbox.State, error) {
+	// applyErr is tolerated so post-processing does not short-circuit.
+	tfState, applyErr := tf.Apply(ctx, m.logger)
+	m.planStore.SetState(m.modUrn, tfState)
+	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
+	if err != nil {
+		return moduleState{}, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
 	}
-	return childResources, plan.Outputs(), nil
+	newState := moduleState{
+		rawState:    rawState,
+		rawLockFile: rawLockFile,
+	}
+	return newState, tfState, applyErr
 }
 
 func (m *module) applyAndRegisterChildren(
@@ -175,23 +110,10 @@ func (m *module) applyAndRegisterChildren(
 	tf *tfsandbox.Tofu,
 	childResourceOptions []pulumi.ResourceOption,
 ) ([]*childResource, moduleState, resource.PropertyMap, error) {
-	// applyErr is tolerated so post-processing does not short-circuit.
-	tfState, applyErr := tf.Apply(ctx.Context(), m.logger)
-
-	m.planStore.SetState(m.modUrn, tfState)
-
-	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx.Context())
-	if err != nil {
-		return nil, moduleState{}, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
-	}
-
-	newState := moduleState{
-		rawState:    rawState,
-		rawLockFile: rawLockFile,
-	}
+	newState, tfState, applyErr := m.apply(ctx.Context(), tf)
 
 	// Ensure the state is available for the child resources to read.
-	m.stateStore.SetNewState(m.modUrn, newState)
+	//m.stateStore.SetNewState(m.modUrn, newState)
 
 	var childResources []*childResource
 	var errs []error

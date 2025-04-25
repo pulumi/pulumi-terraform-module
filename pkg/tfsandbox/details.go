@@ -232,6 +232,30 @@ func (p *Plan) Outputs() resource.PropertyMap {
 	return outputs
 }
 
+func (p *Plan) HasChanges() bool {
+	for _, c := range p.rawPlan.ResourceChanges {
+		if c.Change != nil && !c.Change.Actions.NoOp() {
+			return true
+		}
+	}
+	for _, c := range p.rawPlan.OutputChanges {
+		if !c.Actions.NoOp() {
+			return true
+		}
+	}
+	for _, c := range p.rawPlan.ResourceDrift {
+		if !c.Change.Actions.NoOp() {
+			return true
+		}
+	}
+	for _, c := range p.rawPlan.DeferredChanges {
+		if c.ResourceChange != nil && !c.ResourceChange.Change.Actions.NoOp() {
+			return true
+		}
+	}
+	return false
+}
+
 // RawPlan returns the raw tfjson.Plan
 // NOTE: this is exposed for testing purposes only
 func (p *Plan) RawPlan() *tfjson.Plan {
