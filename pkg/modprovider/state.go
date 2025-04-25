@@ -47,6 +47,8 @@ type moduleState struct {
 	rawState []byte
 	// Intended to store contents of TF lock file exactly.
 	rawLockFile []byte
+	// The map of module outputs gets passed explicitly with the state.
+	moduleOutputs resource.PropertyMap
 }
 
 func (ms *moduleState) Equal(other moduleState) bool {
@@ -71,36 +73,72 @@ func (ms *moduleState) Unmarshal(s *structpb.Struct) {
 	}
 	stateString := state.StringValue()
 	ms.rawState = []byte(stateString)
+	v := props["moduleOutputs"]
+	if !v.IsObject() {
+		panic("moduleOutputs is not an object")
+	}
+	ms.moduleOutputs = v.ObjectValue()
 }
 
 func (ms *moduleState) Marshal() *structpb.Struct {
 	state := resource.PropertyMap{
 		// TODO[pulumi/pulumi-terraform-module#148] store as JSON-y map
-		"state": resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
-		"lock":  resource.NewStringProperty(string(ms.rawLockFile)),
+		"state":         resource.MakeSecret(resource.NewStringProperty(string(ms.rawState))),
+		"lock":          resource.NewStringProperty(string(ms.rawLockFile)),
+		"moduleOutputs": resource.NewObjectProperty(ms.moduleOutputs),
 	}
-
 	value, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
-		KeepSecrets: true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
 	})
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 	return value
 }
 
-type moduleStateStore interface {
-	// Blocks until the the old state becomes available. If this method is called early it would lock up - needs to
-	// be called after the moduleStateResource is allocated.
-	AwaitOldState(modUrn urn.URN) moduleState
-
-	// Stores the new state once it is known. Panics if called twice.
-	SetNewState(modUrn urn.URN, state moduleState)
-}
-
 // This custom resource is deployed as a child of a component resource representing a TF module and is used to trick
 // Pulumi Engine into storing state for the component that otherwise would not be available.
-type moduleStateResource struct {
+type ModuleStateResource struct {
 	pulumi.CustomResourceState
-	// Could consider modeling a "state" output but omitting for now.
+}
+
+type moduleStateResourceArgs struct {
+	ModuleURN    urn.URN
+	ModuleInputs resource.PropertyMap
+}
+
+func (args moduleStateResourceArgs) ToPropertyMap() resource.PropertyMap {
+	return resource.PropertyMap{
+		moduleURNPropName: resource.NewStringProperty(string(args.ModuleURN)),
+		"moduleInputs":    resource.NewObjectProperty(args.ModuleInputs),
+	}
+}
+
+func (args *moduleStateResourceArgs) ParsePropertyMap(pm resource.PropertyMap) {
+	args.ModuleURN = urn.URN(pm[moduleURNPropName].StringValue())
+	if inp, ok := pm["moduleInputs"]; ok {
+		args.ModuleInputs = inp.ObjectValue()
+	}
+}
+
+func (args *moduleStateResourceArgs) Unmarshal(s *structpb.Struct) error {
+	opts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	}
+
+	props, err := plugin.UnmarshalProperties(s, opts)
+	if err != nil {
+		return err
+	}
+
+	args.ParsePropertyMap(props)
+	return nil
+}
+
+func (args moduleStateResourceArgs) Input(ctx *pulumi.Context) pulumi.Input {
+	return pulumix.MustUnmarshalPropertyMap(ctx, args.ToPropertyMap())
 }
 
 func moduleStateTypeToken(pkgName packageName) tokens.Type {
@@ -111,21 +149,15 @@ func newModuleStateResource(
 	ctx *pulumi.Context,
 	name string,
 	pkgName packageName,
-	modUrn resource.URN,
 	packageRef string,
-	moduleInputs resource.PropertyMap,
+	args moduleStateResourceArgs,
 	opts ...pulumi.ResourceOption,
-) (*moduleStateResource, error) {
-	contract.Assertf(modUrn != "", "modUrn cannot be empty")
-	var res moduleStateResource
+) (*ModuleStateResource, error) {
+	contract.Assertf(args.ModuleURN != "", "modUrn cannot be empty")
+	var res ModuleStateResource
 	tok := moduleStateTypeToken(pkgName)
 
-	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, resource.PropertyMap{
-		moduleURNPropName: resource.NewStringProperty(string(modUrn)),
-		"moduleInputs":    resource.NewObjectProperty(moduleInputs),
-	})
-
-	err := ctx.RegisterPackageResource(string(tok), name, inputsMap, &res, packageRef, opts...)
+	err := ctx.RegisterPackageResource(string(tok), name, args.Input(ctx), &res, packageRef, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("RegisterResource failed for ModuleStateResource: %w", err)
 	}
@@ -134,35 +166,26 @@ func newModuleStateResource(
 
 // The implementation of the ModuleComponentResource life-cycle.
 type moduleStateHandler struct {
-	planStore         *planStore
-	oldState          stateStore
-	newState          stateStore
 	hc                *provider.HostClient
 	auxProviderServer *auxprovider.Server
+	planStore         *planStore
+	mod               func(urn.URN) *module
+	tofuCache         map[urn.URN]*tfsandbox.Tofu
 }
 
-var _ moduleStateStore = (*moduleStateHandler)(nil)
-
-func newModuleStateHandler(hc *provider.HostClient, planStore *planStore, as *auxprovider.Server) *moduleStateHandler {
+func newModuleStateHandler(
+	hc *provider.HostClient,
+	auxProviderServer *auxprovider.Server,
+	planStore *planStore,
+	mod func(urn.URN) *module,
+) *moduleStateHandler {
 	return &moduleStateHandler{
-		oldState:          stateStore{},
-		newState:          stateStore{},
 		hc:                hc,
+		auxProviderServer: auxProviderServer,
 		planStore:         planStore,
-		auxProviderServer: as,
+		mod:               mod,
+		tofuCache:         map[urn.URN]*tfsandbox.Tofu{},
 	}
-}
-
-// Blocks until the the old state becomes available. Receives a *ModuleStateResource handle to help make sure that the
-// resource was allocated prior to calling this method, so the engine is already processing RegisterResource and looking
-// up the state. If this method is called early it would lock up.
-func (h *moduleStateHandler) AwaitOldState(modUrn urn.URN) moduleState {
-	return h.oldState.Await(modUrn)
-}
-
-// Stores the new state once it is known. Panics if called twice.
-func (h *moduleStateHandler) SetNewState(modUrn urn.URN, st moduleState) {
-	h.newState.Put(modUrn, st)
 }
 
 // Check is generic and does not do anything.
@@ -176,22 +199,26 @@ func (h *moduleStateHandler) Check(
 	}, nil
 }
 
-// Diff spies on old state from the engine and publishes that so the rest of the system can proceed.
-// It also waits on the new state to decide if there are changes or not.
+// Diff performs tofu plan to decide what needs to be done, and stores it in the plan store.
 func (h *moduleStateHandler) Diff(
-	_ context.Context,
+	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
 	modUrn := h.mustParseModURN(req.News)
+	mod := h.mod(modUrn)
+
 	oldState := moduleState{}
 	oldState.Unmarshal(req.Olds)
-	h.oldState.Put(modUrn, oldState)
-	newState := h.newState.Await(modUrn)
 
-	changes := pulumirpc.DiffResponse_DIFF_NONE
+	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
 
-	oldProps := req.OldInputs
-	newProps := req.News
+	h.tofuCache[modUrn] = tf
 
 	opts := plugin.MarshalOptions{
 		KeepUnknowns:     true,
@@ -200,46 +227,105 @@ func (h *moduleStateHandler) Diff(
 		KeepOutputValues: true,
 	}
 
-	oldInputs, err := plugin.UnmarshalProperties(oldProps, opts)
+	newInputs, err := plugin.UnmarshalProperties(req.News, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	newInputs, err := plugin.UnmarshalProperties(newProps, opts)
+	contract.Assertf(newInputs["moduleInputs"].IsObject(), "expected moduleInputs as an Object")
+	moduleInputs := newInputs["moduleInputs"].ObjectValue()
+
+	plan, err := mod.plan(ctx, logger, tf, moduleInputs, oldState)
 	if err != nil {
 		return nil, err
 	}
-	moduleInputDiff := !oldInputs["moduleInputs"].DeepEquals(newInputs["moduleInputs"])
 
-	if !newState.Equal(oldState) || moduleInputDiff {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
+	if !plan.HasChanges() {
+		// Since Create/Update will not be called after this, to avoid hangs we need to make sure the unchanged
+		// TF state is propagated to the rest of the system. Currently this is done approximately by running a
+		// no-op apply for its side-effects.  It would be more efficient to do mod.planStore.SetState if
+		// we had the capacity to hydrate the State from the serialized form in oldState.
+		mod.apply(ctx, logger, tf)
+
+		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
 	}
 
-	return &pulumirpc.DiffResponse{Changes: changes}, nil
+	return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
 }
 
-// Create exposes empty old state and returns the new state.
+// Create runs tofu apply.
 func (h *moduleStateHandler) Create(
-	_ context.Context,
+	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	oldState := moduleState{}
-	modUrn := h.mustParseModURN(req.Properties)
-	h.oldState.Put(modUrn, oldState)
-	newState := h.newState.Await(modUrn)
-	props := newState.Marshal()
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	var args moduleStateResourceArgs
+	if err := args.Unmarshal(req.Properties); err != nil {
+		return nil, err
+	}
+
+	mod := h.mod(args.ModuleURN)
+
+	// Diff does not run before Create, but it is paramount to have a TF plan. Therefore run the plan here.
+	wd := tfsandbox.ModuleInstanceWorkdir(args.ModuleURN)
+	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	if err != nil {
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	}
+	h.tofuCache[args.ModuleURN] = tf
+
+	plan, err := mod.plan(ctx, logger, tf, args.ModuleInputs, moduleState{})
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Preview {
+		return &pulumirpc.CreateResponse{
+			Id:         moduleStateResourceID,
+			Properties: (&moduleState{moduleOutputs: plan.Outputs()}).Marshal(),
+		}, nil
+	}
+
+	newState, _, applyErr := mod.apply(ctx, logger, tf)
+	if applyErr != nil {
+		return nil, applyErr // should this be handled better for partial apply?
+	}
+
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
-		Properties: props,
+		Properties: newState.Marshal(),
 	}, nil
 }
 
-// Update simply returns the new state.
+// Create runs tofu apply.
 func (h *moduleStateHandler) Update(
-	_ context.Context,
+	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	newState := h.newState.Await(h.mustParseModURN(req.News))
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	var args moduleStateResourceArgs
+	if err := args.Unmarshal(req.News); err != nil {
+		return nil, err
+	}
+
+	mod := h.mod(args.ModuleURN)
+
+	if req.Preview {
+		plan := mod.planStore.getOrCreatePlanEntry(args.ModuleURN).Await()
+		plannedState := &moduleState{moduleOutputs: plan.Outputs()}
+		return &pulumirpc.UpdateResponse{Properties: plannedState.Marshal()}, nil
+	}
+
+	tf, ok := h.tofuCache[args.ModuleURN]
+	contract.Assertf(ok, "expected a tofuCache entry from Diff")
+
+	newState, _, err := mod.apply(ctx, logger, tf)
+	if err != nil {
+		return nil, err // should this be handled better for partial apply?
+	}
+
 	return &pulumirpc.UpdateResponse{
 		Properties: newState.Marshal(),
 	}, nil
@@ -388,12 +474,15 @@ func (h *moduleStateHandler) Read(
 	}
 
 	refreshedModuleState := moduleState{
-		rawState:    rawState,
-		rawLockFile: rawLockFile,
+		rawState:      rawState,
+		rawLockFile:   rawLockFile,
+		moduleOutputs: state.Outputs(),
 	}
 
+	// TODO figure out the Diff() after Read() scenario?
+	//
 	// The engine will call Diff() after Read(), and it would expect this to be populated.
-	h.newState.Put(modUrn, refreshedModuleState)
+	// h.newState.Put(modUrn, refreshedModuleState)
 
 	return &pulumirpc.ReadResponse{
 		Id:         moduleStateResourceID,

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -49,16 +50,27 @@ func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderSer
 		return nil, err
 	}
 
-	moduleStateHandler := newModuleStateHandler(hostClient, &planStore, auxProviderServer)
-
 	srv := &server{
-		planStore:          &planStore,
-		hostClient:         hostClient,
-		stateStore:         moduleStateHandler,
-		moduleStateHandler: moduleStateHandler,
-		childHandler:       newChildHandler(&planStore),
-		auxProviderServer:  auxProviderServer,
+		planStore:         &planStore,
+		hostClient:        hostClient,
+		childHandler:      newChildHandler(&planStore),
+		auxProviderServer: auxProviderServer,
 	}
+
+	mkMod := func(modUrn urn.URN) *module {
+		return &module{
+			modUrn:               modUrn,
+			planStore:            &planStore,
+			packageName:          srv.packageName,
+			tfModuleSource:       srv.params.TFModuleSource,
+			tfModuleVersion:      srv.params.TFModuleVersion,
+			inferredModuleSchema: srv.inferredModuleSchema,
+			auxProviderServer:    auxProviderServer,
+			providersConfig:      cleanProvidersConfig(srv.providerConfig),
+		}
+	}
+
+	srv.moduleStateHandler = newModuleStateHandler(hostClient, auxProviderServer, &planStore, mkMod)
 	return srv, nil
 }
 
@@ -67,7 +79,6 @@ type server struct {
 	planStore            *planStore
 	params               *ParameterizeArgs
 	hostClient           *provider.HostClient
-	stateStore           moduleStateStore
 	moduleStateHandler   *moduleStateHandler
 	childHandler         *childHandler
 	packageName          packageName
@@ -411,10 +422,8 @@ func (s *server) Construct(
 		KeepResources:    true,
 		KeepOutputValues: true,
 	})
-
-	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
+		return nil, err
 	}
 
 	packageRef, err := s.acquirePackageReference(ctx, req.MonitorEndpoint)
@@ -431,19 +440,13 @@ func (s *server) Construct(
 		switch typ {
 		case string(ctok):
 			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
-				s.stateStore,
 				s.planStore,
-				s.auxProviderServer,
 				s.packageName,
 				s.componentTypeName,
-				s.params.TFModuleSource,
-				s.params.TFModuleVersion,
 				name,
 				inputProps,
-				s.inferredModuleSchema,
 				packageRef,
 				s.providerSelfURN,
-				providersConfig,
 				resourceOptions,
 			)
 

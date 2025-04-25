@@ -26,9 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -55,21 +53,15 @@ func componentTypeToken(packageName packageName, compTypeName componentTypeName)
 
 func newModuleComponentResource(
 	ctx *pulumi.Context,
-	stateStore moduleStateStore,
 	planStore *planStore,
-	auxProviderServer *auxprovider.Server,
 	pkgName packageName,
 	compTypeName componentTypeName,
-	tfModuleSource TFModuleSource,
-	tfModuleVersion TFModuleVersion,
 	name string,
 	moduleInputs resource.PropertyMap,
-	inferredModule *InferredModuleSchema,
 	packageRef string,
 	providerSelfURN pulumi.URN,
-	providersConfig map[string]resource.PropertyMap,
 	opts ...pulumi.ResourceOption,
-) (componentUrn *urn.URN, moduleStateResource *moduleStateResource, outputs pulumi.Map, finalError error) {
+) (componentUrn *urn.URN, moduleStateResource *ModuleStateResource, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}
 	tok := componentTypeToken(pkgName, compTypeName)
 	err := ctx.RegisterComponentResource(string(tok), name, &component, opts...)
@@ -78,15 +70,6 @@ func newModuleComponentResource(
 	}
 
 	urn := component.MustURN(ctx.Context())
-
-	defer func() {
-		// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
-		//
-		// This is only safe to run after all the children are done processing.
-		// Perhaps when fixing 108 this method will stop blocking to wait on that,
-		// in that case this cleanup has to move accordingly.
-		planStore.Forget(urn)
-	}()
 
 	var providerSelfRef pulumi.ProviderResource
 	if providerSelfURN != "" {
@@ -105,143 +88,33 @@ func newModuleComponentResource(
 		// Needs to be prefixed by parent to avoid "duplicate URN".
 		fmt.Sprintf("%s-state", name),
 		pkgName,
-		urn,
 		packageRef,
-		moduleInputs,
+		moduleStateResourceArgs{
+			ModuleURN:    urn,
+			ModuleInputs: moduleInputs,
+		},
 		resourceOptions...,
 	)
 
 	contract.AssertNoErrorf(err, "newModuleStateResource failed")
 
-	var applyErr error
-	var tfState *tfsandbox.State
-	state := stateStore.AwaitOldState(urn)
-	defer func() {
-		// SetNewState must be called on every possible exit to make sure child resources do
-		// not wait indefinitely for the state. If existing normally, this should have
-		// already happened, but this code makes sure error exists are covered as well.
-		//
-		// if applyErr != nil then we've already processed the child resources
-		// and can't call `SetNewState`
-		if finalError != nil && applyErr == nil {
-			stateStore.SetNewState(urn, state)
-		}
-	}()
+	var (
+		childResources []*childResource
 
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, auxProviderServer)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
-	}
-
-	// Important: the name of the module instance in TF must be at least unique enough to
-	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the
-	// Pulumi name as present in the module URN.
-	// The name chosen here will proliferate into ResourceAddress of every child resource as well,
-	// which will get further reused for Pulumi URNs.
-	tfName := getModuleName(urn)
-
-	outputSpecs := []tfsandbox.TFOutputSpec{}
-	for outputName := range inferredModule.Outputs {
-		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name: outputName,
-		})
-	}
-	err = tfsandbox.CreateTFFile(tfName, tfModuleSource,
-		tfModuleVersion, tf.WorkingDir(),
-		moduleInputs, outputSpecs, providersConfig)
-
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
-	}
-
-	var moduleOutputs resource.PropertyMap
-	err = tf.PushStateAndLockFile(ctx.Context(), state.rawState, state.rawLockFile)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
-	}
-
-	logger := newComponentLogger(ctx.Log, &component)
-
-	err = tf.Init(ctx.Context(), logger)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Init failed: %w", err)
-	}
-
-	var childResources []*childResource
-
-	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
-	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx.Context(), logger)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Plan failed: %w", err)
-	}
-
-	planStore.SetPlan(urn, plan)
+		// Cannot thread outputs the recommended way, such as modeling them as a pulumi.MapOutput on the
+		// modStateResource, because secret bits float and destroy precise secret information.
+		moduleOutputs resource.PropertyMap
+	)
 
 	if ctx.DryRun() {
 		// DryRun() = true corresponds to running pulumi preview
 
-		// Make sure child resources can read the state, even though it is not changed.
-		stateStore.SetNewState(urn, state)
-
-		var errs []error
-
-		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			resourceOptions := []pulumi.ResourceOption{
-				pulumi.Parent(&component),
-			}
-
-			if providerSelfRef != nil {
-				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
-			}
-
-			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
-				packageRef,
-				resourceOptions...,
-			)
-
-			errs = append(errs, err)
-			if err == nil {
-				childResources = append(childResources, cr)
-			}
-		})
-		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
-		}
+		plan := planStore.getOrCreatePlanEntry(urn).Await()
 		moduleOutputs = plan.Outputs()
-	} else {
-		// DryRun() = false corresponds to running pulumi up
-		tfState, applyErr = tf.Apply(ctx.Context(), logger)
-
-		planStore.SetState(urn, tfState)
-
-		rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx.Context())
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
-		}
-		state.rawState = rawState
-		state.rawLockFile = rawLockFile
-
-		// Make sure child resources can read updated state.
-		stateStore.SetNewState(urn, state)
 
 		var errs []error
-		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			resourceOptions := []pulumi.ResourceOption{
-				pulumi.Parent(&component),
-			}
-
-			if providerSelfRef != nil {
-				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
-			}
-
-			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
-				packageRef,
-				resourceOptions...)
-
+		plan.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
+			cr, err := newChildResource(ctx, urn, pkgName, sop, packageRef, resourceOptions...)
 			errs = append(errs, err)
 			if err == nil {
 				childResources = append(childResources, cr)
@@ -250,27 +123,46 @@ func newModuleComponentResource(
 		if err := errors.Join(errs...); err != nil {
 			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
 		}
+	} else {
+		state := planStore.getOrCreateStateEntry(urn).Await()
+		moduleOutputs = state.Outputs()
 
-		moduleOutputs = tfState.Outputs()
+		var errs []error
+		state.VisitResourcesStateOrPlans(func(sop ResourceStateOrPlan) {
+			cr, err := newChildResource(ctx, urn, pkgName, sop, packageRef, resourceOptions...)
+			errs = append(errs, err)
+			if err == nil {
+				childResources = append(childResources, cr)
+			}
+		})
+		if err := errors.Join(errs...); err != nil {
+			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+		}
 	}
 
 	// Wait for all child resources to complete provisioning.
+	//
+	// There seems to be a subtle race condition here that arises when removing this code, for example
+	// TestPartialApply starts failing. The root cause it not yet pinned down, but one hypothesis is a race. The
+	// problem could be that although at this point in the code we know that the resource registrations for
+	// sub-resources have been scheduled, we do not know that these requests have made it over the gRPC divide.
+	// Exiting early with an error may kill the provider and stop those from completing.
+	//
+	// To avoid force-waiting, one other possibility would be to chain some outputs from all child resources to the
+	// outputs of the module, so the dependency is explicit in the data flow.
 	//
 	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
 	for _, cr := range childResources {
 		cr.Await(ctx.Context())
 	}
 
-	if applyErr != nil {
-		return nil, nil, nil, fmt.Errorf("Apply failed: %w", applyErr)
-	}
+	modOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
 
-	marshalledOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)
-	if err := ctx.RegisterResourceOutputs(&component, marshalledOutputs); err != nil {
+	if err := ctx.RegisterResourceOutputs(&component, modOutputs); err != nil {
 		return nil, nil, nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
 	}
 
-	return &urn, modStateResource, marshalledOutputs, nil
+	return &urn, modStateResource, modOutputs, nil
 }
 
 func newProviderSelfReference(ctx *pulumi.Context, urn1 pulumi.URN) pulumi.ProviderResource {
