@@ -175,6 +175,15 @@ func newModuleComponentResource(
 
 	// Wait for all child resources to complete provisioning.
 	//
+	// There seems to be a subtle race condition here that arises when removing this code, for example
+	// TestPartialApply starts failing. The root cause it not yet pinned down, but one hypothesis is a race. The
+	// problem could be that although at this point in the code we know that the resource registrations for
+	// sub-resources have been scheduled, we do not know that these requests have made it over the gRPC divide.
+	// Exiting early with an error may kill the provider and stop those from completing.
+	//
+	// To avoid force-waiting, one other possibility would be to chain some outputs from all child resources to the
+	// outputs of the module, so the dependency is explicit in the data flow.
+	//
 	// TODO[pulumi/pulumi-terraform-module#108] avoid deadlock
 	for _, cr := range childResources {
 		cr.Await(ctx.Context())
