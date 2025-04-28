@@ -68,22 +68,24 @@ func Test_workdirGetOrCreate(t *testing.T) {
 	err = os.WriteFile(filepath.Join(p, ".terraform", "providers", "p1"), []byte(`p1`), 0600)
 	require.NoError(t, err)
 
-	p2, err := workdirGetOrCreate(ctx, DiscardLogger, wd)
+	p2, err := workdirGetOrCreate(ctx, &testLogger{os.Stdout}, wd)
 	require.NoError(t, err)
 
 	assert.True(t, dirExists(p2))
 
-	_, err = os.Stat(filepath.Join(p, "infra.tf"))
-	require.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(p, pulumiTFJsonFileName))
+	require.Truef(t, os.IsNotExist(err), "expected the source file to be cleaned up")
+
+	_, err = os.Stat(filepath.Join(p, defaultLockFile))
+	require.Truef(t, os.IsNotExist(err), "expected the lock file to be cleaned up")
 
 	existingFiles := []string{
-		filepath.Join(p, defaultLockFile),
 		filepath.Join(p, ".terraform", "modules", "m1"),
 		filepath.Join(p, ".terraform", "providers", "p1"),
 	}
 
 	for _, f := range existingFiles {
 		_, err = os.Stat(f)
-		require.NoError(t, err)
+		require.NoErrorf(t, err, "expected %q to continue existing", f)
 	}
 }
