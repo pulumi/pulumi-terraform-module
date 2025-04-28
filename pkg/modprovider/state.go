@@ -260,7 +260,9 @@ func (h *moduleStateHandler) Delete(
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -298,8 +300,6 @@ func (h *moduleStateHandler) Delete(
 	if err != nil {
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
-
-	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
 	err = tf.Init(ctx, logger)
 	if err != nil {
@@ -339,7 +339,9 @@ func (h *moduleStateHandler) Read(
 	tfName := getModuleName(modUrn)
 	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -362,8 +364,6 @@ func (h *moduleStateHandler) Read(
 	if err != nil {
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
-
-	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
 	plan, err := tf.PlanRefreshOnly(ctx, logger)
 	if err != nil {

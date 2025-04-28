@@ -611,7 +611,7 @@ func resolveModuleSources(
 	logger tfsandbox.Logger,
 	auxServer *auxprovider.Server,
 ) (string, error) {
-	tf, err := tfsandbox.NewTofu(ctx, tfsandbox.ModuleWorkdir(source, version), auxServer)
+	tf, err := tfsandbox.NewTofu(ctx, logger, tfsandbox.ModuleWorkdir(source, version), auxServer)
 	if err != nil {
 		return "", fmt.Errorf("tofu sandbox construction failure: %w", err)
 	}

@@ -261,7 +261,7 @@ func TestCreateTFFile(t *testing.T) {
 			}, tt.outputs, tt.providersConfig)
 			assert.NoError(t, err)
 
-			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), "pulumi.tf.json"))
+			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), pulumiTFJsonFileName))
 			assert.NoError(t, err)
 			t.Logf("Contents: %s", string(contents))
 

@@ -22,8 +22,11 @@ import (
 	"path/filepath"
 )
 
-const defaultStateFile = "terraform.tfstate"
-const defaultLockFile = ".terraform.lock.hcl"
+const (
+	defaultStateFile = "terraform.tfstate"
+	defaultLockFile  = ".terraform.lock.hcl"
+	defaultPlanFile  = "plan.out"
+)
 
 // PullStateAndLockFile reads the state and lock file from the Tofu working directory.
 // If the lock file is not present, it returns nil for the lock file and no error.

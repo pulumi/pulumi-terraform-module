@@ -93,7 +93,7 @@ func (t *Tofu) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server) (*Tofu, error) {
+func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (*Tofu, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
@@ -106,7 +106,7 @@ func NewTofu(ctx context.Context, workdir Workdir, auxServer *auxprovider.Server
 		return nil, fmt.Errorf("error downloading tofu: %w", err)
 	}
 
-	workDir, err := workdirGetOrCreate(workdir)
+	workDir, err := workdirGetOrCreate(ctx, logger, workdir)
 	if err != nil {
 		return nil, err
 	}
