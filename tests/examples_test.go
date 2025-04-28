@@ -102,7 +102,6 @@ func Test_AlbExample(t *testing.T) {
 		optup.ProgressStreams(os.Stdout),
 	)
 
-	// TODO[pulumi/pulumi-terraform-module#166] null-resource will always show a diff
 	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
 	autogold.Expect(map[string]any{}).Equal(t, resourceDiffs)
 }

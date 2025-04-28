@@ -514,10 +514,9 @@ func TestE2eTs(t *testing.T) {
 			deleteExpect: map[string]int{
 				"delete": 9,
 			},
-			// TODO: [Fix delete-replace on null_resource](https://github.com/pulumi/pulumi-terraform-module/issues/166)
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("replace"): 1,
-				apitype.OpType("same"):    8,
+				apitype.OpType("update"): 1,
+				apitype.OpType("same"):   8,
 			},
 		},
 		{
