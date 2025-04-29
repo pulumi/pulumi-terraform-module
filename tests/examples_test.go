@@ -104,6 +104,11 @@ func Test_AlbExample(t *testing.T) {
 	)
 
 	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
+
+	// Ignore source_code_hash as it is unstable across dev machines and CI.
+	fn := "module.test-lambda.aws_lambda_function.this[0]"
+	resourceDiffs[fn].(map[string]any)["diff"].(apitype.PlanDiffV1).Updates["source_code_hash"] = "*"
+
 	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
 		"diff": apitype.PlanDiffV1{
 			Adds: map[string]interface{}{"layers": []interface{}{}},
@@ -111,7 +116,7 @@ func Test_AlbExample(t *testing.T) {
 				"last_modified":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"qualified_arn":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"qualified_invoke_arn": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"source_code_hash":     "+aWOA8Qvj34VoPjdEfrYc83idT+CZWFMZ800DBJccFA=",
+				"source_code_hash":     "*",
 				"version":              "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 			},
 		},
