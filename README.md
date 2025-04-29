@@ -80,7 +80,9 @@ resources:
       [ ... ]
 ```
 
-### Fixing Incorrect Output Types
+### Troubleshooting
+
+#### Fixing Incorrect Output Types
 
 Terraform modules have insufficient metadata to precisely identify the type of every module output. If Pulumi infers an
 incorrect or non-optimal type, you can override it (see
@@ -92,6 +94,26 @@ a shared registry of
 
 There is also an [Experimental tool](https://github.com/pulumi/pulumi-tool-infer-tfmodule-schema) to use AI to generate
 better type guesses.
+
+
+
+#### Fixing Invalid Relative Paths
+
+Pulumi is running Terraform code in a context that implies a current working directory that is different from the
+Pulumi working directory. This setup is necessary to support several module instances to co-exist side-by-side in a
+single Pulumi program. Currently these working directories are allocated in the following location:
+
+    $TMPDIR/pulumi-terraform-module/workdirs
+
+Because of this peculiarity, modules that accept file paths should be used with absolute paths under Pulumi, for
+instance, the AWS lambda module should receive an absolute path under `source_path` to resolve it correctly:
+
+```typescript
+const testlambda = new lambda.Module("test-lambda", {
+    source_path: `${pwd}/src/app.ts`,
+})
+```
+
 
 ## How it works
 
