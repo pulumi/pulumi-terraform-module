@@ -74,7 +74,12 @@ func workdirGetOrCreate(ctx context.Context, logger Logger, workdir Workdir) (st
 // .terraform/modules    are kept as a local cache to speed up resolution
 // .terraform/providers  are kept as a local cache to speed up resolution
 //
-// Some modules such as https://registry.terraform.io/modules/terraform-aws-modules/lambda/aws/latest manage
+// The defaultLockFile is special - for workspaces used in regular plan and apply operations, retaining the lock file
+// is redundant as it is always re-hydrated from the Pulumi state-tracked copy. However the project also uses
+// workspaces for schema inference (see [ModuleWorkDir]), and those workspaces need to retain the lockfile for speed,
+// because otherwise the schma resolution speed is penalized by repeatedly resolving the dependencies constraints.
+//
+// Finally some modules such as https://registry.terraform.io/modules/terraform-aws-modules/lambda/aws/latest manage
 // additional sub-paths such as "builds" (see variable "artifacts_dir") and expect them to persist across invocations.
 func workdirClean(workdir string) error {
 	var errs []error
@@ -88,10 +93,6 @@ func workdirClean(workdir string) error {
 
 		// This project uses a temp path for plan files; these are recomputed on demand, do not persist.
 		filepath.Join(workdir, defaultPlanFile),
-
-		// This project always rewrites the lockfile as it is stored in the Pulumi state. Avoid accidental
-		// reuse from the cache. In case of creating from scratch this is moot and it will be recomputed.
-		filepath.Join(workdir, defaultLockFile),
 	} {
 		if err := os.RemoveAll(p); err != nil {
 			errs = append(errs, fmt.Errorf("Error cleaning %q: %w", p, err))
