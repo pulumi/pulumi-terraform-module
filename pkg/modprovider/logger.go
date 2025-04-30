@@ -109,6 +109,8 @@ func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, mess
 	var err error
 	var diagLevel diag.Severity
 	switch level {
+	case tfsandbox.Debug:
+		diagLevel = diag.Debug
 	case tfsandbox.Info:
 		diagLevel = diag.Info
 	case tfsandbox.Warn:

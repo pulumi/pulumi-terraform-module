@@ -15,7 +15,7 @@ import (
 func newTestTofu(t *testing.T) *tfsandbox.Tofu {
 	srv := newTestAuxProviderServer(t)
 
-	tofu, err := tfsandbox.NewTofu(context.Background(), nil, srv)
+	tofu, err := tfsandbox.NewTofu(context.Background(), tfsandbox.DiscardLogger, nil, srv)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

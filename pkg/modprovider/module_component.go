@@ -129,7 +129,9 @@ func newModuleComponentResource(
 	}()
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-	tf, err := tfsandbox.NewTofu(ctx.Context(), wd, auxProviderServer)
+	logger := newComponentLogger(ctx.Log, &component)
+
+	tf, err := tfsandbox.NewTofu(ctx.Context(), logger, wd, auxProviderServer)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -160,8 +162,6 @@ func newModuleComponentResource(
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
-
-	logger := newComponentLogger(ctx.Log, &component)
 
 	err = tf.Init(ctx.Context(), logger)
 	if err != nil {

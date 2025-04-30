@@ -13,7 +13,7 @@ import (
 func newTestTofu(t *testing.T) *Tofu {
 	srv := newTestAuxProviderServer(t)
 
-	tofu, err := NewTofu(context.Background(), nil, srv)
+	tofu, err := NewTofu(context.Background(), DiscardLogger, nil, srv)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

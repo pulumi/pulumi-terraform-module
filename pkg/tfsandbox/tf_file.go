@@ -21,6 +21,7 @@ const (
 	unknownProxyResourceName       = "unknown_proxy"
 	unknownProxyResourceOutputProp = "value"
 	terraformIsSecretOutputPrefix  = "internal_output_is_secret_"
+	pulumiTFJsonFileName           = "pulumi.tf.json"
 )
 
 func writeTerraformFilesToDirectory() (string, bool) {
@@ -249,7 +250,7 @@ func CreateTFFile(
 		return err
 	}
 
-	if err := os.WriteFile(path.Join(workingDir, "pulumi.tf.json"), contents, 0600); err != nil {
+	if err := os.WriteFile(path.Join(workingDir, pulumiTFJsonFileName), contents, 0600); err != nil {
 		return err
 	}
 

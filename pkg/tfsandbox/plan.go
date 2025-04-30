@@ -59,7 +59,7 @@ func (t *Tofu) planRefreshOnly(ctx context.Context, logger Logger) (*tfjson.Plan
 }
 
 func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, refreshOnly bool) (*tfjson.Plan, error) {
-	planFile := path.Join(t.WorkingDir(), "plan.out")
+	planFile := path.Join(t.WorkingDir(), defaultPlanFile)
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
 	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter,

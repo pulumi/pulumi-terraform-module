@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 func Test_RdsExample(t *testing.T) {
@@ -102,7 +103,23 @@ func Test_AlbExample(t *testing.T) {
 		optup.ProgressStreams(os.Stdout),
 	)
 
-	// TODO[pulumi/pulumi-terraform-module#166] null-resource will always show a diff
 	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
-	autogold.Expect(map[string]any{}).Equal(t, resourceDiffs)
+
+	// Ignore source_code_hash as it is unstable across dev machines and CI.
+	fn := "module.test-lambda.aws_lambda_function.this[0]"
+	resourceDiffs[fn].(map[string]any)["diff"].(apitype.PlanDiffV1).Updates["source_code_hash"] = "*"
+
+	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
+		"diff": apitype.PlanDiffV1{
+			Adds: map[string]interface{}{"layers": []interface{}{}},
+			Updates: map[string]interface{}{
+				"last_modified":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"qualified_arn":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"qualified_invoke_arn": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"source_code_hash":     "*",
+				"version":              "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			},
+		},
+		"steps": []apitype.OpType{apitype.OpType("update")},
+	}}).Equal(t, resourceDiffs)
 }

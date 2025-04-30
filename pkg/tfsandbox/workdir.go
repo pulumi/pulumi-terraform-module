@@ -15,6 +15,8 @@
 package tfsandbox
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -45,16 +47,18 @@ func ModuleWorkdir(source TFModuleSource, version TFModuleVersion) Workdir {
 // Get or create a folder under $TMPDIR matching the current Pulumi project and stack.
 //
 // If the folder exists, clean it up except for expensive assets (see [workdirClean]).
-func workdirGetOrCreate(workdir Workdir) (string, error) {
+func workdirGetOrCreate(ctx context.Context, logger Logger, workdir Workdir) (string, error) {
 	path := workdirPath(workdir)
 
 	if dirExists(path) {
+		logger.Log(ctx, Debug, fmt.Sprintf("Reusing working directory: %s", path))
 		if err := workdirClean(path); err != nil {
 			return "", err
 		}
 		return path, nil
 	}
 
+	logger.Log(ctx, Debug, fmt.Sprintf("Creating working directory: %s", path))
 	if err := os.MkdirAll(path, 0700); err != nil {
 		return "", fmt.Errorf("Error creating workdir %q: %v", path, err)
 	}
@@ -62,57 +66,41 @@ func workdirGetOrCreate(workdir Workdir) (string, error) {
 	return path, nil
 }
 
-// Delete all files to guarantee a fresh start, with the following exceptions:
+// Delete all transient files to avoid accidentally poisoning accuracy of TOFU execution with stale files.
+//
+// While not listed in an explicit way, the following important sub-paths with persist across `pulumi` executions as
+// they are not part of the cleanup:
 //
 // .terraform/modules    are kept as a local cache to speed up resolution
 // .terraform/providers  are kept as a local cache to speed up resolution
-// .terraform.lock.hcl   produced by tofu init is kept around
+//
+// The defaultLockFile is special - for workspaces used in regular plan and apply operations, retaining the lock file
+// is redundant as it is always re-hydrated from the Pulumi state-tracked copy. However the project also uses
+// workspaces for schema inference (see [ModuleWorkDir]), and those workspaces need to retain the lockfile for speed,
+// because otherwise the schma resolution speed is penalized by repeatedly resolving the dependencies constraints.
+//
+// Finally some modules such as https://registry.terraform.io/modules/terraform-aws-modules/lambda/aws/latest manage
+// additional sub-paths such as "builds" (see variable "artifacts_dir") and expect them to persist across invocations.
 func workdirClean(workdir string) error {
-	entries, err := os.ReadDir(workdir)
-	if err != nil {
-		return fmt.Errorf("Error cleaning workdir %q: %w", workdir, err)
+	var errs []error
+
+	for _, p := range []string{
+		// JSON HCL configs are rewritten on each interaction and should not persist across runs.
+		filepath.Join(workdir, pulumiTFJsonFileName),
+
+		// Default state files are injected on each interaction to match Pulumi-tracked state.
+		filepath.Join(workdir, defaultStateFile),
+
+		// This project uses a temp path for plan files; these are recomputed on demand, do not persist.
+		filepath.Join(workdir, defaultPlanFile),
+	} {
+		if err := os.RemoveAll(p); err != nil {
+			errs = append(errs, fmt.Errorf("Error cleaning %q: %w", p, err))
+		}
 	}
 
-	for _, entry := range entries {
-		if entry.IsDir() && entry.Name() == ".terraform" {
-			err := workdirCleanDotTerraform(workdir)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		if !entry.IsDir() && entry.Name() == ".terraform.lock.hcl" {
-			continue
-		}
-
-		sub := filepath.Join(workdir, entry.Name())
-		if err := os.RemoveAll(sub); err != nil {
-			return fmt.Errorf("Error cleaning workdir path %q: %w", sub, err)
-		}
-	}
-	return nil
-}
-
-// See [workdirClean].
-func workdirCleanDotTerraform(workdir string) error {
-	td := filepath.Join(workdir, ".terraform")
-	tfEntries, err := os.ReadDir(td)
-	if err != nil {
-		return fmt.Errorf("Error cleaning workdir .terraform dir %q: %w", workdir, err)
-	}
-
-	for _, tfEntry := range tfEntries {
-		if tfEntry.IsDir() && tfEntry.Name() == "providers" {
-			continue
-		}
-		if tfEntry.IsDir() && tfEntry.Name() == "modules" {
-			continue
-		}
-		sub := filepath.Join(td, tfEntry.Name())
-		if err := os.RemoveAll(sub); err != nil {
-			return fmt.Errorf("Error cleaning .terraform path %q: %w", sub, err)
-		}
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 
 	return nil
