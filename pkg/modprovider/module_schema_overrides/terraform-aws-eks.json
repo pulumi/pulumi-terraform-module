@@ -1,0 +1,155 @@
+{
+    "source": "terraform-aws-modules/eks/aws",
+    "maximumVersion": "21.0.0",
+    "partialSchema": {
+      "outputs": {
+        "cluster_arn": {
+          "type": "string"
+        },
+        "cluster_certificate_authority_data": {
+          "type": "string"
+        },
+        "cluster_endpoint": {
+          "type": "string"
+        },
+        "cluster_id": {
+          "type": "string"
+        },
+        "cluster_name": {
+          "type": "string"
+        },
+        "cluster_oidc_issuer_url": {
+          "type": "string"
+        },
+        "cluster_dualstack_oidc_issuer_url": {
+          "type": "string"
+        },
+        "cluster_version": {
+          "type": "string"
+        },
+        "cluster_platform_version": {
+          "type": "string"
+        },
+        "cluster_status": {
+          "type": "string"
+        },
+        "cluster_primary_security_group_id": {
+          "type": "string"
+        },
+        "cluster_service_cidr": {
+          "type": "string"
+        },
+        "cluster_ip_family": {
+          "type": "string"
+        },
+        "access_entries": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "access_policy_associations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "kms_key_arn": {
+          "type": "string"
+        },
+        "kms_key_id": {
+          "type": "string"
+        },
+        "kms_key_policy": {
+          "type": "string"
+        },
+        "cluster_security_group_arn": {
+          "type": "string"
+        },
+        "cluster_security_group_id": {
+          "type": "string"
+        },
+        "node_security_group_arn": {
+          "type": "string"
+        },
+        "node_security_group_id": {
+          "type": "string"
+        },
+        "oidc_provider": {
+          "type": "string"
+        },
+        "oidc_provider_arn": {
+          "type": "string"
+        },
+        "cluster_tls_certificate_sha1_fingerprint": {
+          "type": "string"
+        },
+        "cluster_iam_role_name": {
+          "type": "string"
+        },
+        "cluster_iam_role_arn": {
+          "type": "string"
+        },
+        "cluster_iam_role_unique_id": {
+          "type": "string"
+        },
+        "node_iam_role_name": {
+          "type": "string"
+        },
+        "node_iam_role_arn": {
+          "type": "string"
+        },
+        "node_iam_role_unique_id": {
+          "type": "string"
+        },
+        "cluster_addons": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "cluster_identity_providers": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "cloudwatch_log_group_name": {
+          "type": "string"
+        },
+        "cloudwatch_log_group_arn": {
+          "type": "string"
+        },
+        "fargate_profiles": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "eks_managed_node_groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "eks_managed_node_groups_autoscaling_group_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "self_managed_node_groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "self_managed_node_groups_autoscaling_group_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }

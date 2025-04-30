@@ -1,0 +1,62 @@
+{
+    "source": "cloudposse/label/null",
+    "maximumVersion": "1.0.0",
+    "partialSchema": {
+      "outputs": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "additional_tag_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "label_order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regex_replace_chars": {
+          "type": "string"
+        },
+        "id_length_limit": {
+          "type": "number"
+        },
+        "tags_as_list_of_maps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "descriptors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "normalized_context": {
+          "$ref": "pulumi.json#/Any"
+        },
+        "context": {
+          "$ref": "pulumi.json#/Any"
+        }
+      }
+    }
+  }

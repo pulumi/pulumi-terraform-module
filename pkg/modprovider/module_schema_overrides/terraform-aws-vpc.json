@@ -2,6 +2,415 @@
     "source": "terraform-aws-modules/vpc/aws",
     "maximumVersion": "6.0.0",
     "partialSchema": {
-        "nonNilOutputs": ["vpc_id"]
+      "outputs": {
+        "vpc_enable_dns_support": {
+          "type": "boolean"
+        },
+        "vpc_enable_dns_hostnames": {
+          "type": "boolean"
+        },
+        "vpc_secondary_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "vpc_owner_id": {
+          "type": "string"
+        },
+        "vpc_block_public_access_exclusions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "egress_only_internet_gateway_id": {
+          "type": "string"
+        },
+        "nat_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nat_public_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "natgw_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cgw_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cgw_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "this_customer_gateway": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "default_vpc_enable_dns_support": {
+          "type": "boolean"
+        },
+        "default_vpc_enable_dns_hostnames": {
+          "type": "boolean"
+        },
+        "private_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outpost_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outpost_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outpost_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outpost_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_subnet_group": {
+          "type": "string"
+        },
+        "database_subnet_group_name": {
+          "type": "string"
+        },
+        "redshift_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_subnet_group": {
+          "type": "string"
+        },
+        "elasticache_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elasticache_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elasticache_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elasticache_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elasticache_subnet_group": {
+          "type": "string"
+        },
+        "elasticache_subnet_group_name": {
+          "type": "string"
+        },
+        "intra_subnets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intra_subnet_arns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intra_subnets_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intra_subnets_ipv6_cidr_blocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private_route_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_route_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_route_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_route_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elasticache_route_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intra_route_table_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private_nat_gateway_route_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_internet_gateway_route_id": {
+          "type": "string"
+        },
+        "public_internet_gateway_ipv6_route_id": {
+          "type": "string"
+        },
+        "database_internet_gateway_route_id": {
+          "type": "string"
+        },
+        "database_nat_gateway_route_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_ipv6_egress_route_id": {
+          "type": "string"
+        },
+        "private_ipv6_egress_route_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "private_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "database_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redshift_public_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elasticache_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intra_route_table_association_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_network_acl_id": {
+          "type": "string"
+        },
+        "public_network_acl_arn": {
+          "type": "string"
+        },
+        "private_network_acl_id": {
+          "type": "string"
+        },
+        "private_network_acl_arn": {
+          "type": "string"
+        },
+        "outpost_network_acl_id": {
+          "type": "string"
+        },
+        "outpost_network_acl_arn": {
+          "type": "string"
+        },
+        "intra_network_acl_id": {
+          "type": "string"
+        },
+        "intra_network_acl_arn": {
+          "type": "string"
+        },
+        "database_network_acl_id": {
+          "type": "string"
+        },
+        "database_network_acl_arn": {
+          "type": "string"
+        },
+        "redshift_network_acl_id": {
+          "type": "string"
+        },
+        "redshift_network_acl_arn": {
+          "type": "string"
+        },
+        "elasticache_network_acl_id": {
+          "type": "string"
+        },
+        "elasticache_network_acl_arn": {
+          "type": "string"
+        },
+        "azs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        }
+      }
     }
-}
+  }

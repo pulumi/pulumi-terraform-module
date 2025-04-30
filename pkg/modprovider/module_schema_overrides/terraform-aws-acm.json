@@ -1,0 +1,44 @@
+{
+    "source": "terraform-aws-modules/acm/aws",
+    "maximumVersion": "6.0.0",
+    "partialSchema": {
+        "outputs": {
+            "acm_certificate_domain_validation_options": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "pulumi.json#/Any"
+                    }
+                }
+            },
+            "acm_certificate_validation_emails": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "distinct_domain_names": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "validation_domains": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "pulumi.json#/Any"
+                    }
+                }
+            },
+            "validation_route53_record_fqdns": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,92 @@
+{
+    "source": "terraform-aws-modules/rds/aws",
+    "maximumVersion": "7.0.0",
+    "partialSchema": {
+      "outputs": {
+        "enhanced_monitoring_iam_role_name": {
+          "type": "string"
+        },
+        "enhanced_monitoring_iam_role_arn": {
+          "type": "string"
+        },
+        "db_instance_address": {
+          "type": "string"
+        },
+        "db_instance_arn": {
+          "type": "string"
+        },
+        "db_instance_availability_zone": {
+          "type": "string"
+        },
+        "db_instance_endpoint": {
+          "type": "string"
+        },
+        "db_listener_endpoint": {
+          "type": "string"
+        },
+        "db_instance_engine": {
+          "type": "string"
+        },
+        "db_instance_engine_version_actual": {
+          "type": "string"
+        },
+        "db_instance_hosted_zone_id": {
+          "type": "string"
+        },
+        "db_instance_identifier": {
+          "type": "string"
+        },
+        "db_instance_resource_id": {
+          "type": "string"
+        },
+        "db_instance_status": {
+          "type": "string"
+        },
+        "db_instance_name": {
+          "type": "string"
+        },
+        "db_instance_username": {
+          "type": "string"
+        },
+        "db_instance_port": {
+          "type": "string"
+        },
+        "db_instance_ca_cert_identifier": {
+          "type": "string"
+        },
+        "db_instance_domain": {
+          "type": "string"
+        },
+        "db_instance_domain_auth_secret_arn": {
+          "type": "string"
+        },
+        "db_instance_domain_dns_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "db_instance_domain_fqdn": {
+          "type": "string"
+        },
+        "db_instance_domain_iam_role_name": {
+          "type": "string"
+        },
+        "db_instance_domain_ou": {
+          "type": "string"
+        },
+        "db_instance_master_user_secret_arn": {
+          "type": "string"
+        },
+        "db_instance_cloudwatch_log_groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "db_instance_secretsmanager_secret_rotation_enabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
