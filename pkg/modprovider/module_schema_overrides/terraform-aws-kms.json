@@ -1,0 +1,38 @@
+{
+    "source": "terraform-aws-modules/kms/aws",
+    "maximumVersion": "4.0.0",
+    "partialSchema": {
+      "outputs": {
+        "key_arn": {
+          "type": "string"
+        },
+        "key_id": {
+          "type": "string"
+        },
+        "key_policy": {
+          "type": "string"
+        },
+        "external_key_expiration_model": {
+          "type": "string"
+        },
+        "external_key_state": {
+          "type": "string"
+        },
+        "external_key_usage": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "grants": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        }
+      }
+    }
+  }

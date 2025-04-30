@@ -1,0 +1,44 @@
+{
+    "source": "terraform-aws-modules/s3-bucket/aws",
+    "maximumVersion": "5.0.0",
+    "partialSchema": {
+      "outputs": {
+        "s3_bucket_id": {
+          "type": "string"
+        },
+        "s3_bucket_arn": {
+          "type": "string"
+        },
+        "s3_bucket_bucket_domain_name": {
+          "type": "string"
+        },
+        "s3_bucket_bucket_regional_domain_name": {
+          "type": "string"
+        },
+        "s3_bucket_hosted_zone_id": {
+          "type": "string"
+        },
+        "s3_bucket_lifecycle_configuration_rules": {
+          "$ref": "pulumi.json#/Any"
+        },
+        "s3_bucket_policy": {
+          "type": "string"
+        },
+        "s3_bucket_region": {
+          "type": "string"
+        },
+        "s3_bucket_website_endpoint": {
+          "type": "string"
+        },
+        "s3_bucket_website_domain": {
+          "type": "string"
+        },
+        "s3_directory_bucket_name": {
+          "type": "string"
+        },
+        "s3_directory_bucket_arn": {
+          "type": "string"
+        }
+      }
+    }
+  }

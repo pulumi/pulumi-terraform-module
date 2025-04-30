@@ -1,0 +1,32 @@
+{
+  "source": "terraform-aws-modules/alb/aws",
+  "maximumVersion": "10.0.0",
+  "partialSchema": {
+    "outputs": {
+      "listeners": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "pulumi.json#/Any"
+        }
+      },
+      "listener_rules": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "pulumi.json#/Any"
+        }
+      },
+      "target_groups": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "pulumi.json#/Any"
+        }
+      },
+      "route53_records": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "pulumi.json#/Any"
+        }
+      }
+    }
+  }
+}

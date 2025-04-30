@@ -1,0 +1,69 @@
+{
+  "source": "Azure/avm-res-network-virtualnetwork/azurerm",
+  "maximumVersion": "1.0.0",
+  "partialSchema": {
+    "outputs": {
+      "peerings": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/types/[packageName]:index:PeeringResource"
+        }
+      },
+      "subnets": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/types/[packageName]:index:SubnetResource"
+        }
+      },
+      "resource": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "pulumi.json#/Any"
+        }
+      }
+    },
+    "supportingTypes": {
+      "[packageName]:index:SubnetResource": {
+        "type": "object",
+        "properties": {
+          "application_gateway_ip_configuration_resource_id": {
+            "type": "string"
+          }, 
+          "name": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
+          },
+          "resource_id": {
+            "type": "string"
+          }
+        }
+      },
+      "[packageName]:index:PeeringResource": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the peering resource"
+          },
+          "resource_id": {
+            "type": "string",
+            "description": "The resource ID of the peering resource"
+          },
+          "reverse_name": {
+            "type": "string",
+            "description": "The name of the reverse peering resource"
+          },
+          "reverse_resource_id": {
+            "type": "string",
+            "description": "The resource ID of the reverse peering resource"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+    "source": "terraform-google-modules/project-factory/google",
+    "maximumVersion": "19.0.0",
+    "partialSchema": {
+      "outputs": {
+        "project_name": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "project_number": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "group_email": {
+          "type": "string"
+        },
+        "service_account_id": {
+          "type": "string"
+        },
+        "service_account_display_name": {
+          "type": "string"
+        },
+        "service_account_email": {
+          "type": "string"
+        },
+        "service_account_name": {
+          "type": "string"
+        },
+        "service_account_unique_id": {
+          "type": "string"
+        },
+        "project_bucket_self_link": {
+          "type": "string"
+        },
+        "project_bucket_url": {
+          "type": "string"
+        },
+        "api_s_account": {
+          "type": "string"
+        },
+        "api_s_account_fmt": {
+          "type": "string"
+        },
+        "enabled_apis": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled_api_identities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "budget_name": {
+          "type": "string"
+        },
+        "tag_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "usage_report_export_bucket": {
+          "type": "string"
+        }
+      }
+    }
+}

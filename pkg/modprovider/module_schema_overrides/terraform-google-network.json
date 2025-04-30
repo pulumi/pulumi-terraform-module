@@ -1,0 +1,53 @@
+{
+  "source": "terraform-google-modules/network/google",
+  "maximumVersion": "11.0.0",
+  "partialSchema": {
+    "outputs": {
+      "network": {
+        "$ref": "pulumi.json#/Any"
+      },
+      "subnets": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "pulumi.json#/Any"
+        }
+      },
+      "subnets_names": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subnets_ips": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subnets_regions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "route_names": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subnets_private_access": {
+        "$ref": "pulumi.json#/Any"
+      },
+      "subnets_flow_logs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subnets_secondary_ranges": {
+        "$ref": "pulumi.json#/Any"
+      }
+    }
+  }
+}

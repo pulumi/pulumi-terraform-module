@@ -1,0 +1,89 @@
+{
+    "source": "terraform-aws-modules/rds-aurora/aws",
+    "maximumVersion": "10.0.0",
+    "partialSchema": {
+      "outputs": {
+        "cluster_members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cluster_port": {
+          "type": "number"
+        },
+        "cluster_master_password": {
+          "type": "string"
+        },
+        "cluster_master_username": {
+          "type": "string"
+        },
+        "cluster_master_user_secret": {
+          "type": "string"
+        },
+        "cluster_hosted_zone_id": {
+          "type": "string"
+        },
+        "cluster_ca_certificate_identifier": {
+          "type": "string"
+        },
+        "cluster_ca_certificate_valid_till": {
+          "type": "string"
+        },
+        "cluster_instances": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "additional_cluster_endpoints": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "cluster_role_associations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "enhanced_monitoring_iam_role_name": {
+          "type": "string"
+        },
+        "enhanced_monitoring_iam_role_arn": {
+          "type": "string"
+        },
+        "enhanced_monitoring_iam_role_unique_id": {
+          "type": "string"
+        },
+        "security_group_id": {
+          "type": "string"
+        },
+        "db_cluster_parameter_group_arn": {
+          "type": "string"
+        },
+        "db_cluster_parameter_group_id": {
+          "type": "string"
+        },
+        "db_parameter_group_arn": {
+          "type": "string"
+        },
+        "db_parameter_group_id": {
+          "type": "string"
+        },
+        "db_cluster_cloudwatch_log_groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "pulumi.json#/Any"
+          }
+        },
+        "db_cluster_activity_stream_kinesis_stream_name": {
+          "type": "string"
+        },
+        "db_cluster_secretsmanager_secret_rotation_enabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }

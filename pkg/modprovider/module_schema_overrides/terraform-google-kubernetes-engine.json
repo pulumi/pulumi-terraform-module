@@ -1,0 +1,68 @@
+{
+    "source": "terraform-google-modules/kubernetes-engine/google",
+    "maximumVersion": "37.0.0",
+    "partialSchema": {
+        "outputs": {
+            "dns_cache_enabled": {
+                "type": "boolean"
+            },
+            "horizontal_pod_autoscaling_enabled": {
+                "type": "boolean"
+            },
+            "http_load_balancing_enabled": {
+                "type": "boolean"
+            },
+            "identity_service_enabled": {
+                "type": "boolean"
+            },
+            "instance_group_urls": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "intranode_visibility_enabled": {
+                "type": "boolean"
+            },
+            "master_authorized_networks_config": {
+                "type": "object",
+                "additionalProperties": {
+                    "$ref": "pulumi.json#/Any"
+                }
+            },
+            "mesh_certificates_config": {
+                "type": "object",
+                "additionalProperties": {
+                    "$ref": "pulumi.json#/Any"
+                }
+            },
+            "network_policy_enabled": {
+                "type": "boolean"
+            },
+            "node_pools_names": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "node_pools_versions": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                }
+            },
+            "secret_manager_addon_enabled": {
+                "type": "boolean"
+            },
+            "vertical_pod_autoscaling_enabled": {
+                "type": "boolean"
+            },
+            "zones": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
