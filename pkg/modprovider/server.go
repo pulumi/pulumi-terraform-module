@@ -23,6 +23,9 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/ryboe/q"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -30,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -398,7 +400,19 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 			// When a provider passes in terraformConfig.Result from a previously configured provider,
 			// that result is a resource.PropertyValue wrapped in a secret.
 			// Unwrap this secret and return the underlying object.
-			providersConfig[string(propertyKey)] = resource.NewPropertyMap(serializedConfig.SecretValue())
+			secret := serializedConfig.SecretValue()
+			if secret.Element.IsString() {
+				value := secret.Element.StringValue()
+				deserialized := map[string]interface{}{}
+				if err := json.Unmarshal([]byte(value), &deserialized); err != nil {
+					contract.Failf("failed to deserialize secret provider config into a map: %v", err)
+				}
+				if len(deserialized) > 0 {
+					providersConfig[string(propertyKey)] = resource.NewPropertyMapFromMap(deserialized)
+				}
+			} else {
+				providersConfig[string(propertyKey)] = resource.NewPropertyMap(secret.Element)
+			}
 			continue
 		}
 
@@ -406,6 +420,26 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 	}
 
 	return providersConfig
+}
+
+func unSecretProvidersConfig(config resource.PropertyMap) resource.PropertyMap {
+	q.Q(config)
+
+	guinsConfig := make(map[string]resource.PropertyMap)
+
+	for propertyKey, propertyValue := range config {
+		if propertyValue.IsSecret() {
+			// When a provider passes in terraformConfig.Result from a previously configured provider,
+			// that result is a resource.PropertyValue wrapped in a secret.
+			// Unwrap this secret and return the underlying object.
+			guinsConfig[string(propertyKey)] = resource.NewPropertyMap(propertyValue.SecretValue())
+		} else {
+			guinsConfig[string(propertyKey)] = resource.NewPropertyMap(propertyValue)
+		}
+	}
+	q.Q(guinsConfig)
+	return resource.NewPropertyMap(guinsConfig)
+
 }
 
 func (s *server) Construct(
@@ -418,6 +452,23 @@ func (s *server) Construct(
 		KeepResources:    true,
 		KeepOutputValues: true,
 	})
+
+	// Check if config has secrets
+	//guinsConfig := make(map[string]resource.PropertyMap)
+	//
+	//for propertyKey, propertyValue := range s.providerConfig {
+	//	if propertyValue.IsSecret() {
+	//		// When a provider passes in terraformConfig.Result from a previously configured provider,
+	//		// that result is a resource.PropertyValue wrapped in a secret.
+	//		// Unwrap this secret and return the underlying object.
+	//		guinsConfig[string(propertyKey)] = resource.NewPropertyMap(propertyValue.SecretValue())
+	//		continue
+	//	}
+	//}
+	//
+	//
+	//
+	//q.Q(guinsConfig)
 
 	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/ryboe/q"
 )
 
 func TestParseParameterizeRequest(t *testing.T) {
@@ -393,11 +394,10 @@ func Test_cleanProvidersConfigUnwrapsSecrets(t *testing.T) {
 	}
 	cleaned := cleanProvidersConfig(inputConfig)
 	expected := map[string]resource.PropertyMap{
-		"aws": resource.NewPropertyMap(&resource.Secret{
-			Element: resource.PropertyValue{
-				V: `{"region":"us-west-2"}`,
-			},
+		"aws": resource.NewPropertyMapFromMap(map[string]interface{}{
+			"region": "us-west-2",
 		}),
 	}
+	q.Q(expected, cleaned)
 	assert.Equal(t, expected, cleaned)
 }
