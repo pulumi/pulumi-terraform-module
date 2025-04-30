@@ -472,10 +472,12 @@ func combineInferredModuleSchema(
 
 		if input.TypeSpec.Items != nil {
 			existingInput.TypeSpec.Items = input.TypeSpec.Items
+			existingInput.TypeSpec.AdditionalProperties = nil
 		}
 
 		if input.TypeSpec.AdditionalProperties != nil {
 			existingInput.TypeSpec.AdditionalProperties = input.TypeSpec.AdditionalProperties
+			existingInput.TypeSpec.Items = nil
 		}
 	}
 
@@ -501,9 +503,11 @@ func combineInferredModuleSchema(
 		}
 		if output.TypeSpec.Items != nil {
 			existingOutput.TypeSpec.Items = output.TypeSpec.Items
+			existingOutput.TypeSpec.AdditionalProperties = nil
 		}
 		if output.TypeSpec.AdditionalProperties != nil {
 			existingOutput.TypeSpec.AdditionalProperties = output.TypeSpec.AdditionalProperties
+			existingOutput.TypeSpec.Items = nil
 		}
 	}
 
