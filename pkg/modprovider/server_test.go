@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/ryboe/q"
 )
 
 func TestParseParameterizeRequest(t *testing.T) {
@@ -379,25 +378,47 @@ func Test_cleanProvidersConfig(t *testing.T) {
 	assert.Equal(t, expected, cleaned)
 }
 
-func Test_cleanProvidersConfigUnwrapsSecrets(t *testing.T) {
+func Test_unSecretProvidersConfig(t *testing.T) {
 	inputConfig := resource.PropertyMap{
 		"aws": resource.PropertyValue{
 			V: &resource.Secret{
 				Element: resource.PropertyValue{
-					V: `{"region":"us-west-2"}`,
+					V: resource.PropertyMap{
+						"region":    resource.NewStringProperty("us-west-2"),
+						"accessKey": resource.NewStringProperty("my-access-key"),
+					},
 				},
 			},
 		},
 		"version": resource.PropertyValue{
 			V: "0.0.0-alpha.0+dev",
 		},
+		"docker": resource.PropertyValue{
+			V: &resource.Secret{
+				Element: resource.PropertyValue{
+					V: resource.PropertyMap{
+						"local": resource.NewStringProperty("mydockerfile"),
+					},
+				},
+			},
+		},
 	}
-	cleaned := cleanProvidersConfig(inputConfig)
-	expected := map[string]resource.PropertyMap{
-		"aws": resource.NewPropertyMapFromMap(map[string]interface{}{
-			"region": "us-west-2",
-		}),
+	unSecreted := unSecretProvidersConfig(inputConfig)
+	expected := resource.PropertyMap{
+		"aws": resource.PropertyValue{
+			V: resource.PropertyMap{
+				"region":    resource.NewStringProperty("us-west-2"),
+				"accessKey": resource.NewStringProperty("my-access-key"),
+			},
+		},
+		"version": resource.PropertyValue{
+			V: "0.0.0-alpha.0+dev",
+		},
+		"docker": resource.PropertyValue{
+			V: resource.PropertyMap{
+				"local": resource.NewStringProperty("mydockerfile"),
+			},
+		},
 	}
-	q.Q(expected, cleaned)
-	assert.Equal(t, expected, cleaned)
+	assert.Equal(t, expected, unSecreted)
 }
