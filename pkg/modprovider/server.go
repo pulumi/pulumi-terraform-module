@@ -367,10 +367,16 @@ func (s *server) acquirePackageReference(
 // in the Terraform JSON file
 func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
 	providersConfig := make(map[string]resource.PropertyMap)
-	for propertyKey, serializedConfig := range config {
+	for propertyKey, originalSerializedConfig := range config {
 		if string(propertyKey) == "version" || string(propertyKey) == "pluginDownloadURL" {
 			// skip the version and pluginDownloadURL properties
 			continue
+		}
+
+		// Disregard secret markers here; this works for both JSON-encoded strings and objects.
+		serializedConfig := originalSerializedConfig
+		if serializedConfig.IsSecret() {
+			serializedConfig = originalSerializedConfig.SecretValue().Element
 		}
 
 		if serializedConfig.IsString() {
@@ -394,7 +400,6 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 			providersConfig[string(propertyKey)] = serializedConfig.ObjectValue()
 			continue
 		}
-
 		contract.Failf("cleanProvidersConfig failed to parse unsupported type: %v", serializedConfig)
 	}
 
