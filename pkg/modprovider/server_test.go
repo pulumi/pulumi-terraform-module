@@ -359,66 +359,69 @@ func TestIsChildResourceType(t *testing.T) {
 }
 
 func Test_cleanProvidersConfig(t *testing.T) {
-	inputConfig := resource.PropertyMap{
-		resource.PropertyKey("version"): resource.NewStringProperty("0.0.1"),
-		resource.PropertyKey("aws"):     resource.NewStringProperty("{\"region\":\"us-west-2\"}"),
-	}
-
 	// cleaning the provider config in the form above is the what we get from Pulumi programs
 	// we clean it such that:
 	// - the version is removed
 	// - the provider configuration is parsed from the JSON string to a PropertyMap
-	cleaned := cleanProvidersConfig(inputConfig)
-	expected := map[string]resource.PropertyMap{
-		"aws": {
-			resource.PropertyKey("region"): resource.NewStringProperty("us-west-2"),
-		},
-	}
 
-	assert.Equal(t, expected, cleaned)
-}
+	t.Run("json-encoded", func(t *testing.T) {
+		inputConfig := resource.PropertyMap{
+			"version": resource.NewStringProperty("0.0.1"),
+			"aws":     resource.NewStringProperty("{\"region\":\"us-west-2\"}"),
+		}
+		cleaned := cleanProvidersConfig(inputConfig)
+		expected := map[string]resource.PropertyMap{
+			"aws": {
+				resource.PropertyKey("region"): resource.NewStringProperty("us-west-2"),
+			},
+		}
 
-func Test_unSecretProvidersConfig(t *testing.T) {
-	inputConfig := resource.PropertyMap{
-		"aws": resource.PropertyValue{
-			V: &resource.Secret{
-				Element: resource.PropertyValue{
-					V: resource.PropertyMap{
-						"region":    resource.NewStringProperty("us-west-2"),
-						"accessKey": resource.NewStringProperty("my-access-key"),
-					},
-				},
+		assert.Equal(t, expected, cleaned)
+	})
+
+	t.Run("json-encoded-secret", func(t *testing.T) {
+		inputConfig := resource.PropertyMap{
+			"aws": resource.MakeSecret(
+				resource.NewStringProperty("{\"accessKey\":\"my-access-key\"}"),
+			),
+		}
+		cleaned := cleanProvidersConfig(inputConfig)
+		expected := map[string]resource.PropertyMap{
+			"aws": {
+				resource.PropertyKey("accessKey"): resource.NewStringProperty("my-access-key"),
 			},
-		},
-		"version": resource.PropertyValue{
-			V: "0.0.0-alpha.0+dev",
-		},
-		"docker": resource.PropertyValue{
-			V: &resource.Secret{
-				Element: resource.PropertyValue{
-					V: resource.PropertyMap{
-						"local": resource.NewStringProperty("mydockerfile"),
-					},
-				},
-			},
-		},
-	}
-	unSecreted := unSecretProvidersConfig(inputConfig)
-	expected := resource.PropertyMap{
-		"aws": resource.PropertyValue{
-			V: resource.PropertyMap{
-				"region":    resource.NewStringProperty("us-west-2"),
-				"accessKey": resource.NewStringProperty("my-access-key"),
-			},
-		},
-		"version": resource.PropertyValue{
-			V: "0.0.0-alpha.0+dev",
-		},
-		"docker": resource.PropertyValue{
-			V: resource.PropertyMap{
+		}
+
+		assert.Equal(t, expected, cleaned)
+	})
+
+	t.Run("non-json-encoded", func(t *testing.T) {
+		inputConfig := resource.PropertyMap{
+			"docker": resource.NewObjectProperty(resource.PropertyMap{
 				"local": resource.NewStringProperty("mydockerfile"),
+			}),
+		}
+		cleaned := cleanProvidersConfig(inputConfig)
+		expected := map[string]resource.PropertyMap{
+			"docker": {
+				resource.PropertyKey("local"): resource.NewStringProperty("mydockerfile"),
 			},
-		},
-	}
-	assert.Equal(t, expected, unSecreted)
+		}
+		assert.Equal(t, expected, cleaned)
+	})
+
+	t.Run("non-json-encoded-secret", func(t *testing.T) {
+		inputConfig := resource.PropertyMap{
+			"docker": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+				"local": resource.NewStringProperty("mydockerfile"),
+			})),
+		}
+		cleaned := cleanProvidersConfig(inputConfig)
+		expected := map[string]resource.PropertyMap{
+			"docker": {
+				resource.PropertyKey("local"): resource.NewStringProperty("mydockerfile"),
+			},
+		}
+		assert.Equal(t, expected, cleaned)
+	})
 }

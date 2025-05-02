@@ -367,10 +367,16 @@ func (s *server) acquirePackageReference(
 // in the Terraform JSON file
 func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
 	providersConfig := make(map[string]resource.PropertyMap)
-	for propertyKey, serializedConfig := range config {
+	for propertyKey, originalSerializedConfig := range config {
 		if string(propertyKey) == "version" || string(propertyKey) == "pluginDownloadURL" {
 			// skip the version and pluginDownloadURL properties
 			continue
+		}
+
+		// Disregard secret markers here; this works for both JSON-encoded strings and objects.
+		serializedConfig := originalSerializedConfig
+		if serializedConfig.IsSecret() {
+			serializedConfig = originalSerializedConfig.SecretValue().Element
 		}
 
 		if serializedConfig.IsString() {
@@ -400,18 +406,6 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 	return providersConfig
 }
 
-// unSecretProvidersConfig unwraps top-level secrets and returns the underlying element value.
-// When a provider passes in terraformConfig.Result from a previously configured provider,
-// that result is a resource.PropertyValue wrapped in a secret.
-func unSecretProvidersConfig(config resource.PropertyMap) resource.PropertyMap {
-	for propertyKey, propertyValue := range config {
-		if propertyValue.IsSecret() {
-			config[propertyKey] = propertyValue.SecretValue().Element
-		}
-	}
-	return config
-}
-
 func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
@@ -423,9 +417,7 @@ func (s *server) Construct(
 		KeepOutputValues: true,
 	})
 
-	unsecretedConfig := unSecretProvidersConfig(s.providerConfig)
-
-	providersConfig := cleanProvidersConfig(unsecretedConfig)
+	providersConfig := cleanProvidersConfig(s.providerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
 	}
