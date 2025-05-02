@@ -23,7 +23,6 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -31,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
