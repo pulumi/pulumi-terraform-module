@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-terraform-module/sdks/vpc"
+	"github.com/pulumi/pulumi-terraform-module/sdks/go/vpc/v5/vpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

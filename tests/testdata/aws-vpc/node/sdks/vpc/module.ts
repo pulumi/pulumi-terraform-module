@@ -124,11 +124,11 @@ export class Module extends pulumi.ComponentResource {
     /**
      * Whether or not the Default VPC has DNS hostname support
      */
-    public readonly default_vpc_enable_dns_hostnames!: pulumi.Output<string | undefined>;
+    public readonly default_vpc_enable_dns_hostnames!: pulumi.Output<boolean | undefined>;
     /**
      * Whether or not the Default VPC has DNS support
      */
-    public readonly default_vpc_enable_dns_support!: pulumi.Output<string | undefined>;
+    public readonly default_vpc_enable_dns_support!: pulumi.Output<boolean | undefined>;
     /**
      * The ID of the Default VPC
      */
@@ -164,7 +164,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * List of IDs of elasticache route tables
      */
-    public /*out*/ readonly elasticache_route_table_ids!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly elasticache_route_table_ids!: pulumi.Output<string[] | undefined>;
     /**
      * List of ARNs of elasticache subnets
      */
@@ -248,7 +248,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * List of public Elastic IPs created for AWS NAT Gateway
      */
-    public /*out*/ readonly nat_public_ips!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly nat_public_ips!: pulumi.Output<string[] | undefined>;
     /**
      * List of NAT Gateway IDs
      */
@@ -308,7 +308,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * List of IDs of private route tables
      */
-    public /*out*/ readonly private_route_table_ids!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly private_route_table_ids!: pulumi.Output<string[] | undefined>;
     /**
      * List of ARNs of private subnets
      */
@@ -352,7 +352,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * List of IDs of public route tables
      */
-    public /*out*/ readonly public_route_table_ids!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly public_route_table_ids!: pulumi.Output<string[] | undefined>;
     /**
      * List of ARNs of public subnets
      */
@@ -392,7 +392,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * List of IDs of redshift route tables
      */
-    public /*out*/ readonly redshift_route_table_ids!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly redshift_route_table_ids!: pulumi.Output<string[] | undefined>;
     /**
      * List of ARNs of redshift subnets
      */
@@ -420,7 +420,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * Map of Customer Gateway attributes
      */
-    public /*out*/ readonly this_customer_gateway!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly this_customer_gateway!: pulumi.Output<{[key: string]: any} | undefined>;
     /**
      * The ARN of the VPN Gateway
      */
@@ -433,6 +433,7 @@ export class Module extends pulumi.ComponentResource {
      * The ARN of the VPC
      */
     public /*out*/ readonly vpc_arn!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly vpc_block_public_access_exclusions!: pulumi.Output<{[key: string]: any} | undefined>;
     /**
      * The CIDR block of the VPC
      */
@@ -440,11 +441,11 @@ export class Module extends pulumi.ComponentResource {
     /**
      * Whether or not the VPC has DNS hostname support
      */
-    public /*out*/ readonly vpc_enable_dns_hostnames!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly vpc_enable_dns_hostnames!: pulumi.Output<boolean | undefined>;
     /**
      * Whether or not the VPC has DNS support
      */
-    public /*out*/ readonly vpc_enable_dns_support!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly vpc_enable_dns_support!: pulumi.Output<boolean | undefined>;
     /**
      * The ARN of the IAM role used when pushing logs to Cloudwatch log group
      */
@@ -468,7 +469,7 @@ export class Module extends pulumi.ComponentResource {
     /**
      * The ID of the VPC
      */
-    public /*out*/ readonly vpc_id!: pulumi.Output<string>;
+    public /*out*/ readonly vpc_id!: pulumi.Output<string | undefined>;
     /**
      * Tenancy of instances spin up within VPC
      */
@@ -827,6 +828,7 @@ export class Module extends pulumi.ComponentResource {
             resourceInputs["vgw_arn"] = undefined /*out*/;
             resourceInputs["vgw_id"] = undefined /*out*/;
             resourceInputs["vpc_arn"] = undefined /*out*/;
+            resourceInputs["vpc_block_public_access_exclusions"] = undefined /*out*/;
             resourceInputs["vpc_cidr_block"] = undefined /*out*/;
             resourceInputs["vpc_enable_dns_hostnames"] = undefined /*out*/;
             resourceInputs["vpc_enable_dns_support"] = undefined /*out*/;
@@ -946,6 +948,7 @@ export class Module extends pulumi.ComponentResource {
             resourceInputs["vgw_arn"] = undefined /*out*/;
             resourceInputs["vgw_id"] = undefined /*out*/;
             resourceInputs["vpc_arn"] = undefined /*out*/;
+            resourceInputs["vpc_block_public_access_exclusions"] = undefined /*out*/;
             resourceInputs["vpc_cidr_block"] = undefined /*out*/;
             resourceInputs["vpc_enable_dns_hostnames"] = undefined /*out*/;
             resourceInputs["vpc_enable_dns_support"] = undefined /*out*/;

@@ -114,7 +114,7 @@ export async function getPackage() : Promise<string | undefined> {
 
 			const req = new resproto.RegisterPackageRequest();
 			req.setName("terraform-module");
-			req.setVersion("0.0.1");
+			req.setVersion("0.0.0-alpha.0+dev");
 			req.setDownloadUrl("");
 			req.setParameterization(params);
 			const resp : any = await new Promise((resolve, reject) => {

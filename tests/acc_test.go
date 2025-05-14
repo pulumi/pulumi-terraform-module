@@ -1383,6 +1383,8 @@ func ensureCompiledProvider(t *testing.T) string {
 }
 
 func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string, generateOnly bool) {
+	t.Helper()
+
 	convertArgs := []string{
 		"convert",
 		"--strict",
@@ -1394,12 +1396,18 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 		convertArgs = append(convertArgs, "--generate-only")
 	}
 	t.Logf("pulumi %s", strings.Join(convertArgs, " "))
-	cmd := exec.Command("pulumi", convertArgs...)
+
+	localPulumi := filepath.Join(getRoot(t), ".pulumi", "bin", "pulumi")
+
+	if _, err := os.Stat(localPulumi); os.IsNotExist(err) {
+		t.Errorf("This test requires a locally pinned Pulumi CLI; run `make prepare_local_workspace` first")
+		return
+	}
+
+	cmd := exec.Command(localPulumi, convertArgs...)
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
-	// add pulumi bin to path. This is required to get tests to work locally
-	path = fmt.Sprintf("%s:%s", filepath.Join(getRoot(t), ".pulumi", "bin"), path)
 
 	cmd.Dir = sourceDir
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s", path))

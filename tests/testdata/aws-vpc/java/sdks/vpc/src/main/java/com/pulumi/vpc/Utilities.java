@@ -114,7 +114,7 @@ public class Utilities {
 			// Base provider name
 			"terraform-module",
 			// Base provider version
-			"0.0.1",
+			"0.0.0-alpha.0+dev",
 			// Base provider download URL
 			"",
 			// Package name

@@ -3,15 +3,46 @@
 
 package com.pulumi.vpc;
 
-
+import com.pulumi.core.Output;
+import com.pulumi.core.annotations.Import;
+import java.lang.Object;
+import java.lang.String;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import javax.annotation.Nullable;
 
 
 public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
 
     public static final ProviderArgs Empty = new ProviderArgs();
 
+    /**
+     * provider configuration for aws
+     * 
+     */
+    @Import(name="aws", json=true)
+    private @Nullable Output<Map<String,Object>> aws;
+
+    /**
+     * @return provider configuration for aws
+     * 
+     */
+    public Optional<Output<Map<String,Object>>> aws() {
+        return Optional.ofNullable(this.aws);
+    }
+
+    private ProviderArgs() {}
+
+    private ProviderArgs(ProviderArgs $) {
+        this.aws = $.aws;
+    }
+
     public static Builder builder() {
         return new Builder();
+    }
+    public static Builder builder(ProviderArgs defaults) {
+        return new Builder(defaults);
     }
 
     public static final class Builder {
@@ -20,6 +51,32 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
         public Builder() {
             $ = new ProviderArgs();
         }
+
+        public Builder(ProviderArgs defaults) {
+            $ = new ProviderArgs(Objects.requireNonNull(defaults));
+        }
+
+        /**
+         * @param aws provider configuration for aws
+         * 
+         * @return builder
+         * 
+         */
+        public Builder aws(@Nullable Output<Map<String,Object>> aws) {
+            $.aws = aws;
+            return this;
+        }
+
+        /**
+         * @param aws provider configuration for aws
+         * 
+         * @return builder
+         * 
+         */
+        public Builder aws(Map<String,Object> aws) {
+            return aws(Output.of(aws));
+        }
+
         public ProviderArgs build() {
             return $;
         }

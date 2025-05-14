@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi-terraform-module/sdks/vpc/internal"
+	"github.com/pulumi/pulumi-terraform-module/sdks/go/vpc/v5/vpc/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -65,9 +65,9 @@ type Module struct {
 	// The ID of the security group created by default on Default VPC creation
 	Default_vpc_default_security_group_id pulumi.StringPtrOutput `pulumi:"default_vpc_default_security_group_id"`
 	// Whether or not the Default VPC has DNS hostname support
-	Default_vpc_enable_dns_hostnames pulumi.StringPtrOutput `pulumi:"default_vpc_enable_dns_hostnames"`
+	Default_vpc_enable_dns_hostnames pulumi.BoolPtrOutput `pulumi:"default_vpc_enable_dns_hostnames"`
 	// Whether or not the Default VPC has DNS support
-	Default_vpc_enable_dns_support pulumi.StringPtrOutput `pulumi:"default_vpc_enable_dns_support"`
+	Default_vpc_enable_dns_support pulumi.BoolPtrOutput `pulumi:"default_vpc_enable_dns_support"`
 	// The ID of the Default VPC
 	Default_vpc_id pulumi.StringPtrOutput `pulumi:"default_vpc_id"`
 	// Tenancy of instances spin up within Default VPC
@@ -85,7 +85,7 @@ type Module struct {
 	// List of IDs of the elasticache route table association
 	Elasticache_route_table_association_ids pulumi.StringArrayOutput `pulumi:"elasticache_route_table_association_ids"`
 	// List of IDs of elasticache route tables
-	Elasticache_route_table_ids pulumi.StringPtrOutput `pulumi:"elasticache_route_table_ids"`
+	Elasticache_route_table_ids pulumi.StringArrayOutput `pulumi:"elasticache_route_table_ids"`
 	// List of ARNs of elasticache subnets
 	Elasticache_subnet_arns pulumi.StringArrayOutput `pulumi:"elasticache_subnet_arns"`
 	// ID of elasticache subnet group
@@ -127,7 +127,7 @@ type Module struct {
 	// List of allocation ID of Elastic IPs created for AWS NAT Gateway
 	Nat_ids pulumi.StringArrayOutput `pulumi:"nat_ids"`
 	// List of public Elastic IPs created for AWS NAT Gateway
-	Nat_public_ips pulumi.StringPtrOutput `pulumi:"nat_public_ips"`
+	Nat_public_ips pulumi.StringArrayOutput `pulumi:"nat_public_ips"`
 	// List of NAT Gateway IDs
 	Natgw_ids pulumi.StringArrayOutput `pulumi:"natgw_ids"`
 	// List of Network Interface IDs assigned to NAT Gateways
@@ -157,7 +157,7 @@ type Module struct {
 	// List of IDs of the private route table association
 	Private_route_table_association_ids pulumi.StringArrayOutput `pulumi:"private_route_table_association_ids"`
 	// List of IDs of private route tables
-	Private_route_table_ids pulumi.StringPtrOutput `pulumi:"private_route_table_ids"`
+	Private_route_table_ids pulumi.StringArrayOutput `pulumi:"private_route_table_ids"`
 	// List of ARNs of private subnets
 	Private_subnet_arns pulumi.StringArrayOutput `pulumi:"private_subnet_arns"`
 	// A list of all private subnets, containing the full objects.
@@ -179,7 +179,7 @@ type Module struct {
 	// List of IDs of the public route table association
 	Public_route_table_association_ids pulumi.StringArrayOutput `pulumi:"public_route_table_association_ids"`
 	// List of IDs of public route tables
-	Public_route_table_ids pulumi.StringPtrOutput `pulumi:"public_route_table_ids"`
+	Public_route_table_ids pulumi.StringArrayOutput `pulumi:"public_route_table_ids"`
 	// List of ARNs of public subnets
 	Public_subnet_arns pulumi.StringArrayOutput `pulumi:"public_subnet_arns"`
 	// A list of all public subnets, containing the full objects.
@@ -199,7 +199,7 @@ type Module struct {
 	// List of IDs of the redshift route table association
 	Redshift_route_table_association_ids pulumi.StringArrayOutput `pulumi:"redshift_route_table_association_ids"`
 	// List of IDs of redshift route tables
-	Redshift_route_table_ids pulumi.StringPtrOutput `pulumi:"redshift_route_table_ids"`
+	Redshift_route_table_ids pulumi.StringArrayOutput `pulumi:"redshift_route_table_ids"`
 	// List of ARNs of redshift subnets
 	Redshift_subnet_arns pulumi.StringArrayOutput `pulumi:"redshift_subnet_arns"`
 	// ID of redshift subnet group
@@ -213,19 +213,20 @@ type Module struct {
 	// List of IPv6 cidr_blocks of redshift subnets in an IPv6 enabled VPC
 	Redshift_subnets_ipv6_cidr_blocks pulumi.StringArrayOutput `pulumi:"redshift_subnets_ipv6_cidr_blocks"`
 	// Map of Customer Gateway attributes
-	This_customer_gateway pulumi.StringPtrOutput `pulumi:"this_customer_gateway"`
+	This_customer_gateway pulumi.MapOutput `pulumi:"this_customer_gateway"`
 	// The ARN of the VPN Gateway
 	Vgw_arn pulumi.StringPtrOutput `pulumi:"vgw_arn"`
 	// The ID of the VPN Gateway
 	Vgw_id pulumi.StringPtrOutput `pulumi:"vgw_id"`
 	// The ARN of the VPC
-	Vpc_arn pulumi.StringPtrOutput `pulumi:"vpc_arn"`
+	Vpc_arn                            pulumi.StringPtrOutput `pulumi:"vpc_arn"`
+	Vpc_block_public_access_exclusions pulumi.MapOutput       `pulumi:"vpc_block_public_access_exclusions"`
 	// The CIDR block of the VPC
 	Vpc_cidr_block pulumi.StringPtrOutput `pulumi:"vpc_cidr_block"`
 	// Whether or not the VPC has DNS hostname support
-	Vpc_enable_dns_hostnames pulumi.StringPtrOutput `pulumi:"vpc_enable_dns_hostnames"`
+	Vpc_enable_dns_hostnames pulumi.BoolPtrOutput `pulumi:"vpc_enable_dns_hostnames"`
 	// Whether or not the VPC has DNS support
-	Vpc_enable_dns_support pulumi.StringPtrOutput `pulumi:"vpc_enable_dns_support"`
+	Vpc_enable_dns_support pulumi.BoolPtrOutput `pulumi:"vpc_enable_dns_support"`
 	// The ARN of the IAM role used when pushing logs to Cloudwatch log group
 	Vpc_flow_log_cloudwatch_iam_role_arn pulumi.StringPtrOutput `pulumi:"vpc_flow_log_cloudwatch_iam_role_arn"`
 	// The ARN of the IAM role used when pushing logs cross account
@@ -1370,13 +1371,13 @@ func (o ModuleOutput) Default_vpc_default_security_group_id() pulumi.StringPtrOu
 }
 
 // Whether or not the Default VPC has DNS hostname support
-func (o ModuleOutput) Default_vpc_enable_dns_hostnames() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Default_vpc_enable_dns_hostnames }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Default_vpc_enable_dns_hostnames() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Module) pulumi.BoolPtrOutput { return v.Default_vpc_enable_dns_hostnames }).(pulumi.BoolPtrOutput)
 }
 
 // Whether or not the Default VPC has DNS support
-func (o ModuleOutput) Default_vpc_enable_dns_support() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Default_vpc_enable_dns_support }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Default_vpc_enable_dns_support() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Module) pulumi.BoolPtrOutput { return v.Default_vpc_enable_dns_support }).(pulumi.BoolPtrOutput)
 }
 
 // The ID of the Default VPC
@@ -1420,8 +1421,8 @@ func (o ModuleOutput) Elasticache_route_table_association_ids() pulumi.StringArr
 }
 
 // List of IDs of elasticache route tables
-func (o ModuleOutput) Elasticache_route_table_ids() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Elasticache_route_table_ids }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Elasticache_route_table_ids() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.StringArrayOutput { return v.Elasticache_route_table_ids }).(pulumi.StringArrayOutput)
 }
 
 // List of ARNs of elasticache subnets
@@ -1525,8 +1526,8 @@ func (o ModuleOutput) Nat_ids() pulumi.StringArrayOutput {
 }
 
 // List of public Elastic IPs created for AWS NAT Gateway
-func (o ModuleOutput) Nat_public_ips() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Nat_public_ips }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Nat_public_ips() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.StringArrayOutput { return v.Nat_public_ips }).(pulumi.StringArrayOutput)
 }
 
 // List of NAT Gateway IDs
@@ -1600,8 +1601,8 @@ func (o ModuleOutput) Private_route_table_association_ids() pulumi.StringArrayOu
 }
 
 // List of IDs of private route tables
-func (o ModuleOutput) Private_route_table_ids() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Private_route_table_ids }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Private_route_table_ids() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.StringArrayOutput { return v.Private_route_table_ids }).(pulumi.StringArrayOutput)
 }
 
 // List of ARNs of private subnets
@@ -1655,8 +1656,8 @@ func (o ModuleOutput) Public_route_table_association_ids() pulumi.StringArrayOut
 }
 
 // List of IDs of public route tables
-func (o ModuleOutput) Public_route_table_ids() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Public_route_table_ids }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Public_route_table_ids() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.StringArrayOutput { return v.Public_route_table_ids }).(pulumi.StringArrayOutput)
 }
 
 // List of ARNs of public subnets
@@ -1705,8 +1706,8 @@ func (o ModuleOutput) Redshift_route_table_association_ids() pulumi.StringArrayO
 }
 
 // List of IDs of redshift route tables
-func (o ModuleOutput) Redshift_route_table_ids() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Redshift_route_table_ids }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Redshift_route_table_ids() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.StringArrayOutput { return v.Redshift_route_table_ids }).(pulumi.StringArrayOutput)
 }
 
 // List of ARNs of redshift subnets
@@ -1740,8 +1741,8 @@ func (o ModuleOutput) Redshift_subnets_ipv6_cidr_blocks() pulumi.StringArrayOutp
 }
 
 // Map of Customer Gateway attributes
-func (o ModuleOutput) This_customer_gateway() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.This_customer_gateway }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) This_customer_gateway() pulumi.MapOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapOutput { return v.This_customer_gateway }).(pulumi.MapOutput)
 }
 
 // The ARN of the VPN Gateway
@@ -1759,19 +1760,23 @@ func (o ModuleOutput) Vpc_arn() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Vpc_arn }).(pulumi.StringPtrOutput)
 }
 
+func (o ModuleOutput) Vpc_block_public_access_exclusions() pulumi.MapOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapOutput { return v.Vpc_block_public_access_exclusions }).(pulumi.MapOutput)
+}
+
 // The CIDR block of the VPC
 func (o ModuleOutput) Vpc_cidr_block() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Vpc_cidr_block }).(pulumi.StringPtrOutput)
 }
 
 // Whether or not the VPC has DNS hostname support
-func (o ModuleOutput) Vpc_enable_dns_hostnames() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Vpc_enable_dns_hostnames }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Vpc_enable_dns_hostnames() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Module) pulumi.BoolPtrOutput { return v.Vpc_enable_dns_hostnames }).(pulumi.BoolPtrOutput)
 }
 
 // Whether or not the VPC has DNS support
-func (o ModuleOutput) Vpc_enable_dns_support() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Vpc_enable_dns_support }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Vpc_enable_dns_support() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Module) pulumi.BoolPtrOutput { return v.Vpc_enable_dns_support }).(pulumi.BoolPtrOutput)
 }
 
 // The ARN of the IAM role used when pushing logs to Cloudwatch log group
