@@ -256,9 +256,13 @@ func TestCreateTFFile(t *testing.T) {
 
 			writeTfVarFile(t, tofu.WorkingDir(), tt.tfVariableType)
 
-			err := CreateTFFile("simple", "./local-module", "", tofu.WorkingDir(), resource.PropertyMap{
-				"tfVar": tt.inputsValue,
-			}, tt.outputs, tt.providersConfig)
+			localModulePath, err := filepath.Abs(filepath.Join(tofu.WorkingDir(), "./local-module"))
+			require.NoError(t, err)
+
+			err = CreateTFFile("simple", TFModuleSource(localModulePath), "",
+				tofu.WorkingDir(), resource.PropertyMap{
+					"tfVar": tt.inputsValue,
+				}, tt.outputs, tt.providersConfig)
 			assert.NoError(t, err)
 
 			contents, err := os.ReadFile(filepath.Join(tofu.WorkingDir(), pulumiTFJsonFileName))
