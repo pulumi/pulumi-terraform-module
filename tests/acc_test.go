@@ -1252,6 +1252,30 @@ func Test_Dependencies(t *testing.T) {
 	}
 }
 
+// Test that passing local modules as local paths ../foo or ./foo works as expected.
+func Test_LocalModule_RelativePath(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Module written to support the test.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
+	require.NoError(t, err)
+
+	anyProgram := filepath.Join("testdata", "programs", "ts", "randmod-program")
+
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
+	pt := pulumitest.NewPulumiTest(t, anyProgram, localPath)
+	pt.CopyToTempDir(t)
+
+	err = os.CopyFS(filepath.Join(pt.WorkingDir(), "randmod"), os.DirFS(randMod))
+	require.NoError(t, err)
+
+	// pulumi package add <provider-path> <randmod-path> <package-name>
+	pulumiPackageAdd(t, pt, localProviderBinPath, "./randmod", "randmod")
+
+	previewResult := pt.Preview(t)
+	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
+}
+
 // assertTFStateResourceExists checks if a resource exists in the TF state.
 // packageName should be the name of the package used in `pulumi package add`
 // resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"

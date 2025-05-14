@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -123,14 +124,22 @@ func CreateTFFile(
 	name string, // name of the module instance
 	source TFModuleSource,
 	version TFModuleVersion,
-	workingDir string,
+	workingDir string, // working directory where all tofu commands will run
 	inputs resource.PropertyMap,
 	outputs []TFOutputSpec,
 	providerConfig map[string]resource.PropertyMap,
 ) error {
+	absoluteSource := string(source)
+	if source.IsLocalPath() {
+		var err error
+		absoluteSource, err = filepath.Abs(string(source))
+		if err != nil {
+			return err
+		}
+	}
 
 	moduleProps := map[string]interface{}{
-		"source": source,
+		"source": absoluteSource,
 	}
 	// local modules and github-based modules don't have a version
 	if version != "" {
