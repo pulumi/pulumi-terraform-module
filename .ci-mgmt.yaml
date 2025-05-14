@@ -3,7 +3,7 @@ template: parameterized-go
 noSchema: true
 major-version: 0
 test-folder: tests
-shards: 4
+shards: 8
 aws: true
 modulePath: .
 env:
