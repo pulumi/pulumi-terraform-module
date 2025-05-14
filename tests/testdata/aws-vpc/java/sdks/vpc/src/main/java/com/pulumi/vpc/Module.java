@@ -9,8 +9,11 @@ import com.pulumi.core.annotations.ResourceType;
 import com.pulumi.core.internal.Codegen;
 import com.pulumi.vpc.ModuleArgs;
 import com.pulumi.vpc.Utilities;
+import java.lang.Boolean;
+import java.lang.Object;
 import java.lang.String;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
@@ -370,28 +373,28 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * Whether or not the Default VPC has DNS hostname support
      * 
      */
-    @Export(name="default_vpc_enable_dns_hostnames", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> default_vpc_enable_dns_hostnames;
+    @Export(name="default_vpc_enable_dns_hostnames", refs={Boolean.class}, tree="[0]")
+    private Output</* @Nullable */ Boolean> default_vpc_enable_dns_hostnames;
 
     /**
      * @return Whether or not the Default VPC has DNS hostname support
      * 
      */
-    public Output<Optional<String>> default_vpc_enable_dns_hostnames() {
+    public Output<Optional<Boolean>> default_vpc_enable_dns_hostnames() {
         return Codegen.optional(this.default_vpc_enable_dns_hostnames);
     }
     /**
      * Whether or not the Default VPC has DNS support
      * 
      */
-    @Export(name="default_vpc_enable_dns_support", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> default_vpc_enable_dns_support;
+    @Export(name="default_vpc_enable_dns_support", refs={Boolean.class}, tree="[0]")
+    private Output</* @Nullable */ Boolean> default_vpc_enable_dns_support;
 
     /**
      * @return Whether or not the Default VPC has DNS support
      * 
      */
-    public Output<Optional<String>> default_vpc_enable_dns_support() {
+    public Output<Optional<Boolean>> default_vpc_enable_dns_support() {
         return Codegen.optional(this.default_vpc_enable_dns_support);
     }
     /**
@@ -510,14 +513,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * List of IDs of elasticache route tables
      * 
      */
-    @Export(name="elasticache_route_table_ids", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> elasticache_route_table_ids;
+    @Export(name="elasticache_route_table_ids", refs={List.class,String.class}, tree="[0,1]")
+    private Output</* @Nullable */ List<String>> elasticache_route_table_ids;
 
     /**
      * @return List of IDs of elasticache route tables
      * 
      */
-    public Output<Optional<String>> elasticache_route_table_ids() {
+    public Output<Optional<List<String>>> elasticache_route_table_ids() {
         return Codegen.optional(this.elasticache_route_table_ids);
     }
     /**
@@ -804,14 +807,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * List of public Elastic IPs created for AWS NAT Gateway
      * 
      */
-    @Export(name="nat_public_ips", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> nat_public_ips;
+    @Export(name="nat_public_ips", refs={List.class,String.class}, tree="[0,1]")
+    private Output</* @Nullable */ List<String>> nat_public_ips;
 
     /**
      * @return List of public Elastic IPs created for AWS NAT Gateway
      * 
      */
-    public Output<Optional<String>> nat_public_ips() {
+    public Output<Optional<List<String>>> nat_public_ips() {
         return Codegen.optional(this.nat_public_ips);
     }
     /**
@@ -1014,14 +1017,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * List of IDs of private route tables
      * 
      */
-    @Export(name="private_route_table_ids", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> private_route_table_ids;
+    @Export(name="private_route_table_ids", refs={List.class,String.class}, tree="[0,1]")
+    private Output</* @Nullable */ List<String>> private_route_table_ids;
 
     /**
      * @return List of IDs of private route tables
      * 
      */
-    public Output<Optional<String>> private_route_table_ids() {
+    public Output<Optional<List<String>>> private_route_table_ids() {
         return Codegen.optional(this.private_route_table_ids);
     }
     /**
@@ -1168,14 +1171,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * List of IDs of public route tables
      * 
      */
-    @Export(name="public_route_table_ids", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> public_route_table_ids;
+    @Export(name="public_route_table_ids", refs={List.class,String.class}, tree="[0,1]")
+    private Output</* @Nullable */ List<String>> public_route_table_ids;
 
     /**
      * @return List of IDs of public route tables
      * 
      */
-    public Output<Optional<String>> public_route_table_ids() {
+    public Output<Optional<List<String>>> public_route_table_ids() {
         return Codegen.optional(this.public_route_table_ids);
     }
     /**
@@ -1308,14 +1311,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * List of IDs of redshift route tables
      * 
      */
-    @Export(name="redshift_route_table_ids", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> redshift_route_table_ids;
+    @Export(name="redshift_route_table_ids", refs={List.class,String.class}, tree="[0,1]")
+    private Output</* @Nullable */ List<String>> redshift_route_table_ids;
 
     /**
      * @return List of IDs of redshift route tables
      * 
      */
-    public Output<Optional<String>> redshift_route_table_ids() {
+    public Output<Optional<List<String>>> redshift_route_table_ids() {
         return Codegen.optional(this.redshift_route_table_ids);
     }
     /**
@@ -1406,14 +1409,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * Map of Customer Gateway attributes
      * 
      */
-    @Export(name="this_customer_gateway", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> this_customer_gateway;
+    @Export(name="this_customer_gateway", refs={Map.class,String.class,Object.class}, tree="[0,1,2]")
+    private Output</* @Nullable */ Map<String,Object>> this_customer_gateway;
 
     /**
      * @return Map of Customer Gateway attributes
      * 
      */
-    public Output<Optional<String>> this_customer_gateway() {
+    public Output<Optional<Map<String,Object>>> this_customer_gateway() {
         return Codegen.optional(this.this_customer_gateway);
     }
     /**
@@ -1458,6 +1461,12 @@ public class Module extends com.pulumi.resources.ComponentResource {
     public Output<Optional<String>> vpc_arn() {
         return Codegen.optional(this.vpc_arn);
     }
+    @Export(name="vpc_block_public_access_exclusions", refs={Map.class,String.class,Object.class}, tree="[0,1,2]")
+    private Output</* @Nullable */ Map<String,Object>> vpc_block_public_access_exclusions;
+
+    public Output<Optional<Map<String,Object>>> vpc_block_public_access_exclusions() {
+        return Codegen.optional(this.vpc_block_public_access_exclusions);
+    }
     /**
      * The CIDR block of the VPC
      * 
@@ -1476,28 +1485,28 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * Whether or not the VPC has DNS hostname support
      * 
      */
-    @Export(name="vpc_enable_dns_hostnames", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> vpc_enable_dns_hostnames;
+    @Export(name="vpc_enable_dns_hostnames", refs={Boolean.class}, tree="[0]")
+    private Output</* @Nullable */ Boolean> vpc_enable_dns_hostnames;
 
     /**
      * @return Whether or not the VPC has DNS hostname support
      * 
      */
-    public Output<Optional<String>> vpc_enable_dns_hostnames() {
+    public Output<Optional<Boolean>> vpc_enable_dns_hostnames() {
         return Codegen.optional(this.vpc_enable_dns_hostnames);
     }
     /**
      * Whether or not the VPC has DNS support
      * 
      */
-    @Export(name="vpc_enable_dns_support", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> vpc_enable_dns_support;
+    @Export(name="vpc_enable_dns_support", refs={Boolean.class}, tree="[0]")
+    private Output</* @Nullable */ Boolean> vpc_enable_dns_support;
 
     /**
      * @return Whether or not the VPC has DNS support
      * 
      */
-    public Output<Optional<String>> vpc_enable_dns_support() {
+    public Output<Optional<Boolean>> vpc_enable_dns_support() {
         return Codegen.optional(this.vpc_enable_dns_support);
     }
     /**
@@ -1575,14 +1584,14 @@ public class Module extends com.pulumi.resources.ComponentResource {
      * 
      */
     @Export(name="vpc_id", refs={String.class}, tree="[0]")
-    private Output<String> vpc_id;
+    private Output</* @Nullable */ String> vpc_id;
 
     /**
      * @return The ID of the VPC
      * 
      */
-    public Output<String> vpc_id() {
-        return this.vpc_id;
+    public Output<Optional<String>> vpc_id() {
+        return Codegen.optional(this.vpc_id);
     }
     /**
      * Tenancy of instances spin up within VPC

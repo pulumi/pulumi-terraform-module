@@ -77,7 +77,7 @@ func PkgVersion() (semver.Version, error) {
 	}
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^github.com/pulumi/pulumi-terraform-module/sdks/vpc(/v\\d+)?")
+	re := regexp.MustCompile("^github.com/pulumi/pulumi-terraform-module/sdks/go/vpc/v5/vpc(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
