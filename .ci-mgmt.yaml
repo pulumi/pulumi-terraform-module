@@ -1,5 +1,6 @@
 provider: terraform-module
 template: parameterized-go
+providerDefaultBranch: main
 noSchema: true
 major-version: 0
 test-folder: tests
