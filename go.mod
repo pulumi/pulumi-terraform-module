@@ -2,12 +2,6 @@ module github.com/pulumi/pulumi-terraform-module
 
 go 1.23.0
 
-// Temporary
-replace (
-	github.com/pulumi/pulumi/pkg/v3 => ../pulumi/pkg
-	github.com/pulumi/pulumi/sdk/v3 => ../pulumi/sdk
-)
-
 replace (
 	github.com/hashicorp/hcl/v2 => github.com/opentofu/hcl/v2 v2.0.0-20240814143621-8048794c5c52
 	github.com/pulumi/opentofu => github.com/pulumi/opentofu v0.0.0-20250318202137-3146daceaf73
@@ -34,8 +28,10 @@ require (
 	github.com/pulumi/opentofu v0.0.0-20250318202137-3146daceaf73
 	github.com/pulumi/providertest v0.3.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.108.0
-	github.com/pulumi/pulumi/pkg/v3 v3.169.0
-	github.com/pulumi/pulumi/sdk/v3 v3.169.0
+
+	// Temporary before views support lands in pulumi/pulumi
+	github.com/pulumi/pulumi/pkg/v3 v3.168.1-0.20250508063930-67304dcabea4
+	github.com/pulumi/pulumi/sdk/v3 v3.168.1-0.20250508063930-67304dcabea4
 	github.com/stretchr/testify v1.10.0
 	github.com/zclconf/go-cty v1.16.2
 	google.golang.org/grpc v1.70.0
