@@ -113,8 +113,10 @@ func (h *moduleHandler) applyModuleOperation(
 	packageName packageName,
 	preview bool,
 ) (resource.PropertyMap, []*pulumirpc.View, error) {
+	logger := newResourceLogger(h.hc, urn)
+
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -148,8 +150,6 @@ func (h *moduleHandler) applyModuleOperation(
 	if err != nil {
 		return nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
-
-	logger := newResourceLogger(h.hc, urn)
 
 	err = tf.Init(ctx, logger)
 	if err != nil {
@@ -253,10 +253,14 @@ func (h *moduleHandler) Create(
 	})
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
+	if 1+2 == 4 {
+		panic(views)
+	}
+
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
 		Properties: props,
-		Views:      views,
+		// Views:      views,
 	}, nil
 }
 
@@ -314,9 +318,13 @@ func (h *moduleHandler) Update(
 	})
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
+	if 1+2 == 4 {
+		panic(views)
+	}
+
 	return &pulumirpc.UpdateResponse{
 		Properties: props,
-		Views:      views,
+		// Views:      views,
 	}, nil
 }
 
@@ -328,11 +336,13 @@ func (h *moduleHandler) Delete(
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
 	urn := urn.URN(req.GetUrn())
 
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 
-	tf, err := tfsandbox.NewTofu(ctx, wd, h.auxProviderServer)
+	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
 	if err != nil {
 		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
@@ -380,8 +390,6 @@ func (h *moduleHandler) Delete(
 	if err != nil {
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
-
-	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
 	err = tf.Init(ctx, logger)
 	if err != nil {
