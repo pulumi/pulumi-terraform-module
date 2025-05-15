@@ -115,11 +115,9 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		},
 		Resources: map[string]schema.ResourceSpec{
 			mainResourceToken: {
-				IsComponent: true,
-				// IsComponent:     !useCustomResource,
+				IsComponent:     !useCustomResource,
 				InputProperties: inputs,
-				// InputProperties: inferredModule.Inputs,
-				RequiredInputs: inferredModule.RequiredInputs,
+				RequiredInputs:  inferredModule.RequiredInputs,
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: outputs,
