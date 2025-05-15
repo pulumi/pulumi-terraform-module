@@ -206,11 +206,6 @@ func (h *moduleHandler) applyModuleOperation(
 			return nil, nil, fmt.Errorf("Apply failed: %w", err)
 		}
 
-		rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
-		if err != nil {
-			return nil, nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
-		}
-
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
 			childType := childResourceTypeToken(packageName, rp.Type())
 			childName := childResourceName(rp)
@@ -221,14 +216,32 @@ func (h *moduleHandler) applyModuleOperation(
 			})
 		})
 
-		moduleOutputs = tfState.Outputs()
-		stateProp := resource.MakeSecret(resource.NewStringProperty(string(rawState)))
-		lockProp := resource.NewStringProperty(string(rawLockFile))
-		moduleOutputs[moduleResourceStatePropName] = stateProp
-		moduleOutputs[moduleResourceLockPropName] = lockProp
+		moduleOutputs, err = h.outputs(ctx, tf, tfState)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return moduleOutputs, views, nil
+}
+
+// Pulls the TF state and formats module outputs with the special __ meta-properties.
+func (h *moduleHandler) outputs(
+	ctx context.Context,
+	tf *tfsandbox.Tofu,
+	tfState *tfsandbox.State,
+) (resource.PropertyMap, error) {
+	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
+	}
+
+	moduleOutputs := tfState.Outputs()
+	stateProp := resource.MakeSecret(resource.NewStringProperty(string(rawState)))
+	lockProp := resource.NewStringProperty(string(rawLockFile))
+	moduleOutputs[moduleResourceStatePropName] = stateProp
+	moduleOutputs[moduleResourceLockPropName] = lockProp
+	return moduleOutputs, nil
 }
 
 func (h *moduleHandler) Create(
@@ -368,94 +381,60 @@ func (h *moduleHandler) Read(
 	req *pulumirpc.ReadRequest,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
+	inferredModule *InferredModuleSchema,
+	providersConfig map[string]resource.PropertyMap,
 ) (*pulumirpc.ReadResponse, error) {
 	if req.Inputs == nil {
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
 	}
 
-	// TODO implement for real
+	urn := urn.URN(req.GetUrn())
+
+	moduleInputs, err := plugin.UnmarshalProperties(req.Inputs, h.marshalOpts())
+	if err != nil {
+		return nil, err
+	}
+
+	oldOutputs, err := plugin.UnmarshalProperties(req.Properties, h.marshalOpts())
+	if err != nil {
+		return nil, err
+	}
+
+	tf, err := h.prepSandbox(
+		ctx,
+		urn,
+		moduleInputs,
+		oldOutputs,
+		inferredModule,
+		moduleSource,
+		moduleVersion,
+		providersConfig,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
+	}
+
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+	state, err := tf.Refresh(ctx, logger)
+	if err != nil {
+		return nil, fmt.Errorf("Module refresh failed: %w", err)
+	}
+
+	outputs, err := h.outputs(ctx, tf, state)
+	if err != nil {
+		return nil, err
+	}
+
+	properties, err := plugin.MarshalProperties(outputs, h.marshalOpts())
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.ReadResponse{
 		Id:         moduleResourceID,
-		Properties: req.GetProperties(),
-		Inputs:     req.GetInputs(),
+		Properties: properties,
+		Inputs:     req.GetInputs(), // inputs never change on refresh
 	}, nil
-
-	// inputsStruct := req.Inputs.Fields["moduleInputs"].GetStructValue()
-	// inputs, err := plugin.UnmarshalProperties(inputsStruct, plugin.MarshalOptions{
-	// 	KeepUnknowns:     true,
-	// 	KeepSecrets:      true,
-	// 	KeepResources:    true,
-	// 	KeepOutputValues: true,
-	// })
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// modUrn := h.mustParseModURN(req.Inputs)
-	// tfName := getModuleName(modUrn)
-	// wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
-
-	// tf, err := tfsandbox.NewTofu(ctx, wd)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Sandbox construction failed: %w", err)
-	// }
-
-	// // when refreshing, we do not require outputs to be exposed
-	// err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
-	// 	tf.WorkingDir(),
-	// 	inputs,                            /*inputs*/
-	// 	[]tfsandbox.TFOutputSpec{},        /*outputs*/
-	// 	map[string]resource.PropertyMap{}, /*providersConfig*/
-	// )
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Seed file generation failed: %w", err)
-	// }
-
-	// oldState := moduleState{}
-	// oldState.Unmarshal(req.GetProperties())
-
-	// err = tf.PushStateAndLockFile(ctx, oldState.rawState, oldState.rawLockFile)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
-	// }
-
-	// logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
-
-	// plan, err := tf.PlanRefreshOnly(ctx, logger)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Planning module refresh failed: %w", err)
-	// }
-
-	// // Child resources will need the plan to figure out their diffs.
-	// h.planStore.SetPlan(modUrn, plan)
-
-	// // Now actually apply the refresh.
-	// state, err := tf.Refresh(ctx, logger)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Module refresh failed: %w", err)
-	// }
-
-	// // Child resources need to access the state in their Read() implementation.
-	// h.planStore.SetState(modUrn, state)
-
-	// rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("PullStateAndLockFile failed: %w", err)
-	// }
-
-	// refreshedModuleState := moduleState{
-	// 	rawState:    rawState,
-	// 	rawLockFile: rawLockFile,
-	// }
-
-	// // The engine will call Diff() after Read(), and it would expect this to be populated.
-	// h.newState.Put(modUrn, refreshedModuleState)
-
-	// return &pulumirpc.ReadResponse{
-	// 	Id:         moduleStateResourceID,
-	// 	Properties: refreshedModuleState.Marshal(),
-	// 	Inputs:     req.Inputs, // inputs never change
-	// }, nil
 }
 
 func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, rawLockFile []byte) {
