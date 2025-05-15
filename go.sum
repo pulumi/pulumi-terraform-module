@@ -782,6 +782,10 @@ github.com/pulumi/providertest v0.3.0 h1:Dv10aoFaNQBDRtK8cRbd2uk9vEhpC/NryN+0y7N
 github.com/pulumi/providertest v0.3.0/go.mod h1:aTxVfdxP/Pe0iPbokjBp99x0XaY4fkZB2CjIS5wysMs=
 github.com/pulumi/pulumi-terraform-bridge/v3 v3.108.0 h1:ypXrqGaIe652X51dTlJSVW9JdzNYsns3yKp+6C+KF5w=
 github.com/pulumi/pulumi-terraform-bridge/v3 v3.108.0/go.mod h1:OURQCCIz/jBcXs1oUsL38P5SamBGc2HJBCcmva4LJi4=
+github.com/pulumi/pulumi/pkg/v3 v3.168.1-0.20250508063930-67304dcabea4 h1:SdL6j69/ZBNwcFijg+q2dCds178xiqsLx414uPwMhIY=
+github.com/pulumi/pulumi/pkg/v3 v3.168.1-0.20250508063930-67304dcabea4/go.mod h1:FSWsOyqGwchBGzKITUdfcu7LYCh7r1XmjkjHbASelgE=
+github.com/pulumi/pulumi/sdk/v3 v3.168.1-0.20250508063930-67304dcabea4 h1:LSy1UwFUj/mXv7UsooIdUGr8qDxF4ZU4eQeqyK7afSU=
+github.com/pulumi/pulumi/sdk/v3 v3.168.1-0.20250508063930-67304dcabea4/go.mod h1:Qhe4dOjqedyLr47kGGnG6ULIbzaPTlmjAvPqNQ1Ollo=
 github.com/pulumi/terraform-diff-reader v0.0.2 h1:kTE4nEXU3/SYXESvAIem+wyHMI3abqkI3OhJ0G04LLI=
 github.com/pulumi/terraform-diff-reader v0.0.2/go.mod h1:sZ9FUzGO+yM41hsQHs/yIcj/Y993qMdBxBU5mpDmAfQ=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
