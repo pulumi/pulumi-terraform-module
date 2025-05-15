@@ -101,12 +101,12 @@ jobs:
     with:
       version: ${{ needs.prerequisites.outputs.version }}
 
-name: master
+name: main
 on:
   workflow_dispatch: {}
   push:
     branches:
-    - master
+    - main
     paths-ignore:
     - "**.md"
     tags-ignore:
