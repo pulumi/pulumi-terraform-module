@@ -536,8 +536,7 @@ func (s *server) Diff(
 	if useCustomResource {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			providersConfig := cleanProvidersConfig(s.providerConfig)
-			return s.moduleHandler.Diff(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
+			return s.moduleHandler.Diff(ctx, req)
 		default:
 			return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
 		}

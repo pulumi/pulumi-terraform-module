@@ -72,9 +72,6 @@ func (h *moduleHandler) Check(
 func (h *moduleHandler) Diff(
 	_ context.Context,
 	req *pulumirpc.DiffRequest,
-	moduleSource TFModuleSource,
-	moduleVersion TFModuleVersion,
-	providersConfig map[string]resource.PropertyMap,
 ) (*pulumirpc.DiffResponse, error) {
 	// TODO should post-`pulumi refresh` diff have any custom handling?
 	//
