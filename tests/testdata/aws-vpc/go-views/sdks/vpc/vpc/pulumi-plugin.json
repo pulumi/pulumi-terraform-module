@@ -1,0 +1,10 @@
+{
+  "resource": true,
+  "name": "terraform-module",
+  "version": "0.0.0-alpha.0+dev",
+  "parameterization": {
+    "name": "vpc",
+    "version": "5.18.1",
+    "value": "ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTguMSIsCiAgInBhY2thZ2VOYW1lIjogInZwYyIKfQ=="
+  }
+}

@@ -14,6 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.39.2
 	github.com/aws/aws-sdk-go-v2/service/lambda v1.69.14
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/hc-install v0.9.1
@@ -24,6 +25,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.26.0
 	github.com/hashicorp/terraform-svchost v0.1.1
 	github.com/hexops/autogold/v2 v2.3.0
+	github.com/jackc/puddle/v2 v2.2.2
 	github.com/opentofu/tofudl v0.0.0-20250129123822-d4254f2a6147
 	github.com/pulumi/opentofu v0.0.0-20250318202137-3146daceaf73
 	github.com/pulumi/providertest v0.3.0
@@ -121,7 +123,6 @@ require (
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-git/go-git/v5 v5.13.2 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect

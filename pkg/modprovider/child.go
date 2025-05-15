@@ -102,9 +102,6 @@ func childResourceName(resource ResourceAddress) string {
 
 // The ID to return for a child resource during Create.
 func childResourceID(resource ResourceState) string {
-	// TODO this could try harder to expose e.g. bucket ID from the resource properties.
-	// For now just copy the name.
-
 	return childResourceName(resource.Address())
 }
 
