@@ -78,18 +78,12 @@ func (h *moduleHandler) Diff(
 ) (*pulumirpc.DiffResponse, error) {
 	changes := pulumirpc.DiffResponse_DIFF_NONE
 
-	opts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	}
-
-	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), opts)
+	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
 	if err != nil {
 		return nil, err
 	}
 
-	newInputs, err := plugin.UnmarshalProperties(req.GetNews(), opts)
+	newInputs, err := plugin.UnmarshalProperties(req.GetNews(), h.marshalOpts())
 	if err != nil {
 		return nil, err
 	}
@@ -101,24 +95,21 @@ func (h *moduleHandler) Diff(
 	return &pulumirpc.DiffResponse{Changes: changes}, nil
 }
 
-func (h *moduleHandler) applyModuleOperation(
+func (h *moduleHandler) prepSandbox(
 	ctx context.Context,
 	urn urn.URN,
 	moduleInputs resource.PropertyMap,
-	oldOutputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap, // may be nil if not available
+	inferredModule *InferredModuleSchema,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
-	inferredModule *InferredModuleSchema,
-	packageName packageName,
-	preview bool,
-) (resource.PropertyMap, []*pulumirpc.View, error) {
+) (*tfsandbox.Tofu, error) {
 	logger := newResourceLogger(h.hc, urn)
-
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
+		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
 	}
 
 	// Important: the name of the module instance in TF must be at least unique enough to
@@ -134,27 +125,58 @@ func (h *moduleHandler) applyModuleOperation(
 			Name: outputName,
 		})
 	}
+
 	err = tfsandbox.CreateTFFile(tfName, moduleSource,
 		moduleVersion, tf.WorkingDir(),
 		moduleInputs, outputSpecs, providersConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, fmt.Errorf("Seed file generation failed: %w", err)
 	}
 
-	var rawState, rawLockFile []byte
 	if oldOutputs != nil {
-		rawState, rawLockFile = h.getState(oldOutputs)
-	}
-
-	err = tf.PushStateAndLockFile(ctx, rawState, rawLockFile)
-	if err != nil {
-		return nil, nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
+		rawState, rawLockFile := h.getState(oldOutputs)
+		err = tf.PushStateAndLockFile(ctx, rawState, rawLockFile)
+		if err != nil {
+			return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
+		}
 	}
 
 	err = tf.Init(ctx, logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Init failed: %w", err)
+		return nil, fmt.Errorf("Init failed: %w", err)
 	}
+
+	return tf, nil
+}
+
+// This method handles Create and Update in a uniform way; both map to tofu apply operation.
+func (h *moduleHandler) applyModuleOperation(
+	ctx context.Context,
+	urn urn.URN,
+	moduleInputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap,
+	moduleSource TFModuleSource,
+	moduleVersion TFModuleVersion,
+	providersConfig map[string]resource.PropertyMap,
+	inferredModule *InferredModuleSchema,
+	packageName packageName,
+	preview bool,
+) (resource.PropertyMap, []*pulumirpc.View, error) {
+	tf, err := h.prepSandbox(
+		ctx,
+		urn,
+		moduleInputs,
+		oldOutputs,
+		inferredModule,
+		moduleSource,
+		moduleVersion,
+		providersConfig,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
+	}
+
+	logger := newResourceLogger(h.hc, urn)
 
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
@@ -179,7 +201,7 @@ func (h *moduleHandler) applyModuleOperation(
 
 		moduleOutputs = plan.Outputs()
 	} else {
-		tfState, err := tf.Apply(ctx, logger)
+		tfState, err := tf.Apply(ctx, logger) // TODO this can reuse the plan it just planned.
 		if err != nil {
 			return nil, nil, fmt.Errorf("Apply failed: %w", err)
 		}
@@ -200,16 +222,15 @@ func (h *moduleHandler) applyModuleOperation(
 		})
 
 		moduleOutputs = tfState.Outputs()
-		moduleOutputs[moduleResourceStatePropName] = resource.MakeSecret(resource.NewStringProperty(string(rawState)))
-		moduleOutputs[moduleResourceLockPropName] = resource.NewStringProperty(string(rawLockFile))
+		stateProp := resource.MakeSecret(resource.NewStringProperty(string(rawState)))
+		lockProp := resource.NewStringProperty(string(rawLockFile))
+		moduleOutputs[moduleResourceStatePropName] = stateProp
+		moduleOutputs[moduleResourceLockPropName] = lockProp
 	}
-
-	// TODO propagate inputs to outputs?
 
 	return moduleOutputs, views, nil
 }
 
-// Update Create method to use the shared helper
 func (h *moduleHandler) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
@@ -221,16 +242,12 @@ func (h *moduleHandler) Create(
 ) (*pulumirpc.CreateResponse, error) {
 	urn := urn.URN(req.GetUrn())
 
-	moduleInputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	moduleInputs, err := plugin.UnmarshalProperties(req.GetProperties(), h.marshalOpts())
 	if err != nil {
 		return nil, err
 	}
 
-	moduleOutputs, views, err := h.applyModuleOperation(
+	moduleOutputs, _ /* views */, err := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -246,25 +263,15 @@ func (h *moduleHandler) Create(
 		return nil, err
 	}
 
-	props, err := plugin.MarshalProperties(moduleOutputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
-
-	if 1+2 == 4 {
-		panic(views)
-	}
 
 	return &pulumirpc.CreateResponse{
 		Id:         moduleStateResourceID,
 		Properties: props,
-		// Views:      views,
 	}, nil
 }
 
-// Update Update method to use the shared helper
 func (h *moduleHandler) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
@@ -276,26 +283,17 @@ func (h *moduleHandler) Update(
 ) (*pulumirpc.UpdateResponse, error) {
 	urn := urn.URN(req.GetUrn())
 
-	moduleInputs, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	moduleInputs, err := plugin.UnmarshalProperties(req.GetNews(), h.marshalOpts())
 	if err != nil {
 		return nil, err
 	}
 
-	oldOutputs, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: false,
-	})
+	oldOutputs, err := plugin.UnmarshalProperties(req.GetOlds(), h.marshalOpts())
 	if err != nil {
 		return nil, err
 	}
 
-	moduleOutputs, views, err := h.applyModuleOperation(
+	moduleOutputs, _ /* views */, err := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -311,90 +309,50 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 
-	props, err := plugin.MarshalProperties(moduleOutputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
-
-	if 1+2 == 4 {
-		panic(views)
-	}
 
 	return &pulumirpc.UpdateResponse{
 		Properties: props,
-		// Views:      views,
 	}, nil
 }
 
-// Delete calls TF Destroy on the module's resources
+// Delete calls TF Destroy to remove everything.
 func (h *moduleHandler) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
+	inferredModule *InferredModuleSchema,
 	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
-	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
-
 	urn := urn.URN(req.GetUrn())
 
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
-	if err != nil {
-		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
-	}
-
-	tfName := getModuleName(urn)
-
-	oldOutputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: false,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Delete failed to unmarshal old outputs: %s", err)
-	}
-	rawState, rawLockFile := h.getState(oldOutputs)
-
-	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-
-		// If there are any resource.NewOutputProperty values in old inputs with dependencies, this setting
-		// will ignore the dependencies and remove these values in favor of simpler Computed or Secret values.
-		// This is OK for the purposes of Delete running tofu destroy because the code cannot take advantage of
-		// these precisely tracked dependencies here anyway. So it is OK to ignore them.
-		KeepOutputValues: false,
-	})
+	moduleInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
 	if err != nil {
 		return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
 	}
 
-	// when deleting, we do not require outputs to be exposed
-	err = tfsandbox.CreateTFFile(tfName, moduleSource, moduleVersion,
-		tf.WorkingDir(),
-		oldInputs,                  /*inputs*/
-		[]tfsandbox.TFOutputSpec{}, /*outputs*/
+	oldOutputs, err := plugin.UnmarshalProperties(req.GetProperties(), h.marshalOpts())
+	if err != nil {
+		return nil, fmt.Errorf("Delete failed to unmarshal old outputs: %s", err)
+	}
+
+	tf, err := h.prepSandbox(
+		ctx,
+		urn,
+		moduleInputs,
+		oldOutputs,
+		inferredModule,
+		moduleSource,
+		moduleVersion,
 		providersConfig,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
 	}
 
-	err = tf.PushStateAndLockFile(ctx, rawState, rawLockFile)
-	if err != nil {
-		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
-	}
-
-	err = tf.Init(ctx, logger)
-	if err != nil {
-		return nil, fmt.Errorf("Init failed: %w", err)
-	}
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
 	destroyErr := tf.Destroy(ctx, logger)
 	if destroyErr != nil {
@@ -515,4 +473,20 @@ func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, r
 		rawLockFile = []byte(lockString)
 	}
 	return
+}
+
+func (*moduleHandler) marshalOpts() plugin.MarshalOptions {
+	return plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+
+		// If there are any resource.NewOutputProperty values in old inputs with dependencies, this setting
+		// will ignore the dependencies and remove these values in favor of simpler Computed or Secret values.
+		//
+		// TODO need to figure out if this is actually sufficient, or else the handler needs to extract these
+		// dependencies and reattach them to outputs so that dependencies work as expected through the TF
+		// "black box".
+		KeepOutputValues: false,
+	}
 }
