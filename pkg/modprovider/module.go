@@ -76,6 +76,12 @@ func (h *moduleHandler) Diff(
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
 ) (*pulumirpc.DiffResponse, error) {
+	// TODO should post-`pulumi refresh` diff have any custom handling?
+	//
+	// This is described in:
+	// https://pulumi-developer-docs.readthedocs.io/latest/developer-docs/providers/implementers-guide.html#refresh
+	//
+	// Simply comparing inputs probably works fine for that case, but running `tofu plan` may be problematic.
 	changes := pulumirpc.DiffResponse_DIFF_NONE
 
 	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
@@ -88,6 +94,14 @@ func (h *moduleHandler) Diff(
 		return nil, err
 	}
 
+	// TODO are there some cases where `tofu plan` would consider making changes here even though inputs have not
+	// changed? Would it be worth it to run it to consult the plan results?
+	//
+	// One scenario is refresh finding drift, but probably this will be addressed by using
+	// https://github.com/pulumi/pulumi/pull/19487 and running plan and apply with the -refresh=false setting.
+	//
+	// Another scenario is one of the TF providers or perhaps the module source itself being upgraded and wanting
+	// to initiate updates, even if module inputs have not changed at all.
 	if !oldInputs.DeepEquals(newInputs) {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}

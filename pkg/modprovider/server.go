@@ -645,7 +645,9 @@ func (s *server) Read(
 	if useCustomResource {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			return s.moduleHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+			providersConfig := cleanProvidersConfig(s.providerConfig)
+			return s.moduleHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion,
+				s.inferredModuleSchema, providersConfig)
 		default:
 			return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
 		}
