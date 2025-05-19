@@ -474,9 +474,10 @@ func (*moduleHandler) marshalOpts() plugin.MarshalOptions {
 		// If there are any resource.NewOutputProperty values in old inputs with dependencies, this setting
 		// will ignore the dependencies and remove these values in favor of simpler Computed or Secret values.
 		//
-		// TODO need to figure out if this is actually sufficient, or else the handler needs to extract these
-		// dependencies and reattach them to outputs so that dependencies work as expected through the TF
-		// "black box".
+		// Why is this safe? The dependencies embedded in resource.NewOutputProperty are ignored. It should be
+		// safe for the provider to do so because every output of the Custom Resource will be counted as
+		// depending on the Custom Resource itself, which will be counted as depending on every one of these
+		// dropped dependencies by the engine. There is no provider-side obligation to handle these.
 		KeepOutputValues: false,
 	}
 }
