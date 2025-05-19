@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -199,14 +200,23 @@ func (h *moduleHandler) applyModuleOperation(
 	var views []*pulumirpc.View
 	var moduleOutputs resource.PropertyMap
 
+	var allErrors []error
+
 	if preview {
 		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
+			outputs := rp.PlannedValues()
+			outputsStruct, err := plugin.MarshalProperties(outputs, h.marshalOpts())
+			if err != nil {
+				allErrors = append(allErrors, err)
+				return
+			}
+
 			childType := childResourceTypeToken(packageName, rp.Type())
 			childName := childResourceName(rp)
 			views = append(views, &pulumirpc.View{
-				Type: childType.String(),
-				Name: childName,
-				// TODO inputs/outputs
+				Type:    childType.String(),
+				Name:    childName,
+				Outputs: outputsStruct,
 			})
 		})
 
@@ -220,10 +230,23 @@ func (h *moduleHandler) applyModuleOperation(
 		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
 			childType := childResourceTypeToken(packageName, rp.Type())
 			childName := childResourceName(rp)
+
+			outputs := rp.AttributeValues()
+			if err != nil {
+				allErrors = append(allErrors, err)
+				return
+			}
+
+			outputsStruct, err := plugin.MarshalProperties(outputs, h.marshalOpts())
+			if err != nil {
+				allErrors = append(allErrors, err)
+				return
+			}
+
 			views = append(views, &pulumirpc.View{
-				Type: childType.String(),
-				Name: childName,
-				// TODO inputs/outputs
+				Type:    childType.String(),
+				Name:    childName,
+				Outputs: outputsStruct,
 			})
 		})
 
@@ -231,6 +254,10 @@ func (h *moduleHandler) applyModuleOperation(
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+
+	if err := errors.Join(allErrors...); err != nil {
+		return nil, nil, err
 	}
 
 	return moduleOutputs, views, nil
