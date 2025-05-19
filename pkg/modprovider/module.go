@@ -203,15 +203,17 @@ func (h *moduleHandler) applyModuleOperation(
 
 	var allErrors []error
 
+	// TODO should we also publish views before Apply just to start showing something fast?
+
 	if preview {
-		views = viewStepsPlan(plan)
+		views = viewStepsPlan(packageName, plan)
 		moduleOutputs = plan.Outputs()
 	} else {
 		tfState, err := tf.Apply(ctx, logger) // TODO this can reuse the plan it just planned.
 		if err != nil {
 			return nil, nil, fmt.Errorf("Apply failed: %w", err)
 		}
-		views = viewStepsAfterApply(plan, tfState)
+		views = viewStepsAfterApply(packageName, plan, tfState)
 		moduleOutputs, err = h.outputs(ctx, tf, tfState)
 		if err != nil {
 			return nil, nil, err
@@ -439,6 +441,7 @@ func (h *moduleHandler) Delete(
 func (h *moduleHandler) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
+	packageName packageName,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	inferredModule *InferredModuleSchema,
@@ -501,7 +504,7 @@ func (h *moduleHandler) Read(
 
 	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
 		Token: req.ResourceStatusToken,
-		Steps: viewStepsAfterRefresh(plan, state),
+		Steps: viewStepsAfterRefresh(packageName, plan, state),
 	})
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after refresh: %v", err))
