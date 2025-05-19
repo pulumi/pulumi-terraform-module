@@ -34,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
-var useCustomResource bool = cmdutil.IsTruthy(os.Getenv("PULUMI_TERRAFORM_MODULE_CUSTOM_RESOURCE"))
+var useCustomResource bool = cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW"))
 
 const (
 	moduleTypeName              = "Module"
