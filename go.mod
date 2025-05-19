@@ -24,6 +24,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.26.0
 	github.com/hashicorp/terraform-svchost v0.1.1
 	github.com/hexops/autogold/v2 v2.3.0
+	github.com/jackc/puddle/v2 v2.2.2
 	github.com/opentofu/tofudl v0.0.0-20250129123822-d4254f2a6147
 	github.com/pulumi/opentofu v0.0.0-20250318202137-3146daceaf73
 	github.com/pulumi/providertest v0.3.0

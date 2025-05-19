@@ -253,7 +253,7 @@ func (h *moduleHandler) Create(
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
 ) (*pulumirpc.CreateResponse, error) {
-	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 
-	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +372,7 @@ func (h *moduleHandler) Delete(
 	inferredModule *InferredModuleSchema,
 	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
-	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func (h *moduleHandler) Read(
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
 	}
 
-	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
