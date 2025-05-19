@@ -610,7 +610,8 @@ func (s *server) Delete(
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
-			return s.moduleHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion,
+			return s.moduleHandler.Delete(ctx, req, s.packageName,
+				s.params.TFModuleSource, s.params.TFModuleVersion,
 				s.inferredModuleSchema, providersConfig)
 		default:
 			return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())

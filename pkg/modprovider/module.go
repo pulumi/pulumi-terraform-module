@@ -47,6 +47,7 @@ const (
 type moduleHandler struct {
 	hc                *provider.HostClient
 	auxProviderServer *auxprovider.Server
+	statusPool        resourceStatusClientPool
 }
 
 func newModuleHandler(hc *provider.HostClient, as *auxprovider.Server) *moduleHandler {
@@ -173,7 +174,7 @@ func (h *moduleHandler) applyModuleOperation(
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
 	preview bool,
-) (resource.PropertyMap, []*pulumirpc.View, error) {
+) (resource.PropertyMap, []*pulumirpc.ViewStep, error) {
 	tf, err := h.prepSandbox(
 		ctx,
 		urn,
@@ -197,59 +198,20 @@ func (h *moduleHandler) applyModuleOperation(
 		return nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
 
-	var views []*pulumirpc.View
+	var views []*pulumirpc.ViewStep
 	var moduleOutputs resource.PropertyMap
 
 	var allErrors []error
 
 	if preview {
-		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
-			outputs := rp.PlannedValues()
-			outputsStruct, err := plugin.MarshalProperties(outputs, h.marshalOpts())
-			if err != nil {
-				allErrors = append(allErrors, err)
-				return
-			}
-
-			childType := childResourceTypeToken(packageName, rp.Type())
-			childName := childResourceName(rp)
-			views = append(views, &pulumirpc.View{
-				Type:    childType.String(),
-				Name:    childName,
-				Outputs: outputsStruct,
-			})
-		})
-
+		views = viewStepsPlan(plan)
 		moduleOutputs = plan.Outputs()
 	} else {
 		tfState, err := tf.Apply(ctx, logger) // TODO this can reuse the plan it just planned.
 		if err != nil {
 			return nil, nil, fmt.Errorf("Apply failed: %w", err)
 		}
-
-		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
-			childType := childResourceTypeToken(packageName, rp.Type())
-			childName := childResourceName(rp)
-
-			outputs := rp.AttributeValues()
-			if err != nil {
-				allErrors = append(allErrors, err)
-				return
-			}
-
-			outputsStruct, err := plugin.MarshalProperties(outputs, h.marshalOpts())
-			if err != nil {
-				allErrors = append(allErrors, err)
-				return
-			}
-
-			views = append(views, &pulumirpc.View{
-				Type:    childType.String(),
-				Name:    childName,
-				Outputs: outputsStruct,
-			})
-		})
-
+		views = viewStepsAfterApply(plan, tfState)
 		moduleOutputs, err = h.outputs(ctx, tf, tfState)
 		if err != nil {
 			return nil, nil, err
@@ -291,6 +253,12 @@ func (h *moduleHandler) Create(
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
 ) (*pulumirpc.CreateResponse, error) {
+	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	if err != nil {
+		return nil, err
+	}
+	defer statusClient.Release()
+
 	urn := urn.URN(req.GetUrn())
 
 	moduleInputs, err := plugin.UnmarshalProperties(req.GetProperties(), h.marshalOpts())
@@ -298,7 +266,7 @@ func (h *moduleHandler) Create(
 		return nil, err
 	}
 
-	moduleOutputs, _ /* views */, err := h.applyModuleOperation(
+	moduleOutputs, views, err := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -311,6 +279,16 @@ func (h *moduleHandler) Create(
 		req.GetPreview(),
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	logger := newResourceLogger(h.hc, urn)
+	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+		Token: req.ResourceStatusToken,
+		Steps: views,
+	})
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Create: %v", err))
 		return nil, err
 	}
 
@@ -344,7 +322,13 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 
-	moduleOutputs, _ /* views */, err := h.applyModuleOperation(
+	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	if err != nil {
+		return nil, err
+	}
+	defer statusClient.Release()
+
+	moduleOutputs, views, err := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -360,6 +344,16 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 
+	logger := newResourceLogger(h.hc, urn)
+	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+		Token: req.ResourceStatusToken,
+		Steps: views,
+	})
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
+		return nil, err
+	}
+
 	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
@@ -372,11 +366,18 @@ func (h *moduleHandler) Update(
 func (h *moduleHandler) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
+	packageName packageName,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	inferredModule *InferredModuleSchema,
 	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
+	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	if err != nil {
+		return nil, err
+	}
+	defer statusClient.Release()
+
 	urn := urn.URN(req.GetUrn())
 
 	moduleInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
@@ -405,9 +406,30 @@ func (h *moduleHandler) Delete(
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
+	stateBeforeDestroy, err := tf.Show(ctx, logger)
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running tofu show before delete: %v", err))
+		return &emptypb.Empty{}, err
+	}
+
 	destroyErr := tf.Destroy(ctx, logger)
 	if destroyErr != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running tofu destroy in delete: %v", destroyErr))
+	}
+
+	stateAfterDestroy, err := tf.Show(ctx, logger)
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running tofu show after delete: %v", err))
+		return &emptypb.Empty{}, err
+	}
+
+	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+		Token: req.ResourceStatusToken,
+		Steps: viewStepsAfterDestroy(packageName, stateBeforeDestroy, stateAfterDestroy),
+	})
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after delete: %v", err))
+		return &emptypb.Empty{}, err
 	}
 
 	// Send back empty pb if no error.
@@ -425,6 +447,12 @@ func (h *moduleHandler) Read(
 	if req.Inputs == nil {
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
 	}
+
+	statusClient, err := h.statusPool.Acquire(req.ResourceStatusAddress)
+	if err != nil {
+		return nil, err
+	}
+	defer statusClient.Release()
 
 	urn := urn.URN(req.GetUrn())
 
@@ -453,13 +481,30 @@ func (h *moduleHandler) Read(
 	}
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	plan, err := tf.PlanRefreshOnly(ctx, logger)
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error planning refresh: %v", err))
+		return nil, err
+	}
+
 	state, err := tf.Refresh(ctx, logger)
 	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running refresh: %v", err))
 		return nil, fmt.Errorf("Module refresh failed: %w", err)
 	}
 
 	outputs, err := h.outputs(ctx, tf, state)
 	if err != nil {
+		return nil, err
+	}
+
+	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+		Token: req.ResourceStatusToken,
+		Steps: viewStepsAfterRefresh(plan, state),
+	})
+	if err != nil {
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after refresh: %v", err))
 		return nil, err
 	}
 
