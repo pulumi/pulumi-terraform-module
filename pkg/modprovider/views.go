@@ -15,6 +15,8 @@
 package modprovider
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -113,11 +115,36 @@ func viewStepOp(changeKind tfsandbox.ChangeKind) pulumirpc.ViewStep_Op {
 	return zero
 }
 
+// Starting with very basic error checks for starters. It should be possible to extract more information from TF.
+func viewStepStatusCheck(
+	changeKind tfsandbox.ChangeKind,
+	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
+) error {
+
+	switch changeKind {
+
+	// All these operations when successful imply the resource must exist in the final state.
+	case tfsandbox.NoOp, tfsandbox.Update, tfsandbox.Create,
+		tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
+		if finalState == nil {
+			return errors.New("resource operation failed")
+		}
+
+	// These operations if successful imply the resource must not exist in the final state.
+	case tfsandbox.Delete, tfsandbox.Forget:
+		if finalState != nil {
+			return errors.New("resource operation failed")
+		}
+	}
+
+	return nil
+}
+
 func viewStepForResource(
 	packageName packageName,
 	rplan *tfsandbox.ResourcePlan,
 	priorState *tfsandbox.ResourceState, // may be nil in operations such as create
-	finalState *tfsandbox.ResourceState, // may be nil when planning
+	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
 ) *pulumirpc.ViewStep {
 
 	ty := childResourceTypeToken(packageName, rplan.Type()).String()
@@ -134,12 +161,10 @@ func viewStepForResource(
 		oldViewState = viewStepState(packageName, priorState)
 	}
 
-	return &pulumirpc.ViewStep{
-		Name: name,
-		Type: ty,
-
-		Status: pulumirpc.ViewStep_OK, // TODO detect some errors
-		Error:  "",                    // TODO explain the errors
+	step := &pulumirpc.ViewStep{
+		Status: pulumirpc.ViewStep_OK,
+		Name:   name,
+		Type:   ty,
 
 		Op:  viewStepOp(rplan.ChangeKind()),
 		Old: oldViewState,
@@ -152,6 +177,16 @@ func viewStepForResource(
 		// DetailedDiff:    map[string]*pulumirpc.PropertyDiff{}, // need to populate this
 		// HasDetailedDiff: true,
 	}
+
+	if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
+		// TODO is this right? It is not so much that the resource failed partially, it is that the entire
+		// module failed partially, but the resource most likely failed totally. How do we report total
+		// resource failures over view operations?
+		step.Status = pulumirpc.ViewStep_PARTIAL_FAILURE
+		step.Error = err.Error()
+	}
+
+	return step
 }
 
 func viewStepState(packageName packageName, stateOrPlan tfsandbox.ResourceStateOrPlan) *pulumirpc.ViewStepState {
