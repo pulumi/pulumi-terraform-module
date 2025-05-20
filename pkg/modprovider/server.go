@@ -576,6 +576,7 @@ func (s *server) Handshake(
 				"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
 				"environment variable is set to `true` to enable resource views.")
 		}
+		s.pulumiCliSupportsViews = true
 		return &pulumirpc.ProviderHandshakeResponse{
 			AcceptSecrets:   true,
 			AcceptResources: true,
