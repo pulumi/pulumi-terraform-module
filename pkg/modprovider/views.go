@@ -184,10 +184,6 @@ func viewStepsForResource(
 		}
 
 		if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
-			// TODO is this right? It is not so much that the resource failed partially, it is that the entire
-			// module failed partially, but the resource most likely failed totally. How do we report total
-			// resource failures over view operations?
-			step.Status = pulumirpc.ViewStep_PARTIAL_FAILURE
 			step.Error = err.Error()
 		}
 
