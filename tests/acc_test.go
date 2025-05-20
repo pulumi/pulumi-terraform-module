@@ -704,16 +704,12 @@ func TestE2ePython(t *testing.T) {
 			upExpect: map[string]int{
 				"create": conditionalCount(5, 4),
 			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): conditionalCount(5, 4),
+			},
 			deleteExpect: map[string]int{
 				"delete": conditionalCount(5, 4),
 			},
-			// TODO: there really seems to be a protocol problem here where Update preview is not being
-			// called so views are not published, but Pulumi CLI shows 4 unchanged and 2 deleted. Perhaps
-			// easiest fix would be to render views as unchanged in this case in Pulumi CLI.
-			//
-			// diffNoChangesExpect: map[apitype.OpType]int{
-			// 	apitype.OpType("same"): conditionalCount(5, 4),
-			// },
 		},
 	}
 
@@ -752,11 +748,9 @@ func TestE2ePython(t *testing.T) {
 			t.Logf("up: %s", upResult.StdOut+previewResult.StdErr)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
-			if tc.diffNoChangesExpect != nil {
-				previewResult = integrationTest.Preview(t, optpreview.Diff())
-				t.Logf("preview: %s", previewResult.StdOut+previewResult.StdErr)
-				autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
-			}
+			previewResult = integrationTest.Preview(t, optpreview.Diff())
+			t.Logf("preview: %s", previewResult.StdOut+previewResult.StdErr)
+			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
 			destroyResult := integrationTest.Destroy(t)
 			t.Logf("destroy: %s", destroyResult.StdOut+previewResult.StdErr)
