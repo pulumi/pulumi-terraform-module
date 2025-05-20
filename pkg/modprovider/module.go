@@ -54,6 +54,7 @@ func newModuleHandler(hc *provider.HostClient, as *auxprovider.Server) *moduleHa
 	return &moduleHandler{
 		hc:                hc,
 		auxProviderServer: as,
+		statusPool:        &resourceStatusClientPoolImpl{},
 	}
 }
 
