@@ -17,12 +17,12 @@ package modprovider
 import (
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/ryboe/q"
 )
 
 func viewStepsPlan(
@@ -80,6 +80,7 @@ func viewStepsGeneric(
 		rSteps := viewStepsForResource(packageName, rplan, priorRState, finalRState)
 		steps = append(steps, rSteps...)
 	})
+	q.Q("viewStepsGeneric", steps)
 	return steps
 }
 

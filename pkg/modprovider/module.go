@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/ryboe/q"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
@@ -285,6 +286,8 @@ func (h *moduleHandler) Create(
 		return nil, err
 	}
 
+	q.Q("Create", req.GetPreview())
+
 	logger := newResourceLogger(h.hc, urn)
 	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
 		Token: req.ResourceStatusToken,
@@ -330,6 +333,8 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 	defer statusClient.Release()
+
+	q.Q("Update", req.GetPreview())
 
 	moduleOutputs, views, err := h.applyModuleOperation(
 		ctx,
