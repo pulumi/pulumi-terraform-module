@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (t *Tofu) Show(ctx context.Context, log Logger) (*State, error) {
+func (t *Tofu) Show(ctx context.Context, _ Logger) (*State, error) {
 	state, err := t.tf.Show(ctx, t.showOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("error running tofu show: %w", err)

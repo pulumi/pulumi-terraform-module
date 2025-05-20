@@ -19,10 +19,11 @@ import (
 	"sync"
 
 	"github.com/jackc/puddle/v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type resourceStatusClientPool interface {
@@ -64,7 +65,7 @@ func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 
 	pool, err := puddle.NewPool(&puddle.Config[resourceStatusHandle]{
 		MaxSize: 1,
-		Constructor: func(ctx context.Context) (resourceStatusHandle, error) {
+		Constructor: func(context.Context) (resourceStatusHandle, error) {
 			opts := grpc.WithTransportCredentials(insecure.NewCredentials())
 			conn, err := grpc.NewClient(address, opts)
 			if err != nil {

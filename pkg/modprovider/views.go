@@ -17,12 +17,14 @@ package modprovider
 import (
 	"errors"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func viewStepsPlan(
@@ -210,7 +212,7 @@ func viewStepState(packageName packageName, stateOrPlan tfsandbox.ResourceStateO
 func viewStepsAfterDestroy(
 	packageName packageName,
 	stateBeforeDestroy,
-	_stateAfterDestroy *tfsandbox.State,
+	_ *tfsandbox.State, // stateAfterDestroy
 ) []*pulumirpc.ViewStep {
 	steps := []*pulumirpc.ViewStep{}
 
