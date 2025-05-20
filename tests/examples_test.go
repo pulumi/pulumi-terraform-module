@@ -8,7 +8,6 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -22,7 +21,7 @@ func Test_RdsExample(t *testing.T) {
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-rds-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -54,7 +53,7 @@ func Test_EksExample(t *testing.T) {
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-eks-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -84,7 +83,7 @@ func Test_AlbExample(t *testing.T) {
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-alb-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
