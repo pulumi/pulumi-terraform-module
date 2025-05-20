@@ -133,6 +133,9 @@ jobs:
       run: |
         echo "${{ github.workspace }}/bin"         >> "$GITHUB_PATH"
         echo "${{ github.workspace }}/.pulumi/bin" >> "$GITHUB_PATH"
+    - name: Verify which Pulumi CLI is used for testing
+      run: |
+        which pulumi
     - name: Generate Pulumi Access Token
       id: generate_pulumi_token
       uses: pulumi/auth-actions@1c89817aab0c66407723cdef72b05266e7376640 # v1.0.1
