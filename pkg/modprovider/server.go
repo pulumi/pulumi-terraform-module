@@ -413,7 +413,7 @@ func (s *server) Construct(
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
 	if useCustomResource {
-		return nil, fmt.Errorf("Unsupported typ=%q", req.GetType())
+		return nil, fmt.Errorf("Unsupported type: %q", req.GetType())
 	}
 
 	inputProps, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
@@ -471,7 +471,7 @@ func (s *server) Construct(
 			}
 			return constructResult, nil
 		default:
-			return nil, fmt.Errorf("Unsupported typ=%q expecting %q", typ, ctok)
+			return nil, fmt.Errorf("Unsupported type: %q, expecting %q", typ, ctok)
 		}
 	})
 }
