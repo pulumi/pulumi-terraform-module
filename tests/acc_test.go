@@ -855,16 +855,16 @@ func TestE2eYAML(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 5,
+				apitype.OpType("create"): conditionalCount(5, 4),
 			},
 			upExpect: map[string]int{
-				"create": 5,
+				"create": conditionalCount(5, 4),
 			},
 			deleteExpect: map[string]int{
-				"delete": 5,
+				"delete": conditionalCount(5, 4),
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 5,
+				apitype.OpType("same"): conditionalCount(5, 4),
 			},
 		},
 	}
