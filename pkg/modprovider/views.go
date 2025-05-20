@@ -15,8 +15,6 @@
 package modprovider
 
 import (
-	"errors"
-
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -117,30 +115,30 @@ func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
 	return nil
 }
 
-// Starting with very basic error checks for starters. It should be possible to extract more information from TF.
-func viewStepStatusCheck(
-	changeKind tfsandbox.ChangeKind,
-	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
-) error {
+// // Starting with very basic error checks for starters. It should be possible to extract more information from TF.
+// func viewStepStatusCheck(
+// 	changeKind tfsandbox.ChangeKind,
+// 	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
+// ) error {
 
-	switch changeKind {
+// 	switch changeKind {
 
-	// All these operations when successful imply the resource must exist in the final state.
-	case tfsandbox.NoOp, tfsandbox.Update, tfsandbox.Create,
-		tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
-		if finalState == nil {
-			return errors.New("resource operation failed")
-		}
+// 	// All these operations when successful imply the resource must exist in the final state.
+// 	case tfsandbox.NoOp, tfsandbox.Update, tfsandbox.Create,
+// 		tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
+// 		if finalState == nil {
+// 			return errors.New("resource operation failed")
+// 		}
 
-	// These operations if successful imply the resource must not exist in the final state.
-	case tfsandbox.Delete, tfsandbox.Forget:
-		if finalState != nil {
-			return errors.New("resource operation failed")
-		}
-	}
+// 	// These operations if successful imply the resource must not exist in the final state.
+// 	case tfsandbox.Delete, tfsandbox.Forget:
+// 		if finalState != nil {
+// 			return errors.New("resource operation failed")
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func viewStepsForResource(
 	packageName packageName,
@@ -183,9 +181,9 @@ func viewStepsForResource(
 			// HasDetailedDiff: true,
 		}
 
-		if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
-			step.Error = err.Error()
-		}
+		// if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
+		// 	step.Error = err.Error()
+		// }
 
 		steps = append(steps, step)
 	}
