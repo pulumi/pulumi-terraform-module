@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/jackc/puddle/v2"
@@ -69,7 +70,9 @@ func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 			opts := grpc.WithTransportCredentials(insecure.NewCredentials())
 			conn, err := grpc.NewClient(address, opts)
 			if err != nil {
-				return resourceStatusHandle{}, err
+				return resourceStatusHandle{},
+					fmt.Errorf("failed connecting to gRPC ResourceStatus service at %q: %w",
+						address, err)
 			}
 			return resourceStatusHandle{
 				client: pulumirpc.NewResourceStatusClient(conn),
@@ -82,7 +85,7 @@ func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error constructing gRPC ResourceStatus client pool: %w", err)
 	}
 	p.pool[address] = pool
 	return pool, nil
@@ -96,7 +99,7 @@ func (p *resourceStatusClientPoolImpl) Acquire(ctx context.Context, address stri
 
 	client, err := pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error acquiring a client from the gRPC ResourceStatus pool: %w", err)
 	}
 
 	return &resourceStatusClientLeaseImpl{
