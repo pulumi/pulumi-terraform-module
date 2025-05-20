@@ -77,42 +77,42 @@ func viewStepsGeneric(
 			}
 		}
 
-		step := viewStepForResource(packageName, rplan, priorRState, finalRState)
-		steps = append(steps, step)
+		rSteps := viewStepsForResource(packageName, rplan, priorRState, finalRState)
+		steps = append(steps, rSteps...)
 	})
 	return steps
 }
 
-func viewStepOp(changeKind tfsandbox.ChangeKind) pulumirpc.ViewStep_Op {
+func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
 	switch changeKind {
 	case tfsandbox.NoOp:
-		return pulumirpc.ViewStep_SAME
+		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_SAME}
 	case tfsandbox.Update:
-		return pulumirpc.ViewStep_UPDATE
-
-	// resource is replaced by Creating a new copy then deleting the old copy
+		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_UPDATE}
 	case tfsandbox.Replace:
-		return pulumirpc.ViewStep_DELETE_REPLACED // TODO is this right?
-
-	// resource is replaced by deleting the old copy then creating a new copy
+		return []pulumirpc.ViewStep_Op{
+			pulumirpc.ViewStep_CREATE_REPLACEMENT,
+			pulumirpc.ViewStep_REPLACE,
+			pulumirpc.ViewStep_DELETE_REPLACED,
+		}
 	case tfsandbox.ReplaceDestroyBeforeCreate:
-		return pulumirpc.ViewStep_CREATE_REPLACEMENT // TODO is this right?
-
+		return []pulumirpc.ViewStep_Op{
+			pulumirpc.ViewStep_DELETE_REPLACED,
+			pulumirpc.ViewStep_REPLACE,
+			pulumirpc.ViewStep_CREATE_REPLACEMENT,
+		}
 	case tfsandbox.Create:
-		return pulumirpc.ViewStep_CREATE
-
-	// TODO is this always right? Currently only supporting refresh-to-Read.
+		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_CREATE}
 	case tfsandbox.Read:
-		return pulumirpc.ViewStep_REFRESH
-
+		// TODO is this always right? Currently only supporting refresh-to-Read.
+		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_REFRESH}
 	case tfsandbox.Delete:
-		return pulumirpc.ViewStep_DELETE
+		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_DELETE}
 	case tfsandbox.Forget:
 		contract.Failf("Forget operations are not yet supported")
 	}
 	contract.Failf("Unrecognized changeKind: %v", changeKind)
-	var zero pulumirpc.ViewStep_Op
-	return zero
+	return nil
 }
 
 // Starting with very basic error checks for starters. It should be possible to extract more information from TF.
@@ -140,12 +140,12 @@ func viewStepStatusCheck(
 	return nil
 }
 
-func viewStepForResource(
+func viewStepsForResource(
 	packageName packageName,
 	rplan *tfsandbox.ResourcePlan,
 	priorState *tfsandbox.ResourceState, // may be nil in operations such as create
 	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
-) *pulumirpc.ViewStep {
+) []*pulumirpc.ViewStep {
 
 	ty := childResourceTypeToken(packageName, rplan.Type()).String()
 	name := childResourceName(rplan)
@@ -161,32 +161,38 @@ func viewStepForResource(
 		oldViewState = viewStepState(packageName, priorState)
 	}
 
-	step := &pulumirpc.ViewStep{
-		Status: pulumirpc.ViewStep_OK,
-		Name:   name,
-		Type:   ty,
+	steps := []*pulumirpc.ViewStep{}
 
-		Op:  viewStepOp(rplan.ChangeKind()),
-		Old: oldViewState,
-		New: newViewState,
+	for _, op := range viewStepOp(rplan.ChangeKind()) {
+		step := &pulumirpc.ViewStep{
+			Status: pulumirpc.ViewStep_OK,
+			Name:   name,
+			Type:   ty,
 
-		// TODO translate TF diff details to Pulumi view diff details.
-		//
-		// Keys:            []string{},                           // need to attribute replacement plans to properties here
-		// Diffs:           []string{},                           // need to provide an approximation of DetailedDiff here
-		// DetailedDiff:    map[string]*pulumirpc.PropertyDiff{}, // need to populate this
-		// HasDetailedDiff: true,
+			Op:  op,
+			Old: oldViewState,
+			New: newViewState,
+
+			// TODO translate TF diff details to Pulumi view diff details.
+			//
+			// Keys:            []string{},                           // need to attribute replacement plans to properties here
+			// Diffs:           []string{},                           // need to provide an approximation of DetailedDiff here
+			// DetailedDiff:    map[string]*pulumirpc.PropertyDiff{}, // need to populate this
+			// HasDetailedDiff: true,
+		}
+
+		if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
+			// TODO is this right? It is not so much that the resource failed partially, it is that the entire
+			// module failed partially, but the resource most likely failed totally. How do we report total
+			// resource failures over view operations?
+			step.Status = pulumirpc.ViewStep_PARTIAL_FAILURE
+			step.Error = err.Error()
+		}
+
+		steps = append(steps, step)
 	}
 
-	if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
-		// TODO is this right? It is not so much that the resource failed partially, it is that the entire
-		// module failed partially, but the resource most likely failed totally. How do we report total
-		// resource failures over view operations?
-		step.Status = pulumirpc.ViewStep_PARTIAL_FAILURE
-		step.Error = err.Error()
-	}
-
-	return step
+	return steps
 }
 
 func viewStepState(packageName packageName, stateOrPlan tfsandbox.ResourceStateOrPlan) *pulumirpc.ViewStepState {
