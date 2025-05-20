@@ -503,16 +503,16 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 6,
+				apitype.OpType("create"): conditionalCount(6, 5),
 			},
 			upExpect: map[string]int{
-				"create": 6,
+				"create": conditionalCount(6, 5),
 			},
 			deleteExpect: map[string]int{
-				"delete": 6,
+				"delete": conditionalCount(6, 5),
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 6,
+				apitype.OpType("same"): conditionalCount(6, 5),
 			},
 		},
 		{
@@ -521,17 +521,17 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 9,
+				apitype.OpType("create"): conditionalCount(9, 8),
 			},
 			upExpect: map[string]int{
-				"create": 9,
+				"create": conditionalCount(9, 8),
 			},
 			deleteExpect: map[string]int{
-				"delete": 9,
+				"delete": conditionalCount(9, 8),
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
 				apitype.OpType("update"): 1,
-				apitype.OpType("same"):   8,
+				apitype.OpType("same"):   conditionalCount(8, 7),
 			},
 		},
 		{
@@ -540,16 +540,16 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 11,
+				apitype.OpType("create"): conditionalCount(11, 10),
 			},
 			upExpect: map[string]int{
-				"create": 11,
+				"create": conditionalCount(11, 10),
 			},
 			deleteExpect: map[string]int{
-				"delete": 11,
+				"delete": conditionalCount(11, 10),
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 11,
+				apitype.OpType("same"): conditionalCount(11, 10),
 			},
 		},
 	}
