@@ -529,12 +529,21 @@ func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, r
 	if !ok {
 		return // empty
 	}
+
+	for state.IsSecret() {
+		state = state.SecretValue().Element
+	}
+
+	contract.Assertf(state.IsString(), "Expected %q to carry a String PropertyValue", moduleResourceStatePropName)
+
 	stateString := state.StringValue()
 	rawState = []byte(stateString)
 	if lock, ok := props[moduleResourceLockPropName]; ok {
-		if lock.IsSecret() {
+		for lock.IsSecret() {
 			lock = lock.SecretValue().Element
 		}
+		contract.Assertf(lock.IsString(), "Expected %q to carry a String PropertyValue",
+			moduleResourceLockPropName)
 		lockString := lock.StringValue()
 		rawLockFile = []byte(lockString)
 	}
