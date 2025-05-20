@@ -39,6 +39,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -84,6 +86,8 @@ type server struct {
 	providerConfig resource.PropertyMap
 
 	auxProviderServer *auxprovider.Server
+
+	pulumiCliSupportsViews bool
 }
 
 func (s *server) Cancel(_ context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
@@ -503,6 +507,14 @@ func (s *server) CheckConfig(
 	_ context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
+	// Temporarily duplicate the Handshake check because old Pulumi CLI versions ignored Handshake errors.
+	if useCustomResource && !s.pulumiCliSupportsViews {
+		return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
+			"views support. Please update Pulumi CLI to the latest version.\n\n" +
+			"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
+			"environment variable is set to `true` to enable resource views.")
+	}
+
 	s.providerSelfURN = pulumi.URN(req.Urn)
 
 	config, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
@@ -550,6 +562,27 @@ func (s *server) Diff(
 	default:
 		return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
 	}
+}
+
+func (s *server) Handshake(
+	ctx context.Context,
+	req *pulumirpc.ProviderHandshakeRequest,
+) (*pulumirpc.ProviderHandshakeResponse, error) {
+	if useCustomResource {
+		if !req.SupportsViews {
+			s.pulumiCliSupportsViews = false
+			return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
+				"views support. Please update Pulumi CLI to the latest version.\n\n" +
+				"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
+				"environment variable is set to `true` to enable resource views.")
+		}
+		return &pulumirpc.ProviderHandshakeResponse{
+			AcceptSecrets:   true,
+			AcceptResources: true,
+			AcceptOutputs:   true,
+		}, nil
+	}
+	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
 }
 
 func (s *server) Create(
