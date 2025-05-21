@@ -67,25 +67,20 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		previewResult := pt.Preview(t,
-			optpreview.Diff(),
-			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(os.Stdout),
-		)
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 5,
-		}).Equal(t, previewResult.ChangeSummary)
+		previewResult := pt.Preview(t, optpreview.Diff())
+		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
+		assert.Equal(t, map[apitype.OpType]int{
+			apitype.OpType("create"): conditionalCount(5, 4),
+		}, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
-		upResult := pt.Up(t,
-			optup.ErrorProgressStreams(os.Stderr),
-			optup.ProgressStreams(os.Stdout),
-		)
+		upResult := pt.Up(t)
+		t.Logf("%s", upResult.StdOut+upResult.StdErr)
 
-		autogold.Expect(&map[string]int{
-			"create": 5,
-		}).Equal(t, upResult.Summary.ResourceChanges)
+		assert.Equal(t, &map[string]int{
+			"create": conditionalCount(5, 4),
+		}, upResult.Summary.ResourceChanges)
 
 		outputs, err := pt.CurrentStack().Outputs(context.Background())
 		require.NoError(t, err, "failed to get stack outputs")
@@ -102,32 +97,60 @@ func Test_RandMod_TypeScript(t *testing.T) {
 
 		randInt := mustFindDeploymentResourceByType(t, pt, "randmod:tf:random_integer")
 
+		t.Logf("random_integer resource state: %#v", randInt)
+
 		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
-		autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
-		autogold.Expect(map[string]any{
-			"__address": "module.myrandmod.random_integer.priority",
-			"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
-			"id":        "2",
-			"max":       10,
-			"min":       1,
-			"result":    2,
-			"seed": map[string]any{
-				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				"plaintext":                        `"9"`,
-			},
-		}).Equal(t, randInt.Inputs)
-		autogold.Expect(map[string]any{}).Equal(t, randInt.Outputs)
+
+		if !viewsEnabled {
+			autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
+			autogold.Expect(map[string]any{
+				"__address": "module.myrandmod.random_integer.priority",
+				"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
+				"id":        "2",
+				"max":       10,
+				"min":       1,
+				"result":    2,
+				"seed": map[string]any{
+					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					"plaintext":                        `"9"`,
+				},
+			}).Equal(t, randInt.Inputs)
+			autogold.Expect(map[string]any{}).Equal(t, randInt.Outputs)
+		} else {
+			autogold.Expect(resource.ID("")).Equal(t, randInt.ID)
+			autogold.Expect(map[string]interface{}{
+				"id": "2", "keepers": nil, "max": 10, "min": 1, "result": 2,
+				"seed": map[string]interface{}{
+					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					"plaintext":                        `"9"`,
+				},
+			}).Equal(t, randInt.Inputs)
+
+			// TODO this result is surprising and it looks like Outputs get a copy of inputs instead of the
+			// outputs published through ViewStepState. Module provider currently does not depend on the
+			// outputs though so this can be tolerated.
+			autogold.Expect(map[string]interface{}{
+				"id": "2", "keepers": nil, "max": 10, "min": 1, "result": 2,
+				"seed": map[string]interface{}{
+					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+					"plaintext":                        `"9"`,
+				},
+			}).Equal(t, randInt.Outputs)
+		}
 	})
 
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
 		previewResult := pt.Preview(t)
-		autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 5}).Equal(t, previewResult.ChangeSummary)
+		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
+		assert.Equal(t, map[apitype.OpType]int{apitype.OpType("same"): conditionalCount(5, 4)},
+			previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up should be no-op", func(t *testing.T) {
 		upResult := pt.Up(t)
-		autogold.Expect(&map[string]int{"same": 5}).Equal(t, upResult.Summary.ResourceChanges)
+		t.Logf("%s", upResult.StdOut+upResult.StdErr)
+		assert.Equal(t, &map[string]int{"same": conditionalCount(5, 4)}, upResult.Summary.ResourceChanges)
 	})
 }
 
