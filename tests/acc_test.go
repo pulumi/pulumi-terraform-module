@@ -256,21 +256,17 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		previewResult := pt.Preview(t,
-			optpreview.Diff(),
-			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(os.Stdout),
-		)
-		autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 7}).Equal(t, previewResult.ChangeSummary)
+		previewResult := pt.Preview(t, optpreview.Diff())
+		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
+		assert.Equal(t, map[apitype.OpType]int{
+			apitype.OpType("create"): conditionalCount(7, 5),
+		}, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
-		upResult := pt.Up(t,
-			optup.ErrorProgressStreams(os.Stderr),
-			optup.ProgressStreams(os.Stdout),
-		)
-
-		autogold.Expect(&map[string]int{"create": 7}).Equal(t, upResult.Summary.ResourceChanges)
+		upResult := pt.Up(t)
+		t.Logf("%s", upResult.StdOut+upResult.StdErr)
+		assert.Equal(t, &map[string]int{"create": conditionalCount(7, 5)}, upResult.Summary.ResourceChanges)
 	})
 }
 
