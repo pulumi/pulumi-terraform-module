@@ -1,0 +1,11 @@
+{
+	"name": "pcl",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "^3.0.0",
+		"@pulumi/vpc": "file:sdks/vpc",
+		"typescript": "^4.0.0"
+	}
+}

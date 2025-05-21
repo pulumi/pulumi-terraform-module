@@ -274,10 +274,13 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	vpcDir := filepath.Join("testdata", "aws-vpc")
-	pclDir := filepath.Join(vpcDir, "aws-vpc")
+	pclDir := filepath.Join(vpcDir, "pcl")
 
 	dest := func(folder string) string {
 		name := folder
+		if viewsEnabled {
+			name += "-views"
+		}
 		d, err := filepath.Abs(filepath.Join(vpcDir, name))
 		require.NoError(t, err)
 		err = os.RemoveAll(d)
