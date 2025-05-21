@@ -348,40 +348,53 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 	t.Run("pulumi preview", func(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 
-		pt.Preview(t,
-			optpreview.Diff(),
-			optpreview.ErrorProgressStreams(os.Stderr),
-			optpreview.ProgressStreams(os.Stdout),
-		)
+		t.Logf("Running `pulumi preview`")
+
+		res := pt.Preview(t, optpreview.Diff())
+		t.Logf("%s", res.StdOut+res.StdErr)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 
-		res := pt.Up(t,
-			optup.ErrorProgressStreams(os.Stderr),
-			optup.ProgressStreams(os.Stdout),
-		)
+		res := pt.Up(t)
+		t.Logf("%s", res.StdOut+res.StdErr)
 
-		expectedResourceCount := 7
+		expectedResourceCount := conditionalCount(7, 6)
 
 		require.Equal(t, res.Summary.ResourceChanges, &map[string]int{
 			"create": expectedResourceCount,
 		})
 
-		moduleState := mustFindDeploymentResourceByType(t, pt, "vpc:index:ModuleState")
+		var tfStateRaw any
 
-		tfStateRaw, gotTfState := moduleState.Outputs["state"]
-		require.True(t, gotTfState)
+		if !viewsEnabled {
+			moduleState := mustFindDeploymentResourceByType(t, pt, "vpc:index:ModuleState")
+
+			s, gotTfState := moduleState.Outputs["state"]
+			require.Truef(t, gotTfState, "expected a `state` property")
+			tfStateRaw = s
+
+		} else {
+			moduleRes := mustFindDeploymentResourceByType(t, pt, "vpc:index:Module")
+
+			s, gotTFState := moduleRes.Outputs["__state"]
+			require.Truef(t, gotTFState, "expected a __state property")
+
+			tfStateRaw = s
+		}
 
 		tfState, isMap := tfStateRaw.(map[string]any)
-		require.True(t, isMap)
+		require.Truef(t, isMap, "state property value must be map-like")
 
 		//nolint:lll
 		// secret signature https://github.com/pulumi/pulumi/blob/4e3ca419c9dc3175399fc24e2fa43f7d9a71a624/developer-docs/architecture/deployment-schema.md?plain=1#L483-L487
-		assert.Contains(t, tfState, "4dabf18193072939515e22adb298388d")
-		assert.Equal(t, tfState["4dabf18193072939515e22adb298388d"], "1b47061264138c4ac30d75fd1eb44270")
-		require.Contains(t, tfState["plaintext"], "vpc_id")
+		assert.Containsf(t, tfState, "4dabf18193072939515e22adb298388d",
+			"state property must have a special value marker")
+		assert.Equal(t, tfState["4dabf18193072939515e22adb298388d"], "1b47061264138c4ac30d75fd1eb44270",
+			"state property must be marked as a secret")
+		require.Containsf(t, tfState["plaintext"], "vpc_id",
+			"raw state property value must contain `vpc_id`")
 	})
 }
 
