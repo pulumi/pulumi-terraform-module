@@ -564,10 +564,22 @@ func TestE2eTs(t *testing.T) {
 			deleteExpect: map[string]int{
 				"delete": conditionalCount(9, 8),
 			},
-			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("update"): 1,
-				apitype.OpType("same"):   conditionalCount(8, 7),
-			},
+			diffNoChangesExpect: func() map[apitype.OpType]int {
+				if viewsEnabled {
+					// With Views drift detection does not quite get picked up yet.
+					// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
+					// will make Pulumi refresh, so TF refreshes as well. When this is done whether
+					// the final counts match or not is less important, the user expectation is to
+					// refresh by default as TF does.
+					return map[apitype.OpType]int{
+						apitype.OpType("same"): 8,
+					}
+				}
+				return map[apitype.OpType]int{
+					apitype.OpType("update"): 1,
+					apitype.OpType("same"):   8,
+				}
+			}(),
 		},
 		{
 			name:            "rdsmod",
@@ -608,20 +620,23 @@ func TestE2eTs(t *testing.T) {
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
 
 			// Preview
-			previewResult := integrationTest.Preview(t)
+			previewResult := integrationTest.Preview(t, optpreview.Diff())
+			t.Logf("pulumi preview:\n%s", previewResult.StdOut+previewResult.StdErr)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
 			// Up
 			upResult := integrationTest.Up(t)
+			t.Logf("pulumi up:\n%s", upResult.StdOut+upResult.StdErr)
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
 			// Preview expect no changes
-			previewResult = integrationTest.Preview(t)
-			t.Log(previewResult.StdOut)
+			previewResult = integrationTest.Preview(t, optpreview.Diff())
+			t.Logf("pulumi preview\n%s", previewResult.StdOut+previewResult.StdErr)
 			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
+			t.Logf("pulumi destroy:\n%s", destroyResult.StdOut+destroyResult.StdErr)
 			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
