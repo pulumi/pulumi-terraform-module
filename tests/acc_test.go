@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -175,15 +176,33 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 	integrationTest.Up(t, optup.Diff())
 
 	integrationTest.SetConfig(t, "step", "2")
-	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "test-lambda-state")
-	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
-		"diff": apitype.PlanDiffV1{
-			Updates: map[string]interface{}{
-				"memory_size": 256,
+
+	// TODO Views do not support update plans properly yet so using a different code paths here.
+	if viewsEnabled {
+		t.Logf("viewsEnabled")
+		previewResult := integrationTest.Preview(t, optpreview.Diff())
+		text := previewResult.StdOut + previewResult.StdErr
+		t.Logf("pulumi preview:\n%s", text)
+
+		p := regexp.MustCompile(`[+]\smemory_size\s+[:]\s+256`)
+		require.Truef(t, len(p.FindStringIndex(text)) > 0,
+			"Expected to see a + memory_size: 256 diff on the module inputs")
+
+		p = regexp.MustCompile(`memory_size\s+[:]\s+128\s+=>\s+256`)
+		require.Truef(t, len(p.FindStringIndex(text)) > 0,
+			"Expected to see a memory_size: 128 => 256 diff on the view representing the function")
+	} else {
+		t.Logf("viewsEnabled = false")
+		resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "test-lambda-state")
+		autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
+			"diff": apitype.PlanDiffV1{
+				Updates: map[string]interface{}{
+					"memory_size": 256,
+				},
 			},
-		},
-		"steps": []apitype.OpType{apitype.OpType("update")},
-	}}).Equal(t, resourceDiffs)
+			"steps": []apitype.OpType{apitype.OpType("update")},
+		}}).Equal(t, resourceDiffs)
+	}
 }
 
 func TestPartialApply(t *testing.T) {
