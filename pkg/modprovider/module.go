@@ -16,10 +16,10 @@ package modprovider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/ryboe/q"
 
@@ -203,18 +204,28 @@ func (h *moduleHandler) applyModuleOperation(
 	var views []*pulumirpc.ViewStep
 	var moduleOutputs resource.PropertyMap
 
-	var allErrors []error
-
 	// TODO should we also publish views before Apply just to start showing something fast?
+
+	var applyErr error
 
 	if preview {
 		views = viewStepsPlan(packageName, plan)
 		moduleOutputs = plan.Outputs()
 	} else {
 		tfState, err := tf.Apply(ctx, logger) // TODO this can reuse the plan it just planned.
-		if err != nil {
-			return nil, nil, fmt.Errorf("Apply failed: %w", err)
+		if tfState != nil {
+			msg := fmt.Sprintf("tf.Apply produced the following state: %s", tfState.PrettyPrint())
+			logger.Log(ctx, tfsandbox.Debug, msg)
 		}
+
+		// the error is unrecoverable if tf.Apply() returned a nil state also
+		if err != nil && tfState == nil {
+			return nil, nil, fmt.Errorf("apply failed: %w", err)
+		} else if err != nil {
+			// otherwise it is a partial error; communicate it out
+			applyErr = err
+		}
+
 		views = viewStepsAfterApply(packageName, plan, tfState)
 		moduleOutputs, err = h.outputs(ctx, tf, tfState)
 		if err != nil {
@@ -222,11 +233,32 @@ func (h *moduleHandler) applyModuleOperation(
 		}
 	}
 
-	if err := errors.Join(allErrors...); err != nil {
-		return nil, nil, err
+	if applyErr != nil {
+
+		// TODO Wrap partial errors in initializationError.
+		// This does not quite work as expected yet as views get recorded into state as pending_operations.
+		// They need to be recorded as finalized operations because they did complete.
+		// applyErr = h.initializationError(moduleOutputs, applyErr.Error())
+
+		// Instead, log and propagate the error for now. This will forget partial TF state but fail Pulumi.
+		logger.Log(ctx, tfsandbox.Error, fmt.Sprintf("partial failure in apply: %v", applyErr))
 	}
 
-	return moduleOutputs, views, nil
+	return moduleOutputs, views, applyErr
+}
+
+func (h *moduleHandler) initializationError(outputs resource.PropertyMap, reasons ...string) error {
+	contract.Assertf(len(reasons) > 0, "initializationError must be passed at least one reason")
+
+	props, err := plugin.MarshalProperties(outputs, h.marshalOpts())
+	contract.AssertNoErrorf(err, "plugin.MarshalProperties failed")
+
+	detail := pulumirpc.ErrorResourceInitFailed{
+		Id:         moduleStateResourceID,
+		Properties: props,
+		Reasons:    reasons,
+	}
+	return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 }
 
 // Pulls the TF state and formats module outputs with the special __ meta-properties.
@@ -257,20 +289,23 @@ func (h *moduleHandler) Create(
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
 ) (*pulumirpc.CreateResponse, error) {
-	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
+	urn := urn.URN(req.GetUrn())
+	logger := newResourceLogger(h.hc, urn)
+
+	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
 	defer statusClient.Release()
-
-	urn := urn.URN(req.GetUrn())
 
 	moduleInputs, err := plugin.UnmarshalProperties(req.GetProperties(), h.marshalOpts())
 	if err != nil {
 		return nil, err
 	}
 
-	moduleOutputs, views, err := h.applyModuleOperation(
+	q.Q("Create", req.GetPreview())
+
+	moduleOutputs, views, applyErr := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -282,20 +317,21 @@ func (h *moduleHandler) Create(
 		packageName,
 		req.GetPreview(),
 	)
-	if err != nil {
-		return nil, err
+
+	// Publish views even if applyErr != nil as is the case of partial failures.
+	if views != nil {
+		_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+			Token: req.ResourceStatusToken,
+			Steps: views,
+		})
+		if err != nil {
+			logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Create: %v", err))
+			return nil, err
+		}
 	}
 
-	q.Q("Create", req.GetPreview())
-
-	logger := newResourceLogger(h.hc, urn)
-	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
-		Token: req.ResourceStatusToken,
-		Steps: views,
-	})
-	if err != nil {
-		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Create: %v", err))
-		return nil, err
+	if applyErr != nil {
+		return nil, applyErr
 	}
 
 	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
@@ -317,6 +353,7 @@ func (h *moduleHandler) Update(
 	packageName packageName,
 ) (*pulumirpc.UpdateResponse, error) {
 	urn := urn.URN(req.GetUrn())
+	logger := newResourceLogger(h.hc, urn)
 
 	moduleInputs, err := plugin.UnmarshalProperties(req.GetNews(), h.marshalOpts())
 	if err != nil {
@@ -328,7 +365,7 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 
-	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
+	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +389,6 @@ func (h *moduleHandler) Update(
 		return nil, err
 	}
 
-	logger := newResourceLogger(h.hc, urn)
 	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
 		Token: req.ResourceStatusToken,
 		Steps: views,
@@ -380,13 +416,14 @@ func (h *moduleHandler) Delete(
 	inferredModule *InferredModuleSchema,
 	providersConfig map[string]resource.PropertyMap,
 ) (*emptypb.Empty, error) {
-	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
+	urn := urn.URN(req.GetUrn())
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+
+	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
 	defer statusClient.Release()
-
-	urn := urn.URN(req.GetUrn())
 
 	moduleInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
 	if err != nil {
@@ -411,8 +448,6 @@ func (h *moduleHandler) Delete(
 	if err != nil {
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
 	}
-
-	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
 	stateBeforeDestroy, err := tf.Show(ctx, logger)
 	if err != nil {
@@ -457,13 +492,14 @@ func (h *moduleHandler) Read(
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
 	}
 
-	statusClient, err := h.statusPool.Acquire(ctx, req.ResourceStatusAddress)
+	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
+	urn := urn.URN(req.GetUrn())
+
+	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
 		return nil, err
 	}
 	defer statusClient.Release()
-
-	urn := urn.URN(req.GetUrn())
 
 	moduleInputs, err := plugin.UnmarshalProperties(req.Inputs, h.marshalOpts())
 	if err != nil {
@@ -488,8 +524,6 @@ func (h *moduleHandler) Read(
 	if err != nil {
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
 	}
-
-	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
 	plan, err := tf.PlanRefreshOnly(ctx, logger)
 	if err != nil {

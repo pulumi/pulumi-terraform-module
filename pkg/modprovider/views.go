@@ -15,6 +15,8 @@
 package modprovider
 
 import (
+	"fmt"
+
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
@@ -148,30 +150,41 @@ func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
 	return nil
 }
 
-// // Starting with very basic error checks for starters. It should be possible to extract more information from TF.
-// func viewStepStatusCheck(
-// 	changeKind tfsandbox.ChangeKind,
-// 	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
-// ) error {
+// Starting with very basic error checks for starters. It should be possible to extract more information from TF.
+func viewStepStatusCheck(
+	changeKind tfsandbox.ChangeKind,
+	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
+) error {
 
-// 	switch changeKind {
+	switch {
 
-// 	// All these operations when successful imply the resource must exist in the final state.
-// 	case tfsandbox.NoOp, tfsandbox.Update, tfsandbox.Create,
-// 		tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
-// 		if finalState == nil {
-// 			return errors.New("resource operation failed")
-// 		}
+	// Planned a create but there is no final state. Resource creation must have failed. Neither TF state nor TF
+	// plan contains the correct error message, so using a generic message for now before TF errors can be properly
+	// correlated to a resource by address.
+	case changeKind == tfsandbox.Create && finalState == nil:
+		return fmt.Errorf("failed to create")
 
-// 	// These operations if successful imply the resource must not exist in the final state.
-// 	case tfsandbox.Delete, tfsandbox.Forget:
-// 		if finalState != nil {
-// 			return errors.New("resource operation failed")
-// 		}
-// 	}
+	default:
+		return nil
 
-// 	return nil
-// }
+	}
+
+	// All these operations when successful imply the resource must exist in the final state.
+	// case tfsandbox.NoOp, tfsandbox.Update, tfsandbox.Create,
+	// 	tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
+	// 	if finalState == nil {
+	// 		return errors.New("resource operation failed")
+	// 	}
+
+	// // These operations if successful imply the resource must not exist in the final state.
+	// case tfsandbox.Delete, tfsandbox.Forget:
+	// 	if finalState != nil {
+	// 		return errors.New("resource operation failed")
+	// 	}
+	// }
+
+	// return nil
+}
 
 // A resource that has not changed and therefore has no Plan entry in TF needs a ViewStep.
 func viewStepForSameResource(
@@ -232,9 +245,9 @@ func viewStepsForResource(
 			// HasDetailedDiff: true,
 		}
 
-		// if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
-		// 	step.Error = err.Error()
-		// }
+		if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
+			step.Error = err.Error()
+		}
 
 		steps = append(steps, step)
 	}

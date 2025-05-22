@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -206,6 +207,22 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 }
 
 func TestPartialApply(t *testing.T) {
+	if viewsEnabled {
+		t.Skip("TODO[pulumi/pulumi#19635]")
+	}
+
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
+	testWriter := newTestWriter(t)
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 
@@ -225,28 +242,42 @@ func TestPartialApply(t *testing.T) {
 
 	// Generate package
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, localMod, "localmod")
-	_, err = integrationTest.CurrentStack().Up(integrationTest.Context(), optup.Diff(),
-		optup.ErrorProgressStreams(os.Stderr),
-		optup.ProgressStreams(os.Stdout),
+
+	_, err = integrationTest.CurrentStack().Up(
+		integrationTest.Context(),
+		optup.Diff(),
+		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts),
 	)
+
 	assert.Errorf(t, err, "expected error on up")
+
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
+
 	// the tf state contains the resource that succeeded
 	assertTFStateResourceExists(t, integrationTest, "localmod", "module.test-localmod.aws_iam_role.this")
 
 	// iam role child resource was created
 	mustFindDeploymentResourceByType(t, integrationTest, "localmod:tf:aws_iam_role")
 
+	t.Logf("################################################################################")
+	t.Logf("step 2")
+	t.Logf("################################################################################")
+
 	integrationTest.SetConfig(t, "step", "2")
 
-	upRes2 := integrationTest.Up(t, optup.Diff(),
-		optup.ErrorProgressStreams(os.Stderr),
-		optup.ProgressStreams(os.Stdout),
+	upRes2 := integrationTest.Up(t,
+		optup.Diff(),
+		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts),
 	)
 	changes2 := *upRes2.Summary.ResourceChanges
 	assert.Equal(t, map[string]int{
 		"update": 1,
 		"create": 1,
-		"same":   3,
+		"same":   conditionalCount(3, 2),
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
 }
@@ -388,24 +419,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 			"create": expectedResourceCount,
 		})
 
-		var tfStateRaw any
-
-		if !viewsEnabled {
-			moduleState := mustFindDeploymentResourceByType(t, pt, "vpc:index:ModuleState")
-
-			s, gotTfState := moduleState.Outputs["state"]
-			require.Truef(t, gotTfState, "expected a `state` property")
-			tfStateRaw = s
-
-		} else {
-			moduleRes := mustFindDeploymentResourceByType(t, pt, "vpc:index:Module")
-
-			s, gotTFState := moduleRes.Outputs["__state"]
-			require.Truef(t, gotTFState, "expected a __state property")
-
-			tfStateRaw = s
-		}
-
+		tfStateRaw := mustFindRawState(t, pt, "vpc")
 		tfState, isMap := tfStateRaw.(map[string]any)
 		require.Truef(t, isMap, "state property value must be map-like")
 
@@ -1400,10 +1414,7 @@ func Test_LocalModule_RelativePath(t *testing.T) {
 // packageName should be the name of the package used in `pulumi package add`
 // resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
 func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packageName string, resourceAddress string) {
-	moduleState := mustFindDeploymentResourceByType(t, pt, tokens.Type(fmt.Sprintf("%s:index:ModuleState", packageName)))
-	tfStateRaw, gotTfState := moduleState.Outputs["state"]
-	require.True(t, gotTfState)
-
+	tfStateRaw := mustFindRawState(t, pt, packageName)
 	tfState, isMap := tfStateRaw.(map[string]any)
 	require.True(t, isMap)
 	plaintext, exists := tfState["plaintext"].(string)
@@ -1453,8 +1464,37 @@ func mustFindDeploymentResourceByType(
 			found++
 		}
 	}
-	require.Equalf(t, 1, found, "Expected to find only 1 resource with type: %s", resourceType.String())
+
+	prettyPrintedState, err := json.MarshalIndent(deployment, "", "  ")
+	require.NoError(t, err)
+
+	require.Equalf(t, 1, found,
+		"Expected to find exactly 1 resource with type: %s\nComplete state:\n%s\n",
+		resourceType.String(),
+		string(prettyPrintedState),
+	)
 	return res
+}
+
+func mustFindRawState(t *testing.T, pt *pulumitest.PulumiTest, packageName string) any {
+	var tfStateRaw any
+	prefix := fmt.Sprintf("%s:index:", packageName)
+	if !viewsEnabled {
+		moduleState := mustFindDeploymentResourceByType(t, pt, tokens.Type(prefix+"ModuleState"))
+
+		s, gotTfState := moduleState.Outputs["state"]
+		require.Truef(t, gotTfState, "expected a `state` property")
+		tfStateRaw = s
+
+	} else {
+		moduleRes := mustFindDeploymentResourceByType(t, pt, tokens.Type(prefix+"Module"))
+
+		s, gotTFState := moduleRes.Outputs["__state"]
+		require.Truef(t, gotTFState, "expected a __state property")
+
+		tfStateRaw = s
+	}
+	return tfStateRaw
 }
 
 // runPreviewWithPlanDiff runs a pulumi preview that creates a plan file

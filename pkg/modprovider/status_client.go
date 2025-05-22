@@ -15,20 +15,24 @@
 package modprovider
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
 
+	"github.com/go-jose/go-jose/v3/json"
 	"github.com/jackc/puddle/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type resourceStatusClientPool interface {
-	Acquire(ctx context.Context, address string) (resourceStatusClientLease, error)
+	Acquire(ctx context.Context, logger tfsandbox.Logger, address string) (resourceStatusClientLease, error)
 }
 
 type resourceStatusClientLease interface {
@@ -91,7 +95,11 @@ func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 	return pool, nil
 }
 
-func (p *resourceStatusClientPoolImpl) Acquire(ctx context.Context, address string) (resourceStatusClientLease, error) {
+func (p *resourceStatusClientPoolImpl) Acquire(
+	ctx context.Context,
+	logger tfsandbox.Logger,
+	address string,
+) (resourceStatusClientLease, error) {
 	pool, err := p.getOrCreatePool(address)
 	if err != nil {
 		return nil, err
@@ -102,8 +110,13 @@ func (p *resourceStatusClientPoolImpl) Acquire(ctx context.Context, address stri
 		return nil, fmt.Errorf("error acquiring a client from the gRPC ResourceStatus pool: %w", err)
 	}
 
-	return &resourceStatusClientLeaseImpl{
+	statusClient := &resourceStatusClientWithLogging{
 		ResourceStatusClient: client.Value().client,
+		logger:               logger,
+	}
+
+	return &resourceStatusClientLeaseImpl{
+		ResourceStatusClient: statusClient,
 		release:              client.Release,
 	}, nil
 }
@@ -118,3 +131,36 @@ func (r *resourceStatusClientLeaseImpl) Release() {
 }
 
 var _ resourceStatusClientLease = (*resourceStatusClientLeaseImpl)(nil)
+
+type resourceStatusClientWithLogging struct {
+	pulumirpc.ResourceStatusClient
+
+	// Note: this interface probably should not live in tfsandbox but is generically useful.
+	logger tfsandbox.Logger
+}
+
+func (c *resourceStatusClientWithLogging) PublishViewSteps(
+	ctx context.Context,
+	in *pulumirpc.PublishViewStepsRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.PublishViewStepsResponse, error) {
+	var logMsg bytes.Buffer
+	fmt.Fprintf(&logMsg, "PublishViewSteps(token=%q) sending %d steps:\n", in.Token, len(in.Steps))
+	for i, step := range in.Steps {
+		fmt.Fprintf(&logMsg, "  [%d/%d]: ", i+1, len(in.Steps))
+		stepJSON, err := protojson.Marshal(step)
+		contract.AssertNoErrorf(err, "protojson.Marshal failed on ViewStep")
+		err = json.Indent(&logMsg, stepJSON, "", "  ")
+		contract.AssertNoErrorf(err, "json.Indent failed on ViewStep")
+		fmt.Fprintf(&logMsg, "\n")
+	}
+	c.logger.Log(ctx, tfsandbox.Debug, logMsg.String())
+	response, err := c.ResourceStatusClient.PublishViewSteps(ctx, in, opts...)
+	if err != nil {
+		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) failed: %w", in.Token, err))
+	} else {
+		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) finished sending %d steps",
+			in.Token, len(in.Steps)))
+	}
+	return response, err
+}
