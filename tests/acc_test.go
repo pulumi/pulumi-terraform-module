@@ -25,6 +25,7 @@ import (
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1156,9 +1157,18 @@ func TestRefreshDeleted(t *testing.T) {
 // Verify that when there is no drift, refresh works without any changes.
 func TestRefreshNoChanges(t *testing.T) {
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+	testWriter := newTestWriter(t)
 
-	// export PULUMI_ENABLE_VIEWS_PREVIEW=true
-	// t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "false")
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	logLevel := uint(13)
+	debugOpts = debug.LoggingOptions{
+		LogLevel:      &logLevel,
+		LogToStdErr:   true,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
@@ -1173,13 +1183,17 @@ func TestRefreshNoChanges(t *testing.T) {
 
 	// First provision a bucket.
 	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
+	it.Up(t,
+		optup.ProgressStreams(testWriter),
+		optup.ErrorProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts))
 
 	// Now perform a refresh.
-	refreshResult := it.Refresh(t)
 	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
+	refreshResult := it.Refresh(t,
+		optrefresh.ProgressStreams(testWriter),
+		optrefresh.ErrorProgressStreams(testWriter),
+		optrefresh.DebugLogging(debugOpts))
 
 	rc := refreshResult.Summary.ResourceChanges
 	assert.Equal(t, &map[string]int{

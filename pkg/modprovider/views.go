@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	//"github.com/ryboe/q"
+	"github.com/ryboe/q"
 )
 
 func viewStepsPlan(
@@ -92,24 +92,24 @@ func viewStepsGeneric(
 
 	// TODO enabling this code may fix the counts but exposes a CLI panic currently.
 
-	// sameCounter := 0
-	// finalState.VisitResources(func(rs *tfsandbox.ResourceState) {
-	// 	// TODO sometimes addresses change but identity remains the same.
-	// 	addr := rs.Address()
+	sameCounter := 0
+	finalState.VisitResources(func(rs *tfsandbox.ResourceState) {
+		// TODO sometimes addresses change but identity remains the same.
+		addr := rs.Address()
 
-	// 	// Skip planned resources.
-	// 	_, planned := plan.FindResource(addr)
-	// 	if planned {
-	// 		return
-	// 	}
+		// Skip planned resources.
+		_, planned := plan.FindResource(addr)
+		if planned {
+			return
+		}
 
-	// 	sameCounter++
+		sameCounter++
 
-	// 	step := viewStepForSameResource(packageName, rs)
-	// 	steps = append(steps, step)
-	// })
+		step := viewStepForSameResource(packageName, rs)
+		steps = append(steps, step)
+	})
 
-	// q.Q("viewStepsGeneric", steps, counter, sameCounter)
+	q.Q("viewStepsGeneric", steps, counter, sameCounter)
 
 	// planSTR, err := json.MarshalIndent(plan.RawPlan(), "", "  ")
 	// contract.AssertNoErrorf(err, "MarshalIndent failure")
