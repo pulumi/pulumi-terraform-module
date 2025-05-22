@@ -508,9 +508,13 @@ func (h *moduleHandler) Read(
 		return nil, err
 	}
 
+	viewSteps := viewStepsAfterRefresh(packageName, plan, state)
+
+	q.Q("REFRESH viewSteps", viewSteps)
+
 	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
 		Token: req.ResourceStatusToken,
-		Steps: viewStepsAfterRefresh(packageName, plan, state),
+		Steps: viewSteps,
 	})
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after refresh: %v", err))

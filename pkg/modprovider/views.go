@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/ryboe/q"
+	//"github.com/ryboe/q"
 )
 
 func viewStepsPlan(
@@ -57,7 +57,11 @@ func viewStepsGeneric(
 	priorState, hasPriorState := plan.PriorState()
 	hasFinalState := finalState != nil
 
+	counter := 0
+
 	plan.VisitResources(func(rplan *tfsandbox.ResourcePlan) {
+		counter++
+
 		// TODO sometimes addresses change but identity remains the same.
 		addr := rplan.Address()
 
@@ -80,7 +84,35 @@ func viewStepsGeneric(
 		rSteps := viewStepsForResource(packageName, rplan, priorRState, finalRState)
 		steps = append(steps, rSteps...)
 	})
-	q.Q("viewStepsGeneric", steps)
+
+	// Resources that are present in finalState and priorState but have no Plan entry have not changed. Generate
+	// no-change ViewStep entries for these resources to that Pulumi resource counters are accurate.
+
+	// TODO enabling this code may fix the counts but exposes a CLI panic currently.
+
+	// sameCounter := 0
+	// finalState.VisitResources(func(rs *tfsandbox.ResourceState) {
+	// 	// TODO sometimes addresses change but identity remains the same.
+	// 	addr := rs.Address()
+
+	// 	// Skip planned resources.
+	// 	_, planned := plan.FindResource(addr)
+	// 	if planned {
+	// 		return
+	// 	}
+
+	// 	sameCounter++
+
+	// 	step := viewStepForSameResource(packageName, rs)
+	// 	steps = append(steps, step)
+	// })
+
+	// q.Q("viewStepsGeneric", steps, counter, sameCounter)
+
+	// planSTR, err := json.MarshalIndent(plan.RawPlan(), "", "  ")
+	// contract.AssertNoErrorf(err, "MarshalIndent failure")
+	// q.Q(string(planSTR))
+
 	return steps
 }
 
@@ -140,6 +172,24 @@ func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
 
 // 	return nil
 // }
+
+// A resource that has not changed and therefore has no Plan entry in TF needs a ViewStep.
+func viewStepForSameResource(
+	packageName packageName,
+	finalState *tfsandbox.ResourceState,
+) *pulumirpc.ViewStep {
+	ty := childResourceTypeToken(packageName, finalState.Type()).String()
+	name := childResourceName(finalState)
+	viewState := viewStepState(packageName, finalState)
+	return &pulumirpc.ViewStep{
+		Status: pulumirpc.ViewStep_OK,
+		Name:   name,
+		Type:   ty,
+		Op:     pulumirpc.ViewStep_SAME,
+		Old:    viewState,
+		New:    viewState,
+	}
+}
 
 func viewStepsForResource(
 	packageName packageName,
