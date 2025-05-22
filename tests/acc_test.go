@@ -1025,6 +1025,10 @@ func TestDiffDetail(t *testing.T) {
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefresh(t *testing.T) {
+	if viewsEnabled {
+		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
+	}
+
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	ctx := context.Background()
 
