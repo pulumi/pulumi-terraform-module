@@ -1,16 +1,22 @@
 package tests
 
 import (
+	"bufio"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -142,6 +148,8 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 // Now check resources that are replaced with a replace_triggered_by trigger. It uses the default TF delete_create
 // order. There is no test for a create_delete order as it should work fine for triggers as well as normal replaces.
 func Test_replace_trigger_delete_create(t *testing.T) {
+	testWriter := newTestWriter(t)
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace3mod"))
@@ -159,52 +167,85 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 	pt.Up(t)
 	pt.SetConfig(t, "keeper", "beta")
 
-	diffResult := pt.Preview(t, optpreview.Diff())
-	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
-	autogold.Expect(map[apitype.OpType]int{
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, uncomment:
+	//
+	// logLevel := uint(13)
+	// debugOpts := debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
+	t.Logf("###################################################################################")
+	t.Logf("pulumi preview")
+	t.Logf("###################################################################################")
+
+	diffResult := pt.Preview(t,
+		optpreview.Diff(),
+		optpreview.DebugLogging(debugOpts),
+		optpreview.ProgressStreams(testWriter),
+		optpreview.ErrorProgressStreams(testWriter),
+	)
+
+	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 2,
-		apitype.OpType("same"):    2,
+		apitype.OpType("same"):    conditionalCount(2, 1),
 		apitype.OpType("update"):  1,
-	}).Equal(t, diffResult.ChangeSummary)
+	}, diffResult.ChangeSummary)
 
-	// Although it is unclear which Pulumi-modeled input caused a replacement, the plan is still a replace. That
-	// is the key point here.
-
-	delta := runPreviewWithPlanDiff(t, pt)
-	autogold.Expect(map[string]interface{}{
-		"module.replacetestmod.random_integer.r": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-				"id":     "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"result": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			}},
-			"steps": []apitype.OpType{
-				apitype.OpType("delete-replaced"),
-				apitype.OpType("replace"),
-				apitype.OpType("create-replacement"),
+	// Although it is unclear which Pulumi-modeled input caused a replacement, assert that the plan is still a
+	// replace for the r0 random_integer resource. This is making certain replace_triggered_by works.
+	if viewsEnabled {
+		// With views plans are not trusted yet so do regex-level validation.
+		n := strings.Count(diffResult.StdOut, "+-mod:tf:random_integer: (replace)")
+		require.Equalf(t, 2, n, "Expected two random_integer resources being replaced")
+	} else {
+		delta := runPreviewWithPlanDiff(t, pt)
+		autogold.Expect(map[string]interface{}{
+			"module.replacetestmod.random_integer.r": map[string]interface{}{
+				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
+					"id":     "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"result": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				}},
+				"steps": []apitype.OpType{
+					apitype.OpType("delete-replaced"),
+					apitype.OpType("replace"),
+					apitype.OpType("create-replacement"),
+				},
 			},
-		},
-		"module.replacetestmod.random_integer.r0": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-				"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"keepers": map[string]interface{}{"keeper": "beta"},
-				"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			}},
-			"steps": []apitype.OpType{
-				apitype.OpType("delete-replaced"),
-				apitype.OpType("replace"),
-				apitype.OpType("create-replacement"),
+			"module.replacetestmod.random_integer.r0": map[string]interface{}{
+				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
+					"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"keepers": map[string]interface{}{"keeper": "beta"},
+					"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				}},
+				"steps": []apitype.OpType{
+					apitype.OpType("delete-replaced"),
+					apitype.OpType("replace"),
+					apitype.OpType("create-replacement"),
+				},
 			},
-		},
-		"replacetestmod-state": map[string]interface{}{
-			//nolint:lll
-			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
-			"steps": []apitype.OpType{apitype.OpType("update")},
-		},
-	}).Equal(t, delta)
+			"replacetestmod-state": map[string]interface{}{
+				//nolint:lll
+				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
+				"steps": []apitype.OpType{apitype.OpType("update")},
+			},
+		}).Equal(t, delta)
+	}
 
-	replaceResult := pt.Up(t)
+	t.Logf("###################################################################################")
+	t.Logf("pulumi up")
+	t.Logf("###################################################################################")
 
-	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+	pt.Up(t,
+		optup.Diff(),
+		optup.DebugLogging(debugOpts),
+		optup.ProgressStreams(testWriter),
+		optup.ErrorProgressStreams(testWriter),
+	)
 }
 
 // Terraform performs an implicit refresh during apply, and sometimes it finds that the resource is gone. Terraform
@@ -278,4 +319,19 @@ func Test_replace_drift_deleted(t *testing.T) {
 	bytes, err = os.ReadFile(filePath)
 	require.NoError(t, err)
 	require.Equal(t, "Hello, World!", string(bytes))
+}
+
+func newTestWriter(t *testing.T) io.Writer {
+	t.Helper()
+
+	r, w := io.Pipe()
+
+	go func() {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			t.Logf("%s", scanner.Text())
+		}
+	}()
+
+	return w
 }
