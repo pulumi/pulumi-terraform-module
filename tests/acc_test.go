@@ -1087,6 +1087,10 @@ func TestRefresh(t *testing.T) {
 
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeleted(t *testing.T) {
+	if viewsEnabled {
+		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
+	}
+
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
