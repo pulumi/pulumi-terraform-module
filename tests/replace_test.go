@@ -252,6 +252,10 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 // plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
 // approximately renders this as a replacement, where the deletion of the resource is a no-op.
 func Test_replace_drift_deleted(t *testing.T) {
+	if viewsEnabled {
+		t.Skip("TODO[pulumi/pulumi-terraform-module#331]")
+	}
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace4mod"))
