@@ -52,6 +52,17 @@ const (
 func Test_RandMod_TypeScript(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
 	// Module written to support the test.
 	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
 	require.NoError(t, err)
@@ -70,15 +81,28 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	})
 
 	t.Run("pulumi preview", func(t *testing.T) {
-		previewResult := pt.Preview(t, optpreview.Diff())
-		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
+		tw := newTestWriter(t)
+
+		previewResult := pt.Preview(t,
+			optpreview.Diff(),
+			optpreview.DebugLogging(debugOpts),
+			optpreview.ProgressStreams(tw),
+			optpreview.ErrorProgressStreams(tw),
+		)
 		assert.Equal(t, map[apitype.OpType]int{
 			apitype.OpType("create"): conditionalCount(5, 4),
 		}, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
-		upResult := pt.Up(t)
+		tw := newTestWriter(t)
+
+		upResult := pt.Up(t,
+			optup.DebugLogging(debugOpts),
+			optup.ProgressStreams(tw),
+			optup.ErrorProgressStreams(tw),
+		)
+
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
 
 		assert.Equal(t, &map[string]int{
@@ -122,24 +146,12 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			autogold.Expect(map[string]any{}).Equal(t, randInt.Outputs)
 		} else {
 			autogold.Expect(resource.ID("")).Equal(t, randInt.ID)
-			autogold.Expect(map[string]interface{}{
-				"id": "2", "keepers": nil, "max": 10, "min": 1, "result": 2,
-				"seed": map[string]interface{}{
-					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					"plaintext":                        `"9"`,
-				},
-			}).Equal(t, randInt.Inputs)
+			autogold.Expect(map[string]interface{}{"id": "2", "max": 10, "min": 1, "result": 2, "seed": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `"9"`,
+			}}).Equal(t, randInt.Inputs)
 
-			// TODO this result is surprising and it looks like Outputs get a copy of inputs instead of the
-			// outputs published through ViewStepState. Module provider currently does not depend on the
-			// outputs though so this can be tolerated.
-			autogold.Expect(map[string]interface{}{
-				"id": "2", "keepers": nil, "max": 10, "min": 1, "result": 2,
-				"seed": map[string]interface{}{
-					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					"plaintext":                        `"9"`,
-				},
-			}).Equal(t, randInt.Outputs)
+			autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 		}
 	})
 

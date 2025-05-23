@@ -31,7 +31,7 @@ func viewStepsPlan(
 	packageName packageName,
 	plan *tfsandbox.Plan,
 ) []*pulumirpc.ViewStep {
-	return viewStepsGeneric(packageName, plan, nil)
+	return viewStepsGeneric(packageName, plan, nil, true /* preview */)
 }
 
 func viewStepsAfterApply(
@@ -39,7 +39,7 @@ func viewStepsAfterApply(
 	plan *tfsandbox.Plan,
 	appliedState *tfsandbox.State,
 ) []*pulumirpc.ViewStep {
-	return viewStepsGeneric(packageName, plan, appliedState)
+	return viewStepsGeneric(packageName, plan, appliedState, false /*preview*/)
 }
 
 func viewStepsAfterRefresh(
@@ -47,13 +47,14 @@ func viewStepsAfterRefresh(
 	plan *tfsandbox.Plan,
 	refreshedState *tfsandbox.State,
 ) []*pulumirpc.ViewStep {
-	return viewStepsGeneric(packageName, plan, refreshedState)
+	return viewStepsGeneric(packageName, plan, refreshedState, false /*preview*/)
 }
 
 func viewStepsGeneric(
 	packageName packageName,
 	plan *tfsandbox.Plan,
 	finalState *tfsandbox.State,
+	preview bool,
 ) []*pulumirpc.ViewStep {
 	var steps []*pulumirpc.ViewStep
 	priorState, hasPriorState := plan.PriorState()
@@ -63,6 +64,11 @@ func viewStepsGeneric(
 
 	plan.VisitResourcePlans(func(rplan *tfsandbox.ResourcePlan) {
 		counter++
+
+		// Skip unknown emulation resources.
+		if rplan.Type() == "pulumiaux_unk" {
+			return
+		}
 
 		// TODO sometimes addresses change but identity remains the same.
 		addr := rplan.Address()
@@ -83,7 +89,7 @@ func viewStepsGeneric(
 			}
 		}
 
-		rSteps := viewStepsForResource(packageName, rplan, priorRState, finalRState)
+		rSteps := viewStepsForResource(packageName, rplan, priorRState, finalRState, preview)
 		steps = append(steps, rSteps...)
 	})
 
@@ -208,6 +214,7 @@ func viewStepsForResource(
 	rplan ResourcePlan,
 	priorState ResourceState, // may be nil in operations such as create
 	finalState ResourceState, // may be nil when planning or failed to create
+	preview bool,
 ) []*pulumirpc.ViewStep {
 
 	addr := rplan.Address()
@@ -249,8 +256,10 @@ func viewStepsForResource(
 			// HasDetailedDiff: true,
 		}
 
-		if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
-			step.Error = err.Error()
+		if !preview {
+			if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
+				step.Error = err.Error()
+			}
 		}
 
 		steps = append(steps, step)
