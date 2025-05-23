@@ -440,7 +440,7 @@ func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, repl
 }
 
 func TestS3BucketWithExplicitProvider(t *testing.T) {
-	t.Parallel()
+	// t.Parallel() - cannot use t.Parallel because the test uses SetEnv
 
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
