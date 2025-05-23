@@ -463,7 +463,8 @@ func TestS3BucketModSecret(t *testing.T) {
 		"id": "446723-test-bucket",
 		"rule": map[string]interface{}{
 			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-			"plaintext":                        `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+			//nolint:lll
+			"plaintext": `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
 		},
 	}).Equal(t, encrConf.Inputs)
 
@@ -1000,6 +1001,7 @@ func TestE2eYAML(t *testing.T) {
 }
 
 func TestDiffDetail(t *testing.T) {
+	w := newTestWriter(t)
 	// Set up a test Bucket
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
@@ -1024,22 +1026,34 @@ func TestDiffDetail(t *testing.T) {
 	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
 
 	// Preview
-	resourceDiffs := runPreviewWithPlanDiff(t, diffDetailTest)
+	var debugOpts debug.LoggingOptions
 
-	autogold.Expect(map[string]interface{}{
-		"module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]": map[string]interface{}{
-			"diff":  apitype.PlanDiffV1{},
-			"steps": []apitype.OpType{apitype.OpType("delete")},
-		},
-		"test-bucket-state": map[string]interface{}{
-			//nolint:lll
-			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"bucket": prefix + "-test-bucket"}}},
-			"steps": []apitype.OpType{apitype.OpType("update")},
-		},
-	}).Equal(t, resourceDiffs)
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
 
-	// Cleanup
-	diffDetailTest.Destroy(t)
+	result := diffDetailTest.Preview(t,
+		optpreview.Diff(),
+		optpreview.ErrorProgressStreams(w),
+		optpreview.ProgressStreams(w),
+		optpreview.DebugLogging(debugOpts))
+
+	assert.Equal(t, map[apitype.OpType]int{
+		apitype.OpType("delete"): 1,
+		apitype.OpType("same"):   conditionalCount(4, 3),
+		apitype.OpType("update"): 1,
+	}, result.ChangeSummary)
+
+	// Expected CLI to render a diff on removing server_side_encryption_configuration input from the module.
+	assert.Contains(t, result.StdOut, "- server_side_encryption_configuration:")
+
+	// Also expected an entry for deleting the encryption config resource.
+	assert.Contains(t, result.StdOut, "- bucket:tf:aws_s3_bucket_server_side_encryption_configuration: (delete)")
 }
 
 // Verify that pulumi refresh detects drift and reflects it in the state.

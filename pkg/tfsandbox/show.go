@@ -10,7 +10,7 @@ func (t *Tofu) Show(ctx context.Context, _ Logger) (*State, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error running tofu show: %w", err)
 	}
-	s, err := newState(state)
+	s, err := NewState(state)
 	if err != nil {
 		return nil, err
 	}

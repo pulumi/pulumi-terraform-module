@@ -61,7 +61,7 @@ func viewStepsGeneric(
 
 	counter := 0
 
-	plan.VisitResources(func(rplan *tfsandbox.ResourcePlan) {
+	plan.VisitResourcePlans(func(rplan *tfsandbox.ResourcePlan) {
 		counter++
 
 		// TODO sometimes addresses change but identity remains the same.
@@ -70,14 +70,14 @@ func viewStepsGeneric(
 		var priorRState, finalRState *tfsandbox.ResourceState
 
 		if hasPriorState {
-			s, ok := priorState.FindResource(addr)
+			s, ok := priorState.FindResourceState(addr)
 			if ok {
 				priorRState = s
 			}
 		}
 
 		if hasFinalState {
-			s, ok := finalState.FindResource(addr)
+			s, ok := finalState.FindResourceState(addr)
 			if ok {
 				finalRState = s
 			}
@@ -89,25 +89,24 @@ func viewStepsGeneric(
 
 	// Resources that are present in finalState and priorState but have no Plan entry have not changed. Generate
 	// no-change ViewStep entries for these resources to that Pulumi resource counters are accurate.
+	if finalState != nil {
+		sameCounter := 0
+		finalState.VisitResourceStates(func(rs *tfsandbox.ResourceState) {
+			// TODO sometimes addresses change but identity remains the same.
+			addr := rs.Address()
 
-	// TODO enabling this code may fix the counts but exposes a CLI panic currently.
+			// Skip planned resources.
+			_, planned := plan.FindResourcePlan(addr)
+			if planned {
+				return
+			}
 
-	sameCounter := 0
-	finalState.VisitResources(func(rs *tfsandbox.ResourceState) {
-		// TODO sometimes addresses change but identity remains the same.
-		addr := rs.Address()
+			sameCounter++
 
-		// Skip planned resources.
-		_, planned := plan.FindResource(addr)
-		if planned {
-			return
-		}
-
-		sameCounter++
-
-		step := viewStepForSameResource(packageName, rs)
-		steps = append(steps, step)
-	})
+			step := viewStepForSameResource(packageName, rs)
+			steps = append(steps, step)
+		})
+	}
 
 	// planSTR, err := json.MarshalIndent(plan.RawPlan(), "", "  ")
 	// contract.AssertNoErrorf(err, "MarshalIndent failure")
@@ -187,11 +186,13 @@ func viewStepStatusCheck(
 // A resource that has not changed and therefore has no Plan entry in TF needs a ViewStep.
 func viewStepForSameResource(
 	packageName packageName,
-	finalState *tfsandbox.ResourceState,
+	finalState ResourceState,
 ) *pulumirpc.ViewStep {
-	ty := childResourceTypeToken(packageName, finalState.Type()).String()
-	name := childResourceName(finalState)
-	viewState := viewStepState(packageName, finalState)
+	addr := finalState.Address()
+	tfType := finalState.Type()
+	ty := childResourceTypeToken(packageName, tfType).String()
+	name := childResourceName(addr)
+	viewState := viewStepState(packageName, addr, tfType, finalState.AttributeValues())
 	return &pulumirpc.ViewStep{
 		Status: pulumirpc.ViewStep_OK,
 		Name:   name,
@@ -204,23 +205,28 @@ func viewStepForSameResource(
 
 func viewStepsForResource(
 	packageName packageName,
-	rplan *tfsandbox.ResourcePlan,
-	priorState *tfsandbox.ResourceState, // may be nil in operations such as create
-	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
+	rplan ResourcePlan,
+	priorState ResourceState, // may be nil in operations such as create
+	finalState ResourceState, // may be nil when planning or failed to create
 ) []*pulumirpc.ViewStep {
 
+	addr := rplan.Address()
+	tfType := rplan.Type()
 	ty := childResourceTypeToken(packageName, rplan.Type()).String()
-	name := childResourceName(rplan)
+	name := childResourceName(addr)
 
 	var oldViewState, newViewState *pulumirpc.ViewStepState
 	if finalState != nil {
-		newViewState = viewStepState(packageName, finalState)
+		newViewState = viewStepState(packageName, addr, tfType, finalState.AttributeValues())
 	} else {
-		newViewState = viewStepState(packageName, rplan)
+		planned, ok := rplan.PlannedValues()
+		if ok {
+			newViewState = viewStepState(packageName, addr, tfType, planned)
+		}
 	}
 
 	if priorState != nil {
-		oldViewState = viewStepState(packageName, priorState)
+		oldViewState = viewStepState(packageName, addr, tfType, priorState.AttributeValues())
 	}
 
 	steps := []*pulumirpc.ViewStep{}
@@ -253,15 +259,20 @@ func viewStepsForResource(
 	return steps
 }
 
-func viewStepState(packageName packageName, stateOrPlan tfsandbox.ResourceStateOrPlan) *pulumirpc.ViewStepState {
-	ty := childResourceTypeToken(packageName, stateOrPlan.Type()).String()
-	name := childResourceName(stateOrPlan)
+func viewStepState(
+	packageName packageName,
+	addr ResourceAddress,
+	tfType TFResourceType,
+	values resource.PropertyMap,
+) *pulumirpc.ViewStepState {
+	ty := childResourceTypeToken(packageName, tfType).String()
+	name := childResourceName(addr)
 
 	return &pulumirpc.ViewStepState{
 		Name: name,
 		Type: ty,
 		// Everything is an input currently, as a first approximation. Outputs are empty.
-		Inputs: viewStruct(stateOrPlan.Values()),
+		Inputs: viewStruct(values),
 	}
 }
 
@@ -272,10 +283,10 @@ func viewStepsAfterDestroy(
 ) []*pulumirpc.ViewStep {
 	steps := []*pulumirpc.ViewStep{}
 
-	stateBeforeDestroy.VisitResources(func(rs *tfsandbox.ResourceState) {
+	stateBeforeDestroy.VisitResourceStates(func(rs ResourceState) {
 		// TODO: check stateAfterDestroy to account for partial errors where not all resources were deleted.
 		ty := childResourceTypeToken(packageName, rs.Type()).String()
-		name := childResourceName(rs)
+		name := childResourceName(rs.Address())
 
 		step := &pulumirpc.ViewStep{
 			Op:     pulumirpc.ViewStep_DELETE,
