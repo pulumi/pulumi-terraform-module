@@ -464,7 +464,8 @@ func TestS3BucketModSecret(t *testing.T) {
 			"id": "576852-test-bucket",
 			"rule": map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				"plaintext":                        `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+				//nolint:lll
+				"plaintext": `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
 			},
 		}).Equal(t, encrConf.Inputs)
 
@@ -477,7 +478,8 @@ func TestS3BucketModSecret(t *testing.T) {
 			"id":                    "174703-test-bucket",
 			"rule": map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				"plaintext":                        `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+				//nolint:lll
+				"plaintext": `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
 			},
 		}).Equal(t, encrConf.Inputs)
 	}
