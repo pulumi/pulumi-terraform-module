@@ -17,9 +17,9 @@ package modprovider
 import (
 	"testing"
 
+	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
@@ -31,26 +31,41 @@ func TestPlanStore_Plans(t *testing.T) {
 	modUrn := urn.URN("urn:pulumi:test::prog::randmod:index:Module::mymod")
 	rAddr := ResourceAddress("modules.mymod.random_integer.this[0]")
 
-	ps.SetPlan(modUrn, &testPlan{
-		byAddress: map[ResourceAddress]testResourcePlan{
-			rAddr: {
-				changeKind:      tfsandbox.NoOp,
-				resourceAddress: rAddr,
-				name:            string(rAddr),
-				resType:         "random_integer",
-				plannedValues: resource.PropertyMap{
-					"result": resource.NewComputedProperty(resource.Computed{
-						Element: resource.NewNumberProperty(0),
-					}),
+	testPlan, err := tfsandbox.NewPlan(&tfjson.Plan{
+		ResourceChanges: []*tfjson.ResourceChange{{
+			Address: string(rAddr),
+			Name:    string(rAddr),
+			Change: &tfjson.Change{
+				Actions: tfjson.Actions{tfjson.ActionNoop},
+				AfterUnknown: map[string]any{
+					"result": true,
 				},
+			},
+			Type: "random_integer",
+		}},
+
+		PlannedValues: &tfjson.StateValues{
+			RootModule: &tfjson.StateModule{
+				Resources: []*tfjson.StateResource{{
+					Address: string(rAddr),
+					Name:    string(rAddr),
+					AttributeValues: map[string]any{
+						"result": nil,
+					},
+				}},
 			},
 		},
 	})
+	require.NoError(t, err)
+
+	ps.SetPlan(modUrn, testPlan)
 
 	p, err := ps.FindResourcePlan(modUrn, rAddr)
 	require.NoError(t, err)
 
-	require.True(t, p.PlannedValues()["result"].IsComputed())
+	planned, ok := p.PlannedValues()
+	require.True(t, ok)
+	require.True(t, planned["result"].IsComputed())
 }
 
 func TestPlanStore_States(t *testing.T) {
@@ -59,51 +74,26 @@ func TestPlanStore_States(t *testing.T) {
 	modUrn := urn.URN("urn:pulumi:test::prog::randmod:index:Module::mymod")
 	rAddr := ResourceAddress("modules.mymod.random_integer.this[0]")
 
-	ps.SetState(modUrn, &testState{
-		res: &testResourceState{
-			address: rAddr,
-			name:    string(rAddr),
-			resType: "random_integer",
-			attrs: resource.PropertyMap{
-				"result": resource.NewNumberProperty(42),
+	testState, err := tfsandbox.NewState(&tfjson.State{
+		Values: &tfjson.StateValues{
+			RootModule: &tfjson.StateModule{
+				Resources: []*tfjson.StateResource{{
+					Address: string(rAddr),
+					Name:    string(rAddr),
+					Type:    "random_inreger",
+					AttributeValues: map[string]any{
+						"result": int(42),
+					},
+				}},
 			},
 		},
 	})
+	require.NoError(t, err)
+
+	ps.SetState(modUrn, testState)
 
 	st, err := ps.FindResourceState(modUrn, rAddr)
 	require.NoError(t, err)
 
 	require.Equal(t, float64(42), st.AttributeValues()["result"].NumberValue())
-}
-
-type testPlan struct {
-	byAddress map[ResourceAddress]testResourcePlan
-}
-
-var _ Plan = (*testPlan)(nil)
-
-type testResourcePlan struct {
-	resourceAddress ResourceAddress
-	changeKind      ChangeKind
-	plannedValues   resource.PropertyMap
-	name            string
-	resType         TFResourceType
-}
-
-func (x *testResourcePlan) Type() TFResourceType                { return x.resType }
-func (x *testResourcePlan) Name() string                        { return x.name }
-func (x *testResourcePlan) Address() ResourceAddress            { return x.resourceAddress }
-func (x *testResourcePlan) ChangeKind() ChangeKind              { return x.changeKind }
-func (x *testResourcePlan) PlannedValues() resource.PropertyMap { return x.plannedValues }
-func (x *testResourcePlan) Values() resource.PropertyMap        { return x.plannedValues }
-
-var _ ResourcePlan = (*testResourcePlan)(nil)
-var _ ResourceStateOrPlan = (*testResourcePlan)(nil)
-
-func (p *testPlan) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
-	r, ok := p.byAddress[addr]
-	if !ok {
-		return nil, false
-	}
-	return &r, true
 }

@@ -619,9 +619,10 @@ func assertPlanForAddress(
 	assertFunc func(actual interface{}),
 ) {
 	t.Helper()
-	resourcePlan, ok := plan.FindResource(tfsandbox.ResourceAddress(address))
+	resourcePlan, ok := plan.FindResourcePlan(tfsandbox.ResourceAddress(address))
 	assert.Truef(t, ok, "resource %s not found", address)
-	values := resourcePlan.PlannedValues()
+	values, ok := resourcePlan.PlannedValues()
+	require.Truef(t, ok, "no planned values for this resource, possibly being deleted")
 	propertyPath, err := resource.ParsePropertyPath(property)
 	assert.NoErrorf(t, err, "error parsing property path %s", property)
 	propertyValue, ok := propertyPath.Get(resource.NewObjectProperty(values))

@@ -86,7 +86,7 @@ func TestState(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceCount := 0
-	state.Resources.VisitResources(func(_ *ResourceState) {
+	state.VisitResourceStates(func(_ *ResourceState) {
 		resourceCount++
 	})
 
@@ -104,10 +104,10 @@ func TestState(t *testing.T) {
 	require.NoError(t, err, "error replanning")
 
 	hasUpdates := false
-	plan.VisitResources(func(rp *ResourcePlan) {
+	plan.VisitResourcePlans(func(rp *ResourcePlan) {
 		if rp.ChangeKind() == Update {
 			hasUpdates = true
-			t.Logf("Planning to update %s", rp.GetResource().Address())
+			t.Logf("Planning to update %s", rp.Address())
 		}
 	})
 

@@ -59,16 +59,17 @@ func newChildResource(
 	ctx *pulumi.Context,
 	modUrn resource.URN,
 	pkgName packageName,
-	sop ResourceStateOrPlan,
+	address ResourceAddress,
+	tfType TFResourceType,
+	values resource.PropertyMap,
 	packageRef string,
 	opts ...pulumi.ResourceOption,
 ) (*childResource, error) {
 	contract.Assertf(ctx != nil, "ctx must not be nil")
-	contract.Assertf(sop != nil, "sop must not be nil")
 	var resource childResource
-	inputs := childResourceInputs(modUrn, sop.Address(), sop.Values())
-	t := childResourceTypeToken(pkgName, sop.Type())
-	name := childResourceName(sop)
+	inputs := childResourceInputs(modUrn, address, values)
+	t := childResourceTypeToken(pkgName, tfType)
+	name := childResourceName(address)
 	inputsMap := pulumix.MustUnmarshalPropertyMap(ctx, inputs)
 	err := ctx.RegisterPackageResource(string(t), name, inputsMap, &resource, packageRef, opts...)
 	if err != nil {
@@ -95,16 +96,16 @@ func childResourceTypeToken(pkgName packageName, tfType TFResourceType) tokens.T
 //
 // Pulumi resources must be unique by URN, so the name has to be sufficiently unique that there are
 // no two resources with the same parent, type and name.
-func childResourceName(resource Resource) string {
-	return string(resource.Address())
+func childResourceName(resource ResourceAddress) string {
+	return string(resource)
 }
 
 // The ID to return for a child resource during Create.
-func childResourceID(resource Resource) string {
+func childResourceID(resource ResourceState) string {
 	// TODO this could try harder to expose e.g. bucket ID from the resource properties.
 	// For now just copy the name.
 
-	return childResourceName(resource)
+	return childResourceName(resource.Address())
 }
 
 // Model outputs as empty in Pulumi since they are not used at present.

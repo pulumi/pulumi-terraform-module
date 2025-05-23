@@ -15,7 +15,7 @@ import (
 // the state and the apply error.
 func (t *Tofu) Apply(ctx context.Context, logger Logger) (*State, error) {
 	state, applyErr := t.apply(ctx, logger)
-	s, err := newState(state)
+	s, err := NewState(state)
 	if err != nil {
 		return nil, err
 	}
