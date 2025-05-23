@@ -1440,7 +1440,8 @@ func Test_Dependencies(t *testing.T) {
 				slices.Sort(v)
 			}
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
-				resource.PropertyKey("maxlen"):   {},
+				resource.PropertyKey("maxlen"): {},
+				//nolint:lll
 				resource.PropertyKey("randseed"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
 			}).Equal(t, r.PropertyDependencies)
 		}
@@ -1448,6 +1449,7 @@ func Test_Dependencies(t *testing.T) {
 		// The dependent resource must depend on the myrandmod module resource.
 		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
 			slices.Sort(r.Dependencies)
+			//nolint:lll
 			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod")}).Equal(t, r.Dependencies)
 
 			for _, v := range r.PropertyDependencies {
