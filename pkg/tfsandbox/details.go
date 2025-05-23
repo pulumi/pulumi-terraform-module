@@ -15,6 +15,7 @@
 package tfsandbox
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -27,52 +28,6 @@ import (
 // Represents the TF resource type, example: "aws_instance" for aws_instance.foo.
 type TFResourceType string
 
-type Resource struct {
-	sr    tfjson.StateResource
-	props resource.PropertyMap
-}
-
-func (r *Resource) Address() ResourceAddress { return ResourceAddress(r.sr.Address) }
-func (r *Resource) Type() TFResourceType     { return TFResourceType(r.sr.Type) }
-func (r *Resource) Name() string             { return r.sr.Name }
-func (r *Resource) index() interface{}       { return r.sr.Index }
-
-type Resources[T ResourceStateOrPlan] struct {
-	resources stateResources
-	newT      func(tfjson.StateResource) T
-}
-
-func (rs *Resources[T]) VisitResources(visit func(T)) {
-	for _, res := range rs.resources {
-		visit(rs.newT(res))
-	}
-}
-
-func (rs *Resources[T]) VisitResourcesStateOrPlans(visit func(ResourceStateOrPlan)) {
-	rs.VisitResources(func(t T) {
-		visit(t)
-	})
-}
-
-func (rs *Resources[T]) FindResourceStateOrPlan(addr ResourceAddress) (ResourceStateOrPlan, bool) {
-	v, ok := rs.FindResource(addr)
-	if !ok {
-		return nil, false
-	}
-	return v, true
-}
-
-func (rs *Resources[T]) FindResource(addr ResourceAddress) (T, bool) {
-	found, ok := rs.resources[addr]
-	return rs.newT(found), ok
-}
-
-func MustFindResource[T ResourceStateOrPlan](collection Resources[T], addr ResourceAddress) T {
-	r, ok := collection.FindResource(addr)
-	contract.Assertf(ok, "Failed to find a resource at %q", addr)
-	return r
-}
-
 type ChangeKind int
 
 const (
@@ -83,20 +38,42 @@ const (
 	Create
 	Read
 	Delete
+
+	// Need to pin down when Forget operations arise.
+	// Likely during https://developer.hashicorp.com/terraform/cli/commands/state/rm
+	// Roughly but possibly not exactly equivalent to
+	// https://www.pulumi.com/docs/iac/concepts/options/retainondelete/
 	Forget
 )
 
+// Represents part of the overall Plan narrowed down to a specific resource.
 type ResourcePlan struct {
-	Resource
-
 	resourceChange *tfjson.ResourceChange
+
+	plannedState *tfjson.StateResource // may be nil when planning removal
 }
 
-func (p *ResourcePlan) GetResource() *Resource       { return &p.Resource }
-func (p *ResourcePlan) Values() resource.PropertyMap { return p.props }
+// TODO sometimes address changes while identity remains the same, e.g see PreviousAddress. The call sites need to be
+// audited to make sure they handle this correctly.
+func (p *ResourcePlan) Address() ResourceAddress {
+	return ResourceAddress(p.resourceChange.Address)
+}
 
-var _ ResourceStateOrPlan = (*ResourcePlan)(nil)
+// The type of the resource undergoing changes.
+func (p *ResourcePlan) Type() TFResourceType {
+	return TFResourceType(p.resourceChange.Type)
+}
 
+// The new values planned for the resource. When resource is being removed it is not available, and will return false.
+func (p *ResourcePlan) PlannedValues() (resource.PropertyMap, bool) {
+	if p.plannedState == nil {
+		return nil, false
+	}
+
+	return extractPropertyMapFromPlan(*p.plannedState, p.resourceChange), true
+}
+
+// Describes what change is being planned.
 func (p *ResourcePlan) ChangeKind() ChangeKind {
 	contract.Assertf(p.resourceChange != nil, "cannot determine ChangeKind")
 	actions := p.resourceChange.Change.Actions
@@ -123,76 +100,53 @@ func (p *ResourcePlan) ChangeKind() ChangeKind {
 	}
 }
 
-func (p *ResourcePlan) PlannedValues() resource.PropertyMap {
-	return p.props
-}
-
-type ResourceStateOrPlan interface {
-	Address() ResourceAddress
-	Type() TFResourceType
-	Name() string
-	Values() resource.PropertyMap
-}
-
+// Represents the state of a specific resource.
 type ResourceState struct {
-	Resource
+	stateResource *tfjson.StateResource
 }
 
-var _ ResourceStateOrPlan = (*ResourceState)(nil)
+func (s *ResourceState) Address() ResourceAddress { return ResourceAddress(s.stateResource.Address) }
+func (s *ResourceState) Type() TFResourceType     { return TFResourceType(s.stateResource.Type) }
 
 func (s *ResourceState) AttributeValues() resource.PropertyMap {
-	return s.props
+	return extractPropertyMapFromState(*s.stateResource)
 }
-
-func (s *ResourceState) GetResource() *Resource       { return &s.Resource }
-func (s *ResourceState) Values() resource.PropertyMap { return s.AttributeValues() }
 
 type Plan struct {
-	Resources[*ResourcePlan]
-	rawPlan *tfjson.Plan
+	rawPlan   *tfjson.Plan
+	byAddress map[ResourceAddress]*ResourcePlan
 }
 
-func newPlan(rawPlan *tfjson.Plan) (*Plan, error) {
-	// TODO[pulumi/pulumi-terraform-module#61] what about PreviousAddress, can TF plan
-	// resources changing addresses? How does this work?
-	changeByAddress := map[ResourceAddress]*tfjson.ResourceChange{}
-	for _, ch := range rawPlan.ResourceChanges {
-		changeByAddress[ResourceAddress(ch.Address)] = ch
+func (p *Plan) VisitResourcePlans(visitor func(*ResourcePlan)) {
+	for _, rp := range p.byAddress {
+		visitor(rp)
 	}
-	resources, err := newStateResources(rawPlan.PlannedValues.RootModule)
+}
+
+func (p *Plan) FindResourcePlan(addr ResourceAddress) (*ResourcePlan, bool) {
+	rp, ok := p.byAddress[addr]
+	return rp, ok
+}
+
+func NewPlan(rawPlan *tfjson.Plan) (*Plan, error) {
+	resourcePlannedValues, err := newStateResources(rawPlan.PlannedValues.RootModule)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unexpected error extracting planned values from *tfjson.Plan: %w", err)
 	}
-	return &Plan{
-		rawPlan: rawPlan,
-		Resources: Resources[*ResourcePlan]{
-			resources: resources,
-			newT: func(resource tfjson.StateResource) *ResourcePlan {
-				chg := changeByAddress[ResourceAddress(resource.Address)]
-				return &ResourcePlan{
-					Resource: Resource{
-						sr:    resource,
-						props: extractPropertyMapFromPlan(resource, chg),
-					},
-					resourceChange: chg,
-				}
-			},
-		},
-	}, nil
-}
 
-// unknown returns a computed property with an empty string.
-// used to represent unknown values from a terraform plan or state file
-func unknown() resource.PropertyValue {
-	return resource.NewComputedProperty(resource.Computed{
-		Element: resource.NewStringProperty(""),
-	})
-}
+	p := &Plan{rawPlan: rawPlan, byAddress: map[ResourceAddress]*ResourcePlan{}}
 
-// isInternalOutputResource returns true if the resource is an internal is_secret output
-// which is used to keep track of the secretness of the output.
-func isInternalOutputResource(name string) bool {
-	return strings.HasPrefix(name, terraformIsSecretOutputPrefix)
+	for _, ch := range rawPlan.ResourceChanges {
+		plan := &ResourcePlan{resourceChange: ch}
+		addr := ResourceAddress(ch.Address)
+		plannedState, ok := resourcePlannedValues[addr]
+		if ok {
+			plan.plannedState = &plannedState
+		}
+		p.byAddress[addr] = plan
+	}
+
+	return p, nil
 }
 
 // outputIsSecret returns true if the output is a secret based on the value of the
@@ -232,6 +186,15 @@ func (p *Plan) Outputs() resource.PropertyMap {
 	return outputs
 }
 
+func (p *Plan) PriorState() (*State, bool) {
+	if p.rawPlan.PriorState == nil {
+		return nil, false
+	}
+	st, err := NewState(p.rawPlan.PriorState)
+	contract.AssertNoErrorf(err, "newState failed when processing PriorState")
+	return st, true
+}
+
 // RawPlan returns the raw tfjson.Plan
 // NOTE: this is exposed for testing purposes only
 func (p *Plan) RawPlan() *tfjson.Plan {
@@ -239,29 +202,38 @@ func (p *Plan) RawPlan() *tfjson.Plan {
 }
 
 type State struct {
-	Resources[*ResourceState]
-	rawState *tfjson.State
+	rawState  *tfjson.State
+	byAddress map[ResourceAddress]*ResourceState
 }
 
-func newState(rawState *tfjson.State) (*State, error) {
-	resources, err := newStateResources(rawState.Values.RootModule)
+func NewState(rawState *tfjson.State) (*State, error) {
+	var rootModule *tfjson.StateModule
+	if rawState != nil && rawState.Values != nil {
+		rootModule = rawState.Values.RootModule
+	}
+	resources, err := newStateResources(rootModule)
 	if err != nil {
 		return nil, err
 	}
-	return &State{
-		Resources: Resources[*ResourceState]{
-			resources: resources,
-			newT: func(resource tfjson.StateResource) *ResourceState {
-				return &ResourceState{
-					Resource: Resource{
-						sr:    resource,
-						props: extractPropertyMapFromState(resource),
-					},
-				}
-			},
-		},
-		rawState: rawState,
-	}, nil
+	st := &State{
+		byAddress: map[ResourceAddress]*ResourceState{},
+		rawState:  rawState,
+	}
+	for addr, str := range resources {
+		st.byAddress[addr] = &ResourceState{stateResource: &str}
+	}
+	return st, nil
+}
+
+func (s *State) VisitResourceStates(visitor func(*ResourceState)) {
+	for _, st := range s.byAddress {
+		visitor(st)
+	}
+}
+
+func (s *State) FindResourceState(addr ResourceAddress) (*ResourceState, bool) {
+	st, ok := s.byAddress[addr]
+	return st, ok
 }
 
 // outputIsSecret returns true if the output is a secret based on the value of the
@@ -291,4 +263,25 @@ func (s *State) Outputs() resource.PropertyMap {
 	}
 
 	return outputs
+}
+
+// Used for debugging.
+func (s *State) PrettyPrint() string {
+	prettyBytes, err := json.MarshalIndent(s.rawState, "", "  ")
+	contract.AssertNoErrorf(err, "json.MarshalIndent on rawState")
+	return string(prettyBytes)
+}
+
+// unknown returns a computed property with an empty string.
+// used to represent unknown values from a terraform plan or state file
+func unknown() resource.PropertyValue {
+	return resource.NewComputedProperty(resource.Computed{
+		Element: resource.NewStringProperty(""),
+	})
+}
+
+// isInternalOutputResource returns true if the resource is an internal is_secret output
+// which is used to keep track of the secretness of the output.
+func isInternalOutputResource(name string) bool {
+	return strings.HasPrefix(name, terraformIsSecretOutputPrefix)
 }

@@ -161,13 +161,11 @@ func (s *planStore) FindResourceState(
 	addr ResourceAddress,
 ) (ResourceState, error) {
 	modState := s.getOrCreateStateEntry(modUrn).Await()
-	sop, ok := modState.FindResourceStateOrPlan(addr)
+	rstate, ok := modState.FindResourceState(addr)
 	if !ok {
 		return nil, fmt.Errorf("FindResourceState: %w", unknownAddressError{addr})
 	}
-	st, ok := sop.(ResourceState)
-	contract.Assertf(ok, "FindResourceState: ResourceState cast must not fail")
-	return st, nil
+	return rstate, nil
 }
 
 func (s *planStore) FindResourcePlan(
@@ -175,13 +173,12 @@ func (s *planStore) FindResourcePlan(
 	addr ResourceAddress,
 ) (ResourcePlan, error) {
 	modPlan := s.getOrCreatePlanEntry(modUrn).Await()
-	sop, ok := modPlan.FindResourceStateOrPlan(addr)
+	rplan, ok := modPlan.FindResourcePlan(addr)
 	if !ok {
 		return nil, fmt.Errorf("FindResourcePlan: %w", unknownAddressError{addr})
 	}
-	st, ok := sop.(ResourcePlan)
 	contract.Assertf(ok, "FindResourcePlan: ResourcePlan cast must not fail")
-	return st, nil
+	return rplan, nil
 }
 
 func (s *planStore) MustFindResourcePlan(

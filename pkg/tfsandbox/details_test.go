@@ -538,11 +538,11 @@ func TestCreateState(t *testing.T) {
 	var tfState *tfjson.State
 	err = json.Unmarshal(stateData, &tfState)
 	require.NoError(t, err)
-	s, err := newState(tfState)
+	s, err := NewState(tfState)
 	assert.NoError(t, err)
 
-	s.VisitResources(func(rs *ResourceState) {
-		assert.Equal(t, rs.sr.Mode, tfjson.ManagedResourceMode)
+	s.VisitResourceStates(func(rs *ResourceState) {
+		assert.Equal(t, rs.stateResource.Mode, tfjson.ManagedResourceMode)
 	})
 }
 
@@ -553,22 +553,24 @@ func TestCreatePlan(t *testing.T) {
 	err = json.Unmarshal(planData, &tfPlan)
 	require.NoError(t, err)
 
-	p, err := newPlan(tfPlan)
+	p, err := NewPlan(tfPlan)
 	assert.NoError(t, err)
 
 	nResources := 0
-	p.VisitResources(func(rp *ResourcePlan) {
+	p.VisitResourcePlans(func(rp *ResourcePlan) {
 		t.Logf("Resource: %s", rp.Address())
 		nResources++
 	})
 	assert.Equal(t, nResources, 5)
 
-	rBucket := MustFindResource(p.Resources, "module.s3_bucket.aws_s3_bucket.this[0]")
+	rBucket, ok := p.FindResourcePlan("module.s3_bucket.aws_s3_bucket.this[0]")
+	require.True(t, ok)
 	assert.Equal(t, ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"), rBucket.Address())
-	assert.Equal(t, "this", rBucket.Name())
-	assert.Equal(t, float64(0), rBucket.index())
 	assert.Equal(t, TFResourceType("aws_s3_bucket"), rBucket.Type())
 	assert.Equal(t, Create, rBucket.ChangeKind())
+
+	plannedValues, ok := rBucket.PlannedValues()
+	require.True(t, ok)
 
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
 		"force_destroy":                                              resource.NewBoolProperty(true),
@@ -599,9 +601,14 @@ func TestCreatePlan(t *testing.T) {
 		resource.PropertyKey("acceleration_status"):                  unknown(),
 		resource.PropertyKey("tags"):                                 resource.NewNullProperty(),
 		resource.PropertyKey("timeouts"):                             resource.NewNullProperty(),
-	}), resource.NewObjectProperty(rBucket.PlannedValues()))
+	}), resource.NewObjectProperty(plannedValues))
 
-	rBucketVersioning := MustFindResource(p.Resources, "module.s3_bucket.aws_s3_bucket_versioning.this[0]")
+	rBucketVersioning, ok := p.FindResourcePlan("module.s3_bucket.aws_s3_bucket_versioning.this[0]")
+	require.True(t, ok)
+
+	plannedValues, ok = rBucketVersioning.PlannedValues()
+	require.True(t, ok)
+
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
 		resource.PropertyKey("bucket"):                unknown(),
 		resource.PropertyKey("expected_bucket_owner"): resource.NewNullProperty(),
@@ -613,5 +620,26 @@ func TestCreatePlan(t *testing.T) {
 				resource.PropertyKey("mfa_delete"): unknown(),
 			}),
 		}),
-	}), resource.NewObjectProperty(rBucketVersioning.PlannedValues()))
+	}), resource.NewObjectProperty(plannedValues))
+}
+
+func Test_DeletePlan(t *testing.T) {
+	planData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "plans", "delete_plan.json"))
+	require.NoError(t, err)
+
+	var jp tfjson.Plan
+
+	err = json.Unmarshal(planData, &jp)
+	require.NoError(t, err)
+
+	pp, err := NewPlan(&jp)
+	require.NoError(t, err)
+
+	pp.VisitResourcePlans(func(rp *ResourcePlan) {
+		if rp.Address() == "module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]" {
+			assert.Equal(t, Delete, rp.ChangeKind())
+			_, ok := rp.PlannedValues()
+			assert.False(t, ok)
+		}
+	})
 }

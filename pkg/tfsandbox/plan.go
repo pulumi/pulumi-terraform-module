@@ -30,7 +30,7 @@ func (t *Tofu) Plan(ctx context.Context, logger Logger) (*Plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err := newPlan(plan)
+	p, err := NewPlan(plan)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (t *Tofu) PlanRefreshOnly(ctx context.Context, logger Logger) (*Plan, error
 		return nil, err
 	}
 
-	p, err := newPlan(plan)
+	p, err := NewPlan(plan)
 	if err != nil {
 		return nil, err
 	}

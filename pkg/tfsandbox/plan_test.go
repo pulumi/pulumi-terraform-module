@@ -20,11 +20,12 @@ func TestProcessPlan(t *testing.T) {
 		var tfState *tfjson.Plan
 		err = json.Unmarshal(planData, &tfState)
 		assert.NoError(t, err)
-		plan, err := newPlan(tfState)
+		plan, err := NewPlan(tfState)
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
-		plan.Resources.VisitResources(func(rp *ResourcePlan) {
-			resourceProps[rp.sr.Address] = rp.props
+		plan.VisitResourcePlans(func(rp *ResourcePlan) {
+			props, _ := rp.PlannedValues()
+			resourceProps[string(rp.Address())] = props
 		})
 		autogold.ExpectFile(t, resourceProps)
 	})
@@ -36,12 +37,13 @@ func TestProcessPlan(t *testing.T) {
 		err = json.Unmarshal(planData, &tfState)
 		assert.NoError(t, err)
 
-		plan, err := newPlan(tfState)
+		plan, err := NewPlan(tfState)
 		assert.NoError(t, err)
-		plan.VisitResources(func(rp *ResourcePlan) {
+		plan.VisitResourcePlans(func(rp *ResourcePlan) {
 			// This is the only resource that has a diff in this plan file
 			if rp.Type() == "aws_s3_bucket_server_side_encryption_configuration" {
-				autogold.ExpectFile(t, rp.props)
+				props, _ := rp.PlannedValues()
+				autogold.ExpectFile(t, props)
 			}
 		})
 	})
@@ -53,11 +55,12 @@ func TestProcessPlan(t *testing.T) {
 		err = json.Unmarshal(planData, &tfState)
 		assert.NoError(t, err)
 
-		plan, err := newPlan(tfState)
+		plan, err := NewPlan(tfState)
 		assert.NoError(t, err)
 		resourceProps := map[string]resource.PropertyMap{}
-		plan.Resources.VisitResources(func(rp *ResourcePlan) {
-			resourceProps[rp.sr.Address] = rp.props
+		plan.VisitResourcePlans(func(rp *ResourcePlan) {
+			props, _ := rp.PlannedValues()
+			resourceProps[string(rp.Address())] = props
 		})
 		autogold.ExpectFile(t, resourceProps)
 	})

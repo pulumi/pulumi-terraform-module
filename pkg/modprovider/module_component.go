@@ -187,7 +187,7 @@ func newModuleComponentResource(
 
 		var errs []error
 
-		plan.VisitResources(func(rp *tfsandbox.ResourcePlan) {
+		plan.VisitResourcePlans(func(rp *tfsandbox.ResourcePlan) {
 			resourceOptions := []pulumi.ResourceOption{
 				pulumi.Parent(&component),
 			}
@@ -196,8 +196,15 @@ func newModuleComponentResource(
 				resourceOptions = append(resourceOptions, pulumi.Provider(providerSelfRef))
 			}
 
+			plannedValues, gotPlannedValues := rp.PlannedValues()
+			if !gotPlannedValues {
+				return
+			}
+
 			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
+				rp.Address(),
+				rp.Type(),
+				plannedValues,
 				packageRef,
 				resourceOptions...,
 			)
@@ -228,7 +235,7 @@ func newModuleComponentResource(
 		stateStore.SetNewState(urn, state)
 
 		var errs []error
-		tfState.VisitResources(func(rp *tfsandbox.ResourceState) {
+		tfState.VisitResourceStates(func(rstate *tfsandbox.ResourceState) {
 			resourceOptions := []pulumi.ResourceOption{
 				pulumi.Parent(&component),
 			}
@@ -238,7 +245,9 @@ func newModuleComponentResource(
 			}
 
 			cr, err := newChildResource(ctx, urn, pkgName,
-				rp,
+				rstate.Address(),
+				rstate.Type(),
+				rstate.AttributeValues(),
 				packageRef,
 				resourceOptions...)
 

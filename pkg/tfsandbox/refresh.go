@@ -12,7 +12,7 @@ func (t *Tofu) Refresh(ctx context.Context, log Logger) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	s, err := newState(st)
+	s, err := NewState(st)
 	if err != nil {
 		return nil, err
 	}

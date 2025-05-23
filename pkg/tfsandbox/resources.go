@@ -23,6 +23,9 @@ type stateResources map[ResourceAddress]tfjson.StateResource
 // newStateResources creates a new stateResources object from a tfjson.StateModule
 func newStateResources(module *tfjson.StateModule) (stateResources, error) {
 	resources := make(stateResources)
+	if module == nil {
+		return resources, nil
+	}
 	if err := resources.extractResourcesFromStateModule(module); err != nil {
 		return nil, err
 	}
