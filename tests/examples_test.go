@@ -16,6 +16,8 @@ import (
 )
 
 func Test_RdsExample(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
@@ -48,6 +50,8 @@ func Test_RdsExample(t *testing.T) {
 }
 
 func Test_EksExample(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
@@ -78,6 +82,8 @@ func Test_EksExample(t *testing.T) {
 }
 
 func Test_AlbExample(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.

@@ -45,6 +45,8 @@ const (
 // random provider without cloud access, making it especially suitable for testing. Generate a
 // TypeScript SDK and go through some updates to test the integration end to end.
 func Test_RandMod_TypeScript(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Module written to support the test.
@@ -130,6 +132,8 @@ func Test_RandMod_TypeScript(t *testing.T) {
 }
 
 func TestLambdaMemorySizeDiff(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "lambdamod-memory-diff")
@@ -162,6 +166,8 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 }
 
 func TestPartialApply(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 
@@ -210,6 +216,8 @@ func TestPartialApply(t *testing.T) {
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
 // this makes sure that URN selection is unique enough to avoid the "dulicate URN" problem.
 func Test_TwoInstances_TypeScript(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Reuse randmod test module for this test.
@@ -250,6 +258,8 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 }
 
 func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	vpcDir := filepath.Join("testdata", "aws-vpc")
@@ -307,6 +317,8 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 }
 
 func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	testDir := t.TempDir()
 
@@ -365,6 +377,8 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 }
 
 func TestS3BucketModSecret(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
@@ -426,6 +440,8 @@ func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, repl
 }
 
 func TestS3BucketWithExplicitProvider(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucket-explicit-provider")
@@ -482,6 +498,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 }
 
 func TestE2eTs(t *testing.T) {
+	t.Parallel()
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs/ts
@@ -591,6 +608,7 @@ func TestE2eTs(t *testing.T) {
 }
 
 func TestE2eDotnet(t *testing.T) {
+	t.Parallel()
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs/python
@@ -668,6 +686,7 @@ func TestE2eDotnet(t *testing.T) {
 }
 
 func TestE2ePython(t *testing.T) {
+	t.Parallel()
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs/python
@@ -744,6 +763,7 @@ func TestE2ePython(t *testing.T) {
 }
 
 func TestE2eGo(t *testing.T) {
+	t.Parallel()
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs
@@ -820,6 +840,7 @@ func TestE2eGo(t *testing.T) {
 }
 
 func TestE2eYAML(t *testing.T) {
+	t.Parallel()
 
 	type testCase struct {
 		name                string // Must be same as project folder in testdata/programs
@@ -896,6 +917,8 @@ func TestE2eYAML(t *testing.T) {
 }
 
 func TestDiffDetail(t *testing.T) {
+	t.Parallel()
+
 	// Set up a test Bucket
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
@@ -940,6 +963,8 @@ func TestDiffDetail(t *testing.T) {
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefresh(t *testing.T) {
+	t.Parallel()
+
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	ctx := context.Background()
 
@@ -998,6 +1023,8 @@ func TestRefresh(t *testing.T) {
 
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeleted(t *testing.T) {
+	t.Parallel()
+
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
@@ -1048,6 +1075,8 @@ func TestRefreshDeleted(t *testing.T) {
 
 // Verify that when there is no drift, refresh works without any changes.
 func TestRefreshNoChanges(t *testing.T) {
+	t.Parallel()
+
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
@@ -1077,6 +1106,8 @@ func TestRefreshNoChanges(t *testing.T) {
 
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
 func TestDeleteLambda(t *testing.T) {
+	t.Parallel()
+
 	// Set up a test Lambda with Role and CloudWatch logs from Lambda module
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
@@ -1182,6 +1213,8 @@ func TestDeleteLambda(t *testing.T) {
 
 // Test that Pulumi understands dependencies.
 func Test_Dependencies(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Reuse randmod for this one.
@@ -1267,6 +1300,8 @@ func Test_Dependencies(t *testing.T) {
 
 // Test that passing local modules as local paths ../foo or ./foo works as expected.
 func Test_LocalModule_RelativePath(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	// Module written to support the test.

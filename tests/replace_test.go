@@ -36,6 +36,8 @@ const (
 //
 // The first test checks the most common case.
 func Test_replace_forcenew_delete_create(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", replacemod))
@@ -89,6 +91,8 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 // Now check that delete-then-create plans surface as such.
 func Test_replace_forcenew_create_delete(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	replacemodPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace2mod"))
@@ -143,6 +147,8 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 // Now check resources that are replaced with a replace_triggered_by trigger. It uses the default TF delete_create
 // order. There is no test for a create_delete order as it should work fine for triggers as well as normal replaces.
 func Test_replace_trigger_delete_create(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace3mod"))
@@ -212,6 +218,8 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 // plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
 // approximately renders this as a replacement, where the deletion of the resource is a no-op.
 func Test_replace_drift_deleted(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace4mod"))
