@@ -458,15 +458,29 @@ func TestS3BucketModSecret(t *testing.T) {
 		"bucket:tf:aws_s3_bucket_server_side_encryption_configuration",
 	)
 
-	autogold.Expect(map[string]interface{}{
-		"bucket": "446723-test-bucket", "expected_bucket_owner": "",
-		"id": "446723-test-bucket",
-		"rule": map[string]interface{}{
-			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-			//nolint:lll
-			"plaintext": `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
-		},
-	}).Equal(t, encrConf.Inputs)
+	if viewsEnabled {
+		autogold.Expect(map[string]interface{}{
+			"bucket": "576852-test-bucket", "expected_bucket_owner": "",
+			"id": "576852-test-bucket",
+			"rule": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+			},
+		}).Equal(t, encrConf.Inputs)
+
+	} else {
+		autogold.Expect(map[string]interface{}{
+			"__address":             "module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]",
+			"__module":              "urn:pulumi:test::ts-s3bucketmod-program::bucket:index:Module::test-bucket",
+			"bucket":                "174703-test-bucket",
+			"expected_bucket_owner": "",
+			"id":                    "174703-test-bucket",
+			"rule": map[string]interface{}{
+				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+				"plaintext":                        `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+			},
+		}).Equal(t, encrConf.Inputs)
+	}
 
 	autogold.Expect(map[string]interface{}{}).Equal(t, encrConf.Outputs)
 }
