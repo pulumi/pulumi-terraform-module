@@ -453,17 +453,21 @@ func TestS3BucketModSecret(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
 	integrationTest.Up(t)
 
-	encyptionsConfig := mustFindDeploymentResourceByType(t,
+	encrConf := mustFindDeploymentResourceByType(t,
 		integrationTest,
 		"bucket:tf:aws_s3_bucket_server_side_encryption_configuration",
 	)
 
-	autogold.Expect(map[string]any{
-		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-		//nolint:all
-		"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
-	}).Equal(t, encyptionsConfig.Inputs["rule"])
-	integrationTest.Destroy(t)
+	autogold.Expect(map[string]interface{}{
+		"bucket": "446723-test-bucket", "expected_bucket_owner": "",
+		"id": "446723-test-bucket",
+		"rule": map[string]interface{}{
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+			"plaintext":                        `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+		},
+	}).Equal(t, encrConf.Inputs)
+
+	autogold.Expect(map[string]interface{}{}).Equal(t, encrConf.Outputs)
 }
 
 // When writing out TF files, we need to replace data that is random with a static value

@@ -300,6 +300,7 @@ func viewStruct(props resource.PropertyMap) *structpb.Struct {
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
+		SkipNulls:     true,
 	})
 	contract.AssertNoErrorf(err, "failed to marshal PropertyMap to a struct for reporting resource views")
 	return s
