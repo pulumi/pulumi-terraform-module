@@ -1364,7 +1364,12 @@ func Test_Dependencies(t *testing.T) {
 	err = json.Unmarshal(deploy.Deployment, &deployment)
 	require.NoError(t, err)
 
+	// Tests for when view are not enabled.
 	for _, r := range deployment.Resources {
+		if viewsEnabled {
+			continue
+		}
+
 		if r.URN.Type() == "randmod:index:Module" {
 			slices.Sort(r.Dependencies)
 
@@ -1409,6 +1414,47 @@ func Test_Dependencies(t *testing.T) {
 			autogold.Expect(map[resource.PropertyKey][]urn.URN{
 				resource.PropertyKey("max"): {
 					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+				},
+				resource.PropertyKey("min"):  {},
+				resource.PropertyKey("seed"): {},
+			}).Equal(t, r.PropertyDependencies)
+		}
+	}
+
+	// Tests for when views are enabled.
+	for _, r := range deployment.Resources {
+		if !viewsEnabled {
+			continue
+		}
+
+		// The module resource myrandmod must depend on seed and extra resources.
+		if r.URN.Type() == "randmod:index:Module" && r.URN.Name() == "myrandmod" {
+			slices.Sort(r.Dependencies)
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
+			}).Equal(t, r.Dependencies)
+
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("maxlen"):   {},
+				resource.PropertyKey("randseed"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
+			}).Equal(t, r.PropertyDependencies)
+		}
+
+		// The dependent resource must depend on the myrandmod module resource.
+		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
+			slices.Sort(r.Dependencies)
+			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod")}).Equal(t, r.Dependencies)
+
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("max"): {
 					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
 				},
 				resource.PropertyKey("min"):  {},
