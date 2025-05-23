@@ -26,9 +26,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 type resourceStatusClientPool interface {
@@ -157,7 +158,7 @@ func (c *resourceStatusClientWithLogging) PublishViewSteps(
 	c.logger.Log(ctx, tfsandbox.Debug, logMsg.String())
 	response, err := c.ResourceStatusClient.PublishViewSteps(ctx, in, opts...)
 	if err != nil {
-		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) failed: %w", in.Token, err))
+		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) failed: %v", in.Token, err))
 	} else {
 		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) finished sending %d steps",
 			in.Token, len(in.Steps)))

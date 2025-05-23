@@ -19,12 +19,12 @@ import (
 
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/ryboe/q"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func viewStepsPlan(
@@ -108,8 +108,6 @@ func viewStepsGeneric(
 		step := viewStepForSameResource(packageName, rs)
 		steps = append(steps, step)
 	})
-
-	q.Q("viewStepsGeneric", steps, counter, sameCounter)
 
 	// planSTR, err := json.MarshalIndent(plan.RawPlan(), "", "  ")
 	// contract.AssertNoErrorf(err, "MarshalIndent failure")

@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/ryboe/q"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
@@ -238,7 +237,9 @@ func (h *moduleHandler) applyModuleOperation(
 		// TODO Wrap partial errors in initializationError.
 		// This does not quite work as expected yet as views get recorded into state as pending_operations.
 		// They need to be recorded as finalized operations because they did complete.
-		// applyErr = h.initializationError(moduleOutputs, applyErr.Error())
+		if 1+2 == 4 {
+			applyErr = h.initializationError(moduleOutputs, applyErr.Error())
+		}
 
 		// Instead, log and propagate the error for now. This will forget partial TF state but fail Pulumi.
 		logger.Log(ctx, tfsandbox.Error, fmt.Sprintf("partial failure in apply: %v", applyErr))
@@ -303,7 +304,7 @@ func (h *moduleHandler) Create(
 		return nil, err
 	}
 
-	q.Q("Create", req.GetPreview())
+	//q.Q("Create", req.GetPreview())
 
 	moduleOutputs, views, applyErr := h.applyModuleOperation(
 		ctx,
@@ -371,7 +372,7 @@ func (h *moduleHandler) Update(
 	}
 	defer statusClient.Release()
 
-	q.Q("Update", req.GetPreview())
+	//q.Q("Update", req.GetPreview())
 
 	moduleOutputs, views, err := h.applyModuleOperation(
 		ctx,
@@ -544,7 +545,7 @@ func (h *moduleHandler) Read(
 
 	viewSteps := viewStepsAfterRefresh(packageName, plan, state)
 
-	q.Q("REFRESH viewSteps", viewSteps)
+	//q.Q("REFRESH viewSteps", viewSteps)
 
 	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
 		Token: req.ResourceStatusToken,
