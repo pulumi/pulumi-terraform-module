@@ -68,6 +68,7 @@ func newModuleComponentResource(
 	packageRef string,
 	providerSelfURN pulumi.URN,
 	providersConfig map[string]resource.PropertyMap,
+	useOpentofu bool,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, moduleStateResource *moduleStateResource, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}
@@ -131,9 +132,24 @@ func newModuleComponentResource(
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 	logger := newComponentLogger(ctx.Log, &component)
 
-	tf, err := tfsandbox.NewTofu(ctx.Context(), logger, wd, auxProviderServer)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Sandbox construction failed: %w", err)
+	// decide whether to use opentofu or terraform
+	// based on the "use_opentofu" configuration option
+	// by default we use terraform available in the environment
+	// unless opted into opentofu in which case we either use it if available
+	// or download it if not available.
+	var tf *tfsandbox.ModuleRuntime
+	if useOpentofu {
+		tf, err = tfsandbox.NewTofu(ctx.Context(), logger, wd, auxProviderServer)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("opentofu sandbox construction failed: %w", err)
+		}
+		logger.Log(ctx.Context(), tfsandbox.Info, "Using OpenTofu for module execution")
+	} else {
+		tf, err = tfsandbox.NewTerreform(ctx.Context(), logger, wd, auxProviderServer)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("terraform sandbox construction failed: %w", err)
+		}
+		logger.Log(ctx.Context(), tfsandbox.Info, "Using Terraform for module execution")
 	}
 
 	// Important: the name of the module instance in TF must be at least unique enough to
@@ -154,7 +170,7 @@ func newModuleComponentResource(
 		moduleInputs, outputSpecs, providersConfig)
 
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("seed file generation failed: %w", err)
 	}
 
 	var moduleOutputs resource.PropertyMap
@@ -165,7 +181,7 @@ func newModuleComponentResource(
 
 	err = tf.Init(ctx.Context(), logger)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Init failed: %w", err)
+		return nil, nil, nil, fmt.Errorf("init failed: %w", err)
 	}
 
 	var childResources []*childResource
@@ -215,7 +231,7 @@ func newModuleComponentResource(
 			}
 		})
 		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+			return nil, nil, nil, fmt.Errorf("child resource init failed: %w", err)
 		}
 		moduleOutputs = plan.Outputs()
 	} else {
@@ -257,7 +273,7 @@ func newModuleComponentResource(
 			}
 		})
 		if err := errors.Join(errs...); err != nil {
-			return nil, nil, nil, fmt.Errorf("Child resource init failed: %w", err)
+			return nil, nil, nil, fmt.Errorf("child resource init failed: %w", err)
 		}
 
 		moduleOutputs = tfState.Outputs()
@@ -271,7 +287,7 @@ func newModuleComponentResource(
 	}
 
 	if applyErr != nil {
-		return nil, nil, nil, fmt.Errorf("Apply failed: %w", applyErr)
+		return nil, nil, nil, fmt.Errorf("apply failed: %w", applyErr)
 	}
 
 	marshalledOutputs := pulumix.MustUnmarshalPropertyMap(ctx, moduleOutputs)

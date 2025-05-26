@@ -595,7 +595,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 
 }
 
-func runPlan(t *testing.T, tofu *tfsandbox.Tofu, tfFile string) *tfsandbox.Plan {
+func runPlan(t *testing.T, tofu *tfsandbox.ModuleRuntime, tfFile string) *tfsandbox.Plan {
 	err := os.WriteFile(
 		path.Join(tofu.WorkingDir(), "local_module", "main.tf"),
 		[]byte(tfFile),

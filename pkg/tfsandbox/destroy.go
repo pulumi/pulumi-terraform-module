@@ -6,7 +6,7 @@ import (
 )
 
 // Destroy runs the terraform destroy command
-func (t *Tofu) Destroy(ctx context.Context, log Logger) error {
+func (t *ModuleRuntime) Destroy(ctx context.Context, log Logger) error {
 	logWriter := newJSONLogPipe(ctx, log)
 	defer logWriter.Close()
 

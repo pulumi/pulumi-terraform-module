@@ -22,6 +22,11 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
+	if args.UseOpentofu == nil {
+		if d := internal.GetEnvOrDefault(false, internal.ParseEnvBool, "PULUMI_TERRAFORM_MODULE_USE_OPENTOFU"); d != nil {
+			args.UseOpentofu = pulumi.BoolPtr(d.(bool))
+		}
+	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	ref, err := internal.PkgGetPackageRef(ctx)
 	if err != nil {
@@ -38,12 +43,16 @@ func NewProvider(ctx *pulumi.Context,
 type providerArgs struct {
 	// provider configuration for aws
 	Aws map[string]interface{} `pulumi:"aws"`
+	// Set to true to use OpenTofu to run the module.
+	UseOpentofu *bool `pulumi:"useOpentofu"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
 	// provider configuration for aws
 	Aws pulumi.MapInput
+	// Set to true to use OpenTofu to run the module.
+	UseOpentofu pulumi.BoolPtrInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

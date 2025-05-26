@@ -80,6 +80,11 @@ type server struct {
 	// there are no Output values inside this map. In the current implementation this is OK as the data is only
 	// used to produce Terraform files to feed to opentofu and lacks the capability to track these dependencies.
 	providerConfig resource.PropertyMap
+	// useOpentofu indicates whether the provider is using opentofu or not.
+	// by default this is false and the provider will use a terraform executable available
+	// in the PATH.
+	// if this is true, then the provider will use opentofu executable and will download one if it is not available.
+	useOpentofu bool
 
 	auxProviderServer *auxprovider.Server
 }
@@ -247,7 +252,7 @@ func (s *server) GetSchema(
 	_ *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
 	if s.params == nil {
-		return nil, fmt.Errorf("Expected Parameterize() call before a GetSchema() call to set parameters")
+		return nil, fmt.Errorf("expected Parameterize() call before a GetSchema() call to set parameters")
 	}
 	spec, err := pulumiSchemaForModule(s.params, s.inferredModuleSchema)
 	if err != nil {
@@ -288,6 +293,23 @@ func (s *server) Configure(
 	}
 
 	s.providerConfig = config
+
+	if config.HasValue(resource.PropertyKey(useOpentofuVariableName)) {
+		if useOpenTofu, ok := config[useOpentofuVariableName]; ok {
+			if useOpenTofu.IsBool() {
+				s.useOpentofu = useOpenTofu.BoolValue()
+			} else if useOpenTofu.IsString() {
+				// a boolean value might be passed as a string due to legacy provider SDK behavior
+				// which JSON-encodes the value as a string
+				s.useOpentofu = useOpenTofu.StringValue() == "true"
+			}
+		}
+	} else {
+		// if the user didn't specify the useOpentofu variable
+		// then we check the environment variable
+		envVar := os.Getenv(useOpentofuEnvironmentVariable)
+		s.useOpentofu = envVar == "true" || envVar == "1"
+	}
 
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
@@ -368,8 +390,10 @@ func (s *server) acquirePackageReference(
 func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
 	providersConfig := make(map[string]resource.PropertyMap)
 	for propertyKey, originalSerializedConfig := range config {
-		if string(propertyKey) == "version" || string(propertyKey) == "pluginDownloadURL" {
-			// skip the version and pluginDownloadURL properties
+		if string(propertyKey) == "version" ||
+			string(propertyKey) == "pluginDownloadURL" ||
+			string(propertyKey) == useOpentofuVariableName {
+			// skip properties that are not provider configurations
 			continue
 		}
 
@@ -449,6 +473,7 @@ func (s *server) Construct(
 				packageRef,
 				s.providerSelfURN,
 				providersConfig,
+				s.useOpentofu,
 				resourceOptions,
 			)
 
@@ -465,7 +490,7 @@ func (s *server) Construct(
 			}
 			return constructResult, nil
 		default:
-			return nil, fmt.Errorf("Unsupported typ=%q expecting %q", typ, ctok)
+			return nil, fmt.Errorf("unsupported typ=%q expecting %q", typ, ctok)
 		}
 	})
 }

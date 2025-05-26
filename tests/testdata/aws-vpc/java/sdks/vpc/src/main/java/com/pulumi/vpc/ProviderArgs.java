@@ -5,6 +5,8 @@ package com.pulumi.vpc;
 
 import com.pulumi.core.Output;
 import com.pulumi.core.annotations.Import;
+import com.pulumi.core.internal.Codegen;
+import java.lang.Boolean;
 import java.lang.Object;
 import java.lang.String;
 import java.util.Map;
@@ -32,10 +34,26 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
         return Optional.ofNullable(this.aws);
     }
 
+    /**
+     * Set to true to use OpenTofu to run the module.
+     * 
+     */
+    @Import(name="useOpentofu", json=true)
+    private @Nullable Output<Boolean> useOpentofu;
+
+    /**
+     * @return Set to true to use OpenTofu to run the module.
+     * 
+     */
+    public Optional<Output<Boolean>> useOpentofu() {
+        return Optional.ofNullable(this.useOpentofu);
+    }
+
     private ProviderArgs() {}
 
     private ProviderArgs(ProviderArgs $) {
         this.aws = $.aws;
+        this.useOpentofu = $.useOpentofu;
     }
 
     public static Builder builder() {
@@ -77,7 +95,29 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
             return aws(Output.of(aws));
         }
 
+        /**
+         * @param useOpentofu Set to true to use OpenTofu to run the module.
+         * 
+         * @return builder
+         * 
+         */
+        public Builder useOpentofu(@Nullable Output<Boolean> useOpentofu) {
+            $.useOpentofu = useOpentofu;
+            return this;
+        }
+
+        /**
+         * @param useOpentofu Set to true to use OpenTofu to run the module.
+         * 
+         * @return builder
+         * 
+         */
+        public Builder useOpentofu(Boolean useOpentofu) {
+            return useOpentofu(Output.of(useOpentofu));
+        }
+
         public ProviderArgs build() {
+            $.useOpentofu = Codegen.booleanProp("useOpentofu").output().arg($.useOpentofu).env("PULUMI_TERRAFORM_MODULE_USE_OPENTOFU").def(false).getNullable();
             return $;
         }
     }
