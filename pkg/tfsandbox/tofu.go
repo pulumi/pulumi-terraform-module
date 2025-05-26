@@ -96,7 +96,8 @@ func (t *ModuleRuntime) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (*ModuleRuntime, error) {
+func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (
+	*ModuleRuntime, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
@@ -137,7 +138,8 @@ func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *aux
 
 // NewTerreform will create a new client which can be used to
 // programmatically interact with the terraform cli
-func NewTerreform(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (*ModuleRuntime, error) {
+func NewTerreform(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (
+	*ModuleRuntime, error) {
 	// This is only used for testing.
 	if workdir == nil {
 		workdir = Workdir([]string{
