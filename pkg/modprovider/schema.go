@@ -118,6 +118,10 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		},
 	}
 
+	if inferredModule.ProvidersConfig.Variables == nil {
+		inferredModule.ProvidersConfig.Variables = map[string]schema.PropertySpec{}
+	}
+
 	inferredModule.ProvidersConfig.Variables[useOpentofuVariableName] = useOpenTofuVariable
 
 	packageSpec := &schema.PackageSpec{
