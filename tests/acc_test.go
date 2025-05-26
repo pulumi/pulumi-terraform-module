@@ -372,30 +372,34 @@ func TestS3BucketModSecret(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-	// Get a prefix for resource names
-	prefix := generateTestResourcePrefix()
+	testUsingTerraformAndOpentofu(t, func() {
 
-	// Set prefix via config
-	integrationTest.SetConfig(t, "prefix", prefix)
+		integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
-	// Generate package
-	//nolint:all
-	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
-	integrationTest.Up(t)
+		// Get a prefix for resource names
+		prefix := generateTestResourcePrefix()
 
-	encyptionsConfig := mustFindDeploymentResourceByType(t,
-		integrationTest,
-		"bucket:tf:aws_s3_bucket_server_side_encryption_configuration",
-	)
+		// Set prefix via config
+		integrationTest.SetConfig(t, "prefix", prefix)
 
-	autogold.Expect(map[string]any{
-		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+		// Generate package
 		//nolint:all
-		"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
-	}).Equal(t, encyptionsConfig.Inputs["rule"])
-	integrationTest.Destroy(t)
+		pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+		integrationTest.Up(t)
+
+		encyptionsConfig := mustFindDeploymentResourceByType(t,
+			integrationTest,
+			"bucket:tf:aws_s3_bucket_server_side_encryption_configuration",
+		)
+
+		autogold.Expect(map[string]any{
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+			//nolint:all
+			"plaintext": "[{\"apply_server_side_encryption_by_default\":[{\"kms_master_key_id\":\"\",\"sse_algorithm\":\"AES256\"}]}]",
+		}).Equal(t, encyptionsConfig.Inputs["rule"])
+		integrationTest.Destroy(t)
+	})
 }
 
 // When writing out TF files, we need to replace data that is random with a static value
