@@ -182,7 +182,7 @@ func extractPropertyMapFromPlan(
 		objectProperty = updateResourceValue(
 			objectProperty,
 			resourceChange.Change.AfterSensitive,
-			resource.MakeSecret,
+			resourceMakeSecretConservative,
 		)
 	}
 	return objectProperty.ObjectValue()

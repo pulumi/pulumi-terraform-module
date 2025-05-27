@@ -184,13 +184,13 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	logLevel := uint(13)
-	debugOpts = debug.LoggingOptions{
-		LogLevel:      &logLevel,
-		LogToStdErr:   true,
-		FlowToPlugins: true,
-		Debug:         true,
-	}
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
 
 	// Set prefix via config
 	integrationTest.SetConfig(t, "prefix", prefix)
