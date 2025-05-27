@@ -18,8 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path"
 
+	"bytes"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 )
@@ -61,11 +63,12 @@ func (t *ModuleRuntime) planRefreshOnly(ctx context.Context, logger Logger) (*tf
 func (t *ModuleRuntime) planWithOptions(ctx context.Context, logger Logger, refreshOnly bool) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), defaultPlanFile)
 	logWriter := newJSONLogPipe(ctx, logger)
+	var buf bytes.Buffer
 	defer logWriter.Close()
-	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter,
+	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, io.MultiWriter(logWriter, &buf),
 		t.planOptions(tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))...)
 	if err != nil {
-		return nil, fmt.Errorf("error running plan: %w", err)
+		return nil, fmt.Errorf("error running plan1 (stdout: %s): %w", buf.String(), err)
 	}
 
 	var (

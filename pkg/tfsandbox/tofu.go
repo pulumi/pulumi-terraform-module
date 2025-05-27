@@ -120,6 +120,8 @@ func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *aux
 		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
 	}
 
+	logger.Log(ctx, Error, fmt.Sprintf("!!! NewTerraform (Tofu): %q", execPath))
+
 	var reattach *tfexec.ReattachInfo
 	if auxServer != nil {
 		reattach = &auxServer.ReattachInfo
@@ -168,6 +170,8 @@ func NewTerreform(ctx context.Context, logger Logger, workdir Workdir, auxServer
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Log(ctx, Error, fmt.Sprintf("!!! NewTerraform: %q", execPath))
 
 	tf, err := tfexec.NewTerraform(workDir, execPath)
 	if err != nil {

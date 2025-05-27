@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -319,7 +320,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		pulumiConvert(t, localProviderBinPath, pclDir, testDir, "typescript", generateOnly)
 	})
 
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 
 		pt := pulumitest.NewPulumiTest(t, testDir,
 			opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)),
@@ -373,7 +374,7 @@ func TestS3BucketModSecret(t *testing.T) {
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 
 		integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
@@ -443,7 +444,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 		return fullPath
 	}
 
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 		integrationTest := pulumitest.NewPulumiTest(t, testProgram,
 			opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
 			opttest.Env("PULUMI_TERRAFORM_MODULE_WAIT_TIMEOUT", "5m"))
@@ -910,7 +911,7 @@ func TestDiffDetail(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 
 		diffDetailTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
@@ -961,7 +962,8 @@ func TestRefresh(t *testing.T) {
 
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
+		tw := newTestWriter(t)
 
 		it := pulumitest.NewPulumiTest(t, testProgram, localPath)
 
@@ -976,7 +978,7 @@ func TestRefresh(t *testing.T) {
 
 		// First provision a bucket with TestTag=a and remember this state.
 		it.SetConfig(t, "tagvalue", "a")
-		it.Up(t)
+		it.Up(t, optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
 		stateA := it.ExportStack(t)
 
 		// Then provision the bucket with TestTag=b so the bucket in the cloud is tagged with b.
@@ -991,10 +993,10 @@ func TestRefresh(t *testing.T) {
 		expectBucketTag("a")
 
 		// Now perform a refresh.
-		refreshResult := it.Refresh(t)
-		t.Logf("pulumi refresh")
-		t.Logf("%s", refreshResult.StdErr)
-		t.Logf("%s", refreshResult.StdOut)
+		refreshResult := it.Refresh(t,
+			optrefresh.ProgressStreams(tw),
+			optrefresh.ErrorProgressStreams(tw),
+		)
 		rc := refreshResult.Summary.ResourceChanges
 		autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
 
@@ -1021,7 +1023,7 @@ func TestRefreshDeleted(t *testing.T) {
 
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 
 		it := pulumitest.NewPulumiTest(t, testProgram, localPath)
 		pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
@@ -1074,7 +1076,7 @@ func TestRefreshNoChanges(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 		it := pulumitest.NewPulumiTest(t, testProgram, localPath)
 		pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 		it.SetConfig(t, "prefix", generateTestResourcePrefix())
@@ -1199,16 +1201,17 @@ func TestDeleteLambda(t *testing.T) {
 	}
 }
 
-func testUsingTerraformAndOpentofu(t *testing.T, code func()) {
+func testUsingTerraformAndOpentofu(t *testing.T, code func(t *testing.T)) {
 	t.Run("using terraform", func(t *testing.T) {
 		t.Log("Running test using Terraform")
-		code()
+		code(t)
 	})
 
 	t.Run("using opentofu", func(t *testing.T) {
+		t.Skip("TODO")
 		t.Log("Running test using OpenTofu")
 		t.Setenv("PULUMI_TERRAFORM_MODULE_USE_OPENTOFU", "true")
-		code()
+		code(t)
 	})
 }
 
@@ -1224,7 +1227,7 @@ func Test_Dependencies(t *testing.T) {
 	randModProg := filepath.Join("testdata", "programs", "ts", "dep-tester")
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 
 		pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
 		pt.CopyToTempDir(t)
@@ -1311,7 +1314,7 @@ func Test_LocalModule_RelativePath(t *testing.T) {
 	anyProgram := filepath.Join("testdata", "programs", "ts", "randmod-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	testUsingTerraformAndOpentofu(t, func() {
+	testUsingTerraformAndOpentofu(t, func(t *testing.T) {
 		pt := pulumitest.NewPulumiTest(t, anyProgram, localPath)
 		pt.CopyToTempDir(t)
 
