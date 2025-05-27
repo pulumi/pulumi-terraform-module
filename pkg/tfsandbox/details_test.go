@@ -546,6 +546,20 @@ func TestCreateState(t *testing.T) {
 	})
 }
 
+func Test_NewState_ExcludesDataSources(t *testing.T) {
+	stateData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "states", "s3bucketmod.json"))
+	require.NoError(t, err)
+	var tfState *tfjson.State
+	err = json.Unmarshal(stateData, &tfState)
+	require.NoError(t, err)
+
+	s, err := NewState(tfState)
+	require.NoError(t, err)
+
+	_, ok := s.FindResourceState("module.test-bucket.data.aws_canonical_user_id.this")
+	require.Falsef(t, ok, "Data Source call should not present as a resource")
+}
+
 func TestCreatePlan(t *testing.T) {
 	planData, err := os.ReadFile(filepath.Join(getCwd(t), "testdata", "plans", "create_plan.json"))
 	require.NoError(t, err)
@@ -621,6 +635,22 @@ func TestCreatePlan(t *testing.T) {
 			}),
 		}),
 	}), resource.NewObjectProperty(plannedValues))
+}
+
+func Test_NewPlan_ExcludesDataSources(t *testing.T) {
+	stateData, err := os.ReadFile(filepath.Join(getCwd(t),
+		"testdata", "plans", "plan_with_datasource_changes.json"))
+	require.NoError(t, err)
+	var tfPlan *tfjson.Plan
+
+	err = json.Unmarshal(stateData, &tfPlan)
+	require.NoError(t, err)
+
+	s, err := NewPlan(tfPlan)
+	require.NoError(t, err)
+
+	_, ok := s.FindResourcePlan("module.test-lambda.data.aws_iam_policy_document.logs[0]")
+	require.Falsef(t, ok, "Data Source call should not present as a resource")
 }
 
 func Test_DeletePlan(t *testing.T) {

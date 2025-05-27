@@ -137,6 +137,11 @@ func NewPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	p := &Plan{rawPlan: rawPlan, byAddress: map[ResourceAddress]*ResourcePlan{}}
 
 	for _, ch := range rawPlan.ResourceChanges {
+		// Exclude entries pertaining to data source look-ups, only interested in resources proper.
+		if ch.Mode == tfjson.DataResourceMode {
+			continue
+		}
+
 		plan := &ResourcePlan{resourceChange: ch}
 		addr := ResourceAddress(ch.Address)
 		plannedState, ok := resourcePlannedValues[addr]
