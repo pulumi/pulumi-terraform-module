@@ -366,7 +366,7 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	vpcDir := filepath.Join("testdata", "aws-vpc")
-	pclDir := filepath.Join(vpcDir, "pcl")
+	pclDir := filepath.Join(vpcDir, "aws-vpc")
 
 	dest := func(folder string) string {
 		name := folder

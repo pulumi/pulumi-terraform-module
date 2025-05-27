@@ -1,4 +1,4 @@
-module pcl
+module aws-vpc
 
 go 1.23
 

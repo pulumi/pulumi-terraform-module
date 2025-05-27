@@ -1,5 +1,5 @@
 {
-	"name": "pcl",
+	"name": "aws-vpc",
 	"devDependencies": {
 		"@types/node": "^18"
 	},
