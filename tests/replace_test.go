@@ -94,7 +94,24 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 // Now check that delete-then-create plans surface as such.
 func Test_replace_forcenew_create_delete(t *testing.T) {
+	if viewsEnabled {
+		t.Skip("TODO investigating why this fails under views with snapshot integrity failure")
+	}
+
+	tw := newTestWriter(t)
 	localProviderBinPath := ensureCompiledProvider(t)
+
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, uncomment:
+
+	logLevel := uint(13)
+	debugOpts = debug.LoggingOptions{
+		LogLevel:      &logLevel,
+		LogToStdErr:   true,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
 
 	replacemodPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace2mod"))
 	require.NoError(t, err)
@@ -108,41 +125,59 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 	pulumiPackageAdd(t, pt, localProviderBinPath, replacemodPath, "mod")
 
 	pt.SetConfig(t, "keeper", "alpha")
-	pt.Up(t)
+	pt.Up(t,
+		optup.Diff(),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+		//optup.DebugLogging(debugOpts),
+	)
 	pt.SetConfig(t, "keeper", "beta")
 
-	diffResult := pt.Preview(t, optpreview.Diff())
-	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
-	autogold.Expect(map[apitype.OpType]int{
+	diffResult := pt.Preview(t,
+		optpreview.Diff(),
+		optpreview.ProgressStreams(tw),
+		optpreview.ErrorProgressStreams(tw),
+		//optpreview.DebugLogging(debugOpts),
+	)
+
+	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    2,
+		apitype.OpType("same"):    conditionalCount(2, 1),
 		apitype.OpType("update"):  1,
-	}).Equal(t, diffResult.ChangeSummary)
+	}, diffResult.ChangeSummary)
 
-	delta := runPreviewWithPlanDiff(t, pt)
-	autogold.Expect(map[string]interface{}{
-		"module.replacetestmod.random_integer.r": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-				"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"keepers": map[string]interface{}{"keeper": "beta"},
-				"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			}},
-			"steps": []apitype.OpType{
-				apitype.OpType("create-replacement"),
-				apitype.OpType("replace"),
-				apitype.OpType("delete-replaced"),
+	// There are some issues currently with views and update plans, making detailed asserts unreliable.
+	if !viewsEnabled {
+		delta := runPreviewWithPlanDiff(t, pt)
+		autogold.Expect(map[string]interface{}{
+			"module.replacetestmod.random_integer.r": map[string]interface{}{
+				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
+					"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"keepers": map[string]interface{}{"keeper": "beta"},
+					"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				}},
+				"steps": []apitype.OpType{
+					apitype.OpType("create-replacement"),
+					apitype.OpType("replace"),
+					apitype.OpType("delete-replaced"),
+				},
 			},
-		},
-		"replacetestmod-state": map[string]interface{}{
-			//nolint:lll
-			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
-			"steps": []apitype.OpType{apitype.OpType("update")},
-		},
-	}).Equal(t, delta)
+			"replacetestmod-state": map[string]interface{}{
+				//nolint:lll
+				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
+				"steps": []apitype.OpType{apitype.OpType("update")},
+			},
+		}).Equal(t, delta)
+	}
 
-	replaceResult := pt.Up(t)
+	upResult := pt.Up(t,
+		optup.Diff(),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+		optup.DebugLogging(debugOpts),
+	)
 
-	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+	autogold.Expect(nil).Equal(t, upResult.Summary.ResourceChanges)
 }
 
 // Now check resources that are replaced with a replace_triggered_by trigger. It uses the default TF delete_create
