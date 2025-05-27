@@ -183,7 +183,7 @@ func (p *Plan) Outputs() resource.PropertyMap {
 		} else {
 			val := resource.NewPropertyValueRepl(output.After, nil, replaceJSONNumberValue)
 			if p.outputIsSecret(outputKey) {
-				val = resource.MakeSecret(val)
+				val = resourceMakeSecretConservative(val)
 			}
 			outputs[key] = val
 		}
@@ -262,7 +262,7 @@ func (s *State) Outputs() resource.PropertyMap {
 		key := resource.PropertyKey(outputKey)
 		val := resource.NewPropertyValueRepl(output.Value, nil, replaceJSONNumberValue)
 		if s.outputIsSecret(outputKey) {
-			val = resource.MakeSecret(val)
+			val = resourceMakeSecretConservative(val)
 		}
 		outputs[key] = val
 	}

@@ -197,7 +197,7 @@ func extractPropertyMapFromState(stateResource tfjson.StateResource) resource.Pr
 		var sensitiveValues interface{}
 		err := json.Unmarshal(stateResource.SensitiveValues, &sensitiveValues)
 		contract.AssertNoErrorf(err, "failed to unmarshal SensitiveValues")
-		objectProperty = updateResourceValue(objectProperty, sensitiveValues, resource.MakeSecret)
+		objectProperty = updateResourceValue(objectProperty, sensitiveValues, resourceMakeSecretConservative)
 	}
 	return objectProperty.ObjectValue()
 }

@@ -303,9 +303,9 @@ func viewStepsAfterDestroy(
 			Type:   ty,
 			Name:   name,
 			Old: &pulumirpc.ViewStepState{
-				Type:    ty,
-				Name:    name,
-				Outputs: viewStruct(rs.AttributeValues()),
+				Type:   ty,
+				Name:   name,
+				Inputs: viewStruct(rs.AttributeValues()),
 			},
 		}
 
