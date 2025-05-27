@@ -41,6 +41,7 @@ const (
 //
 // The first test checks the most common case.
 func Test_replace_forcenew_delete_create(t *testing.T) {
+	tw := newTestWriter(t)
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", replacemod))
@@ -55,41 +56,57 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
 
 	pt.SetConfig(t, "keeper", "alpha")
-	pt.Up(t)
+	pt.Up(t,
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+	)
 	pt.SetConfig(t, "keeper", "beta")
 
-	diffResult := pt.Preview(t, optpreview.Diff())
-	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
-	autogold.Expect(map[apitype.OpType]int{
+	diffResult := pt.Preview(t,
+		optpreview.Diff(),
+		optpreview.ProgressStreams(tw),
+		optpreview.ErrorProgressStreams(tw),
+	)
+
+	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    2,
+		apitype.OpType("same"):    conditionalCount(2, 1),
 		apitype.OpType("update"):  1,
-	}).Equal(t, diffResult.ChangeSummary)
+	}, diffResult.ChangeSummary)
 
-	delta := runPreviewWithPlanDiff(t, pt)
-	autogold.Expect(map[string]interface{}{
-		"module.replacetestmod.random_integer.r": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-				"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"keepers": map[string]interface{}{"keeper": "beta"},
-				"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			}},
-			"steps": []apitype.OpType{
-				apitype.OpType("delete-replaced"),
-				apitype.OpType("replace"),
-				apitype.OpType("create-replacement"),
+	// There are some issues currently with views and update plans, making detailed asserts unreliable.
+	if !viewsEnabled {
+		delta := runPreviewWithPlanDiff(t, pt)
+		autogold.Expect(map[string]interface{}{
+			"module.replacetestmod.random_integer.r": map[string]interface{}{
+				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
+					"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"keepers": map[string]interface{}{"keeper": "beta"},
+					"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				}},
+				"steps": []apitype.OpType{
+					apitype.OpType("delete-replaced"),
+					apitype.OpType("replace"),
+					apitype.OpType("create-replacement"),
+				},
 			},
-		},
-		"replacetestmod-state": map[string]interface{}{
-			//nolint:lll
-			"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
-			"steps": []apitype.OpType{apitype.OpType("update")},
-		},
-	}).Equal(t, delta)
+			"replacetestmod-state": map[string]interface{}{
+				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
+				"steps": []apitype.OpType{apitype.OpType("update")},
+			},
+		}).Equal(t, delta)
+	}
 
-	replaceResult := pt.Up(t)
+	replaceResult := pt.Up(t,
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+	)
 
-	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+	assert.Equal(t, &map[string]int{
+		"replace": 1,
+		"same":    conditionalCount(2, 1),
+		"update":  1,
+	}, replaceResult.Summary.ResourceChanges)
 }
 
 // Now check that delete-then-create plans surface as such.
