@@ -91,6 +91,7 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 				},
 			},
 			"replacetestmod-state": map[string]interface{}{
+				//nolint:lll
 				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
 				"steps": []apitype.OpType{apitype.OpType("update")},
 			},
