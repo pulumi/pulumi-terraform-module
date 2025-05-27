@@ -177,7 +177,7 @@ func (p *Plan) Outputs() resource.PropertyMap {
 		if isInternalOutputResource(outputKey) {
 			continue
 		}
-		key := resource.PropertyKey(outputKey)
+		key := PulumiTopLevelKey(outputKey)
 		if afterUnknown, ok := output.AfterUnknown.(bool); ok && afterUnknown {
 			outputs[key] = unknown()
 		} else {
@@ -259,7 +259,7 @@ func (s *State) Outputs() resource.PropertyMap {
 		if isInternalOutputResource(outputKey) {
 			continue
 		}
-		key := resource.PropertyKey(outputKey)
+		key := PulumiTopLevelKey(outputKey)
 		val := resource.NewPropertyValueRepl(output.Value, nil, replaceJSONNumberValue)
 		if s.outputIsSecret(outputKey) {
 			val = resourceMakeSecretConservative(val)

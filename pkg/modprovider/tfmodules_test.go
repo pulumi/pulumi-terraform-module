@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
@@ -85,7 +86,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 	}
 
 	for name, expected := range expectedSampleInputs {
-		actual, ok := awsVpcSchema.Inputs[name]
+		actual, ok := awsVpcSchema.Inputs[resource.PropertyKey(name)]
 		assert.True(t, ok, "input %s is missing from the schema", name)
 		assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
 		assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
@@ -137,7 +138,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 	}
 
 	for name, expected := range expectedSampleOutputs {
-		actual, ok := awsVpcSchema.Outputs[name]
+		actual, ok := awsVpcSchema.Outputs[resource.PropertyKey(name)]
 		assert.True(t, ok, "output %s is missing from the schema", name)
 		assert.Equal(t, expected.Description, actual.Description, "output %s description is incorrect", name)
 		assert.Equal(t, expected.Secret, actual.Secret, "output %s secret is incorrect", name)
@@ -213,7 +214,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 				Source:         string(source),
 				MaximumVersion: "6.0.0",
 				PartialSchema: &InferredModuleSchema{
-					NonNilOutputs: []string{"vpc_id"},
+					NonNilOutputs: []resource.PropertyKey{"vpc_id"},
 				},
 			},
 		}
@@ -231,7 +232,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 				Source:         string(source),
 				MaximumVersion: "6.0.0",
 				PartialSchema: &InferredModuleSchema{
-					Outputs: map[string]*schema.PropertySpec{
+					Outputs: map[resource.PropertyKey]*schema.PropertySpec{
 						"vpc_id": {
 							Description: "The new ID field of the VPC",
 							Secret:      true,
@@ -290,7 +291,7 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	}
 
 	for name, expected := range expectedSampleInputs {
-		actual, ok := demoSchema.Inputs[name]
+		actual, ok := demoSchema.Inputs[resource.PropertyKey(name)]
 		assert.True(t, ok, "input %s is missing from the schema", name)
 		assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
 		assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
@@ -326,7 +327,7 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 	}
 
 	for name, expected := range expectedSampleInputs {
-		actual, ok := consulClusterSchema.Inputs[name]
+		actual, ok := consulClusterSchema.Inputs[resource.PropertyKey(name)]
 		assert.True(t, ok, "input %s is missing from the schema", name)
 		assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
 		assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)

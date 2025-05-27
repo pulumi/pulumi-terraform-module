@@ -24,6 +24,7 @@ import (
 	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -95,14 +96,14 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 	inputs := map[string]schema.PropertySpec{}
 	for propertyName, inputType := range inferredModule.Inputs {
 		if inputType != nil {
-			inputs[propertyName] = *inputType
+			inputs[string(propertyName)] = *inputType
 		}
 	}
 
 	outputs := map[string]schema.PropertySpec{}
 	for propertyName, outputType := range inferredModule.Outputs {
 		if outputType != nil {
-			outputs[propertyName] = *outputType
+			outputs[string(propertyName)] = *outputType
 		}
 	}
 
@@ -117,11 +118,11 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 			mainResourceToken: {
 				IsComponent:     !useCustomResource,
 				InputProperties: inputs,
-				RequiredInputs:  inferredModule.RequiredInputs,
+				RequiredInputs:  asStrings(inferredModule.RequiredInputs),
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: outputs,
-					Required:   inferredModule.NonNilOutputs,
+					Required:   asStrings(inferredModule.NonNilOutputs),
 				},
 			},
 		},
@@ -136,6 +137,14 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 	}
 
 	return packageSpec, nil
+}
+
+func asStrings(keys []resource.PropertyKey) []string {
+	result := make([]string, len(keys))
+	for i, k := range keys {
+		result[i] = string(k)
+	}
+	return result
 }
 
 // This is very important to include in the schema under Parameterization so that the generated SDK calls back into the

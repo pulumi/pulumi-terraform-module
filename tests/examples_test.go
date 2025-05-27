@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/providertest/pulumitest/opttest"
@@ -77,6 +78,7 @@ func Test_EksExample(t *testing.T) {
 }
 
 func Test_AlbExample(t *testing.T) {
+	tw := newTestWriter(t)
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
@@ -97,28 +99,49 @@ func Test_AlbExample(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/alb/aws", "9.14.0", "albmod")
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.6.0", "bucketmod")
 
-	integrationTest.Up(t, optup.Diff(),
-		optup.ErrorProgressStreams(os.Stderr),
-		optup.ProgressStreams(os.Stdout),
+	upResult := integrationTest.Up(t,
+		optup.Diff(),
+		optup.ErrorProgressStreams(tw),
+		optup.ProgressStreams(tw),
 	)
 
-	resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
+	assert.Equal(t, &map[string]int{"create": conditionalCount(47, 46)}, upResult.Summary.ResourceChanges)
 
-	// Ignore source_code_hash as it is unstable across dev machines and CI.
-	fn := "module.test-lambda.aws_lambda_function.this[0]"
-	resourceDiffs[fn].(map[string]any)["diff"].(apitype.PlanDiffV1).Updates["source_code_hash"] = "*"
+	if !viewsEnabled {
+		// Due to some issues specific to TF, the first preview is non-empty but detects some drift on the
+		// lambda resource. If this gets fixed in the future the test may evolve as needed.
+		resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
 
-	autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
-		"diff": apitype.PlanDiffV1{
-			Adds: map[string]interface{}{"layers": []interface{}{}},
-			Updates: map[string]interface{}{
-				"last_modified":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"qualified_arn":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"qualified_invoke_arn": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"source_code_hash":     "*",
-				"version":              "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		// Ignore source_code_hash as it is unstable across dev machines and CI.
+		fn := "module.test-lambda.aws_lambda_function.this[0]"
+		resourceDiffs[fn].(map[string]any)["diff"].(apitype.PlanDiffV1).Updates["source_code_hash"] = "*"
+
+		autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
+			"diff": apitype.PlanDiffV1{
+				Adds: map[string]interface{}{"layers": []interface{}{}},
+				Updates: map[string]interface{}{
+					"last_modified":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"qualified_arn":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"qualified_invoke_arn": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+					"source_code_hash":     "*",
+					"version":              "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				},
 			},
-		},
-		"steps": []apitype.OpType{apitype.OpType("update")},
-	}}).Equal(t, resourceDiffs)
+			"steps": []apitype.OpType{apitype.OpType("update")},
+		}}).Equal(t, resourceDiffs)
+	} else {
+		// There are some issues currently with views and update plans, making detailed asserts unreliable.
+		// Instead we run preview directly and check the result.
+		//
+		// TODO[pulumi/pulumi-terraform-module#332]: views do not currently detect drift, so the result is an
+		// empty preview here. This may change to an Update plan once the issue with drift detection is fixed.
+		previewResult := integrationTest.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(tw),
+			optpreview.ProgressStreams(tw),
+		)
+		autogold.Expect(map[apitype.OpType]int{
+			apitype.OpType("same"): 46},
+		).Equal(t, previewResult.ChangeSummary)
+	}
 }

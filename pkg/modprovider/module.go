@@ -137,7 +137,7 @@ func (h *moduleHandler) prepSandbox(
 	outputSpecs := []tfsandbox.TFOutputSpec{}
 	for outputName := range inferredModule.Outputs {
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name: outputName,
+			Name: tfsandbox.DecodePulumiTopLevelKey(outputName),
 		})
 	}
 
