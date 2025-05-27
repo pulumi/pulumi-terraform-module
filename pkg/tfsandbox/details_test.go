@@ -533,6 +533,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 					"sensitive_content": nil,
 				},
 			},
+			//nolint:lll
 			expectedValue: autogold.Expect(resource.PropertyMap{resource.PropertyKey("sensitive_content"): resource.PropertyValue{}}),
 		},
 	}
