@@ -177,7 +177,11 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 		optup.DebugLogging(debugOpts),
 	)
 
-	autogold.Expect(nil).Equal(t, upResult.Summary.ResourceChanges)
+	assert.Equal(t, &map[string]int{
+		"replace": 1,
+		"same":    conditionalCount(2, 1),
+		"update":  1,
+	}, upResult.Summary.ResourceChanges)
 }
 
 // Now check resources that are replaced with a replace_triggered_by trigger. It uses the default TF delete_create
