@@ -170,6 +170,8 @@ func Test_RandMod_TypeScript(t *testing.T) {
 }
 
 func TestLambdaMemorySizeDiff(t *testing.T) {
+	tw := newTestWriter(t)
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "lambdamod-memory-diff")
@@ -179,24 +181,51 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
 
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	logLevel := uint(13)
+	debugOpts = debug.LoggingOptions{
+		LogLevel:      &logLevel,
+		LogToStdErr:   true,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
+
 	// Set prefix via config
 	integrationTest.SetConfig(t, "prefix", prefix)
 
 	// Generate package
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/lambda/aws", "7.20.1", "lambda")
-	integrationTest.Up(t, optup.Diff())
+
+	integrationTest.Up(t,
+		optup.Diff(),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+		optup.DebugLogging(debugOpts),
+	)
+
 	// run up a second time because some diffs are due to AWS defaults
 	// being applied and pulled in when Tofu runs refresh on the second up
-	integrationTest.Up(t, optup.Diff())
+	integrationTest.Up(t,
+		optup.Diff(),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+		optup.DebugLogging(debugOpts),
+	)
 
 	integrationTest.SetConfig(t, "step", "2")
 
 	// TODO Views do not support update plans properly yet so using a different code paths here.
 	if viewsEnabled {
 		t.Logf("viewsEnabled")
-		previewResult := integrationTest.Preview(t, optpreview.Diff())
+		previewResult := integrationTest.Preview(t,
+			optpreview.Diff(),
+			optpreview.ProgressStreams(tw),
+			optpreview.ErrorProgressStreams(tw),
+			optpreview.DebugLogging(debugOpts),
+		)
 		text := previewResult.StdOut + previewResult.StdErr
-		t.Logf("pulumi preview:\n%s", text)
 
 		p := regexp.MustCompile(`[+]\smemory_size\s+[:]\s+256`)
 		require.Truef(t, len(p.FindStringIndex(text)) > 0,
@@ -1208,13 +1237,13 @@ func TestRefreshNoChanges(t *testing.T) {
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	logLevel := uint(13)
-	debugOpts = debug.LoggingOptions{
-		LogLevel:      &logLevel,
-		LogToStdErr:   true,
-		FlowToPlugins: true,
-		Debug:         true,
-	}
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
