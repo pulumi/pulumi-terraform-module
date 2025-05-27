@@ -239,6 +239,11 @@ func viewStepsForResource(
 	steps := []*pulumirpc.ViewStep{}
 
 	for _, op := range viewStepOp(rplan.ChangeKind()) {
+		newViewStateToSend := newViewState
+		if op == pulumirpc.ViewStep_DELETE_REPLACED {
+			newViewStateToSend = nil
+		}
+
 		step := &pulumirpc.ViewStep{
 			Status: pulumirpc.ViewStep_OK,
 			Name:   name,
@@ -246,7 +251,7 @@ func viewStepsForResource(
 
 			Op:  op,
 			Old: oldViewState,
-			New: newViewState,
+			New: newViewStateToSend,
 
 			// TODO translate TF diff details to Pulumi view diff details.
 			//
