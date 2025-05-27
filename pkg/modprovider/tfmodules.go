@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -315,24 +314,24 @@ func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Ver
 
 func InferModuleSchema(
 	ctx context.Context,
+	tf *tfsandbox.Tofu,
 	packageName packageName,
 	mod TFModuleSource,
 	ver TFModuleVersion,
-	auxServer *auxprovider.Server,
 ) (*InferredModuleSchema, error) {
-	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil), auxServer)
+	return inferModuleSchema(ctx, tf, packageName, mod, ver, newComponentLogger(nil, nil))
 }
 
 func inferModuleSchema(
 	ctx context.Context,
+	tf *tfsandbox.Tofu,
 	packageName packageName,
 	mod TFModuleSource,
 	tfModuleVersion TFModuleVersion,
 	logger tfsandbox.Logger,
-	auxServer *auxprovider.Server,
 ) (*InferredModuleSchema, error) {
 
-	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger, auxServer)
+	module, err := extractModuleContent(ctx, tf, mod, tfModuleVersion, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -536,12 +535,12 @@ func combineInferredModuleSchema(
 
 func extractModuleContent(
 	ctx context.Context,
+	tf *tfsandbox.Tofu,
 	source TFModuleSource,
 	version TFModuleVersion,
 	logger tfsandbox.Logger,
-	auxServer *auxprovider.Server,
 ) (*configs.Module, error) {
-	modDir, err := resolveModuleSources(ctx, source, version, logger, auxServer)
+	modDir, err := resolveModuleSources(ctx, tf, source, version, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -610,22 +609,17 @@ func findResolvedModuleDir(mj *modulesJSON, key string) (string, error) {
 
 func resolveModuleSources(
 	ctx context.Context,
+	tf *tfsandbox.Tofu,
 	source tfsandbox.TFModuleSource,
 	version tfsandbox.TFModuleVersion, //optional
 	logger tfsandbox.Logger,
-	auxServer *auxprovider.Server,
 ) (string, error) {
-	tf, err := tfsandbox.NewTofu(ctx, logger, tfsandbox.ModuleWorkdir(source, version), auxServer)
-	if err != nil {
-		return "", fmt.Errorf("tofu sandbox construction failure: %w", err)
-	}
-
 	key := "mymod"
 
 	inputs := resource.PropertyMap{}
 	outputs := []tfsandbox.TFOutputSpec{}
 	providerConfig := map[string]resource.PropertyMap{}
-	err = tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
+	err := tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
 	if err != nil {
 		return "", fmt.Errorf("tofu file creation failed: %w", err)
 	}

@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -32,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
@@ -39,6 +42,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
@@ -97,14 +101,37 @@ func (s *server) Parameterize(
 	if err != nil {
 		return nil, fmt.Errorf("%s failed to parse parameters: %w", Name(), err)
 	}
+
 	s.params = &pargs
 
 	s.componentTypeName = defaultComponentTypeName
 	s.packageName = pargs.PackageName
 	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
 	logger := newResourceLogger(s.hostClient, "")
-	inferredModuleSchema, err := inferModuleSchema(ctx, s.packageName,
-		pargs.TFModuleSource, pargs.TFModuleVersion, logger, s.auxProviderServer)
+
+	workdir := tfsandbox.ModuleWorkdir(pargs.TFModuleSource, pargs.TFModuleVersion)
+
+	// Since multiple provider instances may be racing to infer a schema of the same module, use OS-level locking.
+	lockFile := filepath.Join(os.TempDir(), "pulumi-terraform-module-"+strings.Join(workdir, "-")+".lock")
+	logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("Acquiring schema inference FileMutex: %s", lockFile))
+	mu := fsutil.NewFileMutex(lockFile)
+	err = mu.Lock()
+	contract.AssertNoErrorf(err, "Failed to Lock a NewFileMutex")
+	logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("Acquired schema inference FileMutex: %s", lockFile))
+
+	defer func() {
+		err := mu.Unlock()
+		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("Released schema inference FileMutex: %s", lockFile))
+		contract.AssertNoErrorf(err, "Failed to Unlock a NewFileMutex")
+	}()
+
+	tf, err := tfsandbox.NewTofu(ctx, logger, workdir, s.auxProviderServer)
+	if err != nil {
+		return nil, fmt.Errorf("tofu sandbox construction failure: %w", err)
+	}
+
+	inferredModuleSchema, err := inferModuleSchema(ctx, tf, s.packageName,
+		pargs.TFModuleSource, pargs.TFModuleVersion, logger)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring module schema for '%s' version %s: %w",
 			pargs.TFModuleSource,
