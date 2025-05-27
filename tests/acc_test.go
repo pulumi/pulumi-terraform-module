@@ -1212,6 +1212,9 @@ func TestRefreshDeleted(t *testing.T) {
 
 // Verify that when there is no drift, refresh works without any changes.
 func TestRefreshNoChanges(t *testing.T) {
+	if viewsEnabled {
+		t.Skip("TODO awaiting platform here")
+	}
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	testWriter := newTestWriter(t)
 
