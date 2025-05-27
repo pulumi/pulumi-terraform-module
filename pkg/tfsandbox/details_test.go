@@ -551,6 +551,7 @@ func Test_NewState_ExcludesDataSources(t *testing.T) {
 	require.NoError(t, err)
 	var tfState *tfjson.State
 	err = json.Unmarshal(stateData, &tfState)
+	require.NoError(t, err)
 
 	s, err := NewState(tfState)
 	require.NoError(t, err)
@@ -641,7 +642,9 @@ func Test_NewPlan_ExcludesDataSources(t *testing.T) {
 		"testdata", "plans", "plan_with_datasource_changes.json"))
 	require.NoError(t, err)
 	var tfPlan *tfjson.Plan
+
 	err = json.Unmarshal(stateData, &tfPlan)
+	require.NoError(t, err)
 
 	s, err := NewPlan(tfPlan)
 	require.NoError(t, err)
