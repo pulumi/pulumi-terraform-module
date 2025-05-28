@@ -28,14 +28,30 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
+type testLogger struct {
+	logs []string
+}
+
+func (l *testLogger) Log(_ context.Context, level tfsandbox.LogLevel, msg string) {
+	l.logs = append(l.logs, string(level)+": "+msg)
+}
+
+func (l *testLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, msg string) {
+	l.logs = append(l.logs, string(level)+": "+msg)
+}
+
 func TestExtractModuleContentWorks(t *testing.T) {
 	ctx := context.Background()
 	srv := newTestAuxProviderServer(t)
 	testUsingExectutor(t, func(executor string) {
+		logger := &testLogger{}
 		awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1",
-			tfsandbox.DiscardLogger, srv, executor)
+			logger, srv, executor)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
+		for _, log := range logger.logs {
+			t.Logf("Log: %s", log)
+		}
 	})
 }
 
