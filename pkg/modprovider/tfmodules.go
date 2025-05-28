@@ -549,6 +549,15 @@ func extractModuleContent(
 		return nil, fmt.Errorf("resolve module sources: %w", err)
 	}
 
+	defer func() {
+		err := os.RemoveAll(modDir)
+		if err != nil {
+			logger.Log(ctx,
+				tfsandbox.Error,
+				"extractModuleContent: failed to cleanup module directory "+modDir)
+		}
+	}()
+
 	parser := configs.NewParser(nil)
 	smc := configs.NewStaticModuleCall(
 		nil, /* addr */
