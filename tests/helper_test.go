@@ -17,9 +17,14 @@ package tests
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
@@ -63,4 +68,32 @@ func (tl *tfTestLogger) Log(_ context.Context, level tfsandbox.LogLevel, message
 
 func (tl *tfTestLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, message string) {
 	tl.t.Logf("[STATUS] [%v]: %s", level, message)
+}
+
+// Skip the test if it is being run locally without cloud credentials being configured.
+func skipLocalRunsWithoutCreds(t *testing.T) {
+	if _, ci := os.LookupEnv("CI"); ci {
+		return // never skip when in CI
+	}
+
+	awsConfigured := false
+	for _, envVar := range os.Environ() {
+		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_ACCESS_KEY_ID") {
+			awsConfigured = true
+		}
+		if strings.HasPrefix(strings.ToUpper(envVar), "AWS_PROFILE") {
+			awsConfigured = true
+		}
+	}
+	if !awsConfigured {
+		t.Skip("AWS configuration such as AWS_PROFILE env var is required to run this test")
+	}
+}
+
+func newPulumiTest(t pulumitest.PT, source string, opts ...opttest.Option) *pulumitest.PulumiTest {
+	t.Helper()
+	pto := integration.ProgramTestOptions{Dir: source}
+	randomStackName := pto.GetStackName()
+	opts = append(opts, opttest.StackName(string(randomStackName)))
+	return pulumitest.NewPulumiTest(t, source, opts...)
 }
