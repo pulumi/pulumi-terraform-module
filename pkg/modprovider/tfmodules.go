@@ -636,12 +636,12 @@ func resolveModuleSources(
 	providerConfig := map[string]resource.PropertyMap{}
 	err = tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
 	if err != nil {
-		return "", fmt.Errorf("tofu file creation failed: %w", err)
+		return "", fmt.Errorf("terraform file creation failed: %w", err)
 	}
 
 	// init will resolve module sources and create .terraform/modules folder
 	if err := tf.Init(ctx, logger); err != nil {
-		return "", fmt.Errorf("tofu init failure: %w", err)
+		return "", fmt.Errorf("init failure (%s): %w", tf.Description(), err)
 	}
 
 	mjPath := filepath.Join(tf.WorkingDir(), ".terraform", "modules", "modules.json")
