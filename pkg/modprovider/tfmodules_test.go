@@ -47,9 +47,7 @@ func TestExtractModuleContentWorks(t *testing.T) {
 		logger := &testLogger{}
 		source := TFModuleSource("terraform-aws-modules/vpc/aws")
 		version := TFModuleVersion("5.18.1")
-		workingDir := tfsandbox.ModuleWorkdir(source, version)
-		workingDir = workingDir.WithExecutor(executor)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, workingDir, srv, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
 
 		awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
@@ -68,8 +66,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		srv := newTestAuxProviderServer(t)
 		source := TFModuleSource("terraform-aws-modules/vpc/aws")
 		version := TFModuleVersion("5.19.0")
-		workingDir := tfsandbox.ModuleWorkdir(source, version).WithExecutor(executor)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, workingDir, srv, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
 		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
