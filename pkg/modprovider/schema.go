@@ -106,15 +106,15 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		}
 	}
 
-	useOpenTofuVariable := schema.PropertySpec{
+	moduleExecutorVariable := schema.PropertySpec{
 		TypeSpec: schema.TypeSpec{
 			Type: "boolean",
 		},
 
-		Description: "Set to true to use OpenTofu to run the module.",
+		Description: "Sets the executor used to run the module.",
 		Default:     false,
 		DefaultInfo: &schema.DefaultSpec{
-			Environment: []string{useOpentofuEnvironmentVariable},
+			Environment: []string{moduleExecutorEnvironmentVariable},
 		},
 	}
 
@@ -122,7 +122,7 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		inferredModule.ProvidersConfig.Variables = map[string]schema.PropertySpec{}
 	}
 
-	inferredModule.ProvidersConfig.Variables[useOpentofuVariableName] = useOpenTofuVariable
+	inferredModule.ProvidersConfig.Variables[moduleExecutorVariableName] = moduleExecutorVariable
 
 	packageSpec := &schema.PackageSpec{
 		Name:    string(packageName),

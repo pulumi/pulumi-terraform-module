@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -68,7 +69,7 @@ func newModuleComponentResource(
 	packageRef string,
 	providerSelfURN pulumi.URN,
 	providersConfig map[string]resource.PropertyMap,
-	useOpentofu bool,
+	moduleExecutor string,
 	opts ...pulumi.ResourceOption,
 ) (componentUrn *urn.URN, moduleStateResource *moduleStateResource, outputs pulumi.Map, finalError error) {
 	component := ModuleComponentResource{}
@@ -138,14 +139,14 @@ func newModuleComponentResource(
 	// unless opted into opentofu in which case we either use it if available
 	// or download it if not available.
 	var tf *tfsandbox.ModuleRuntime
-	if useOpentofu {
-		tf, err = tfsandbox.NewTofu(ctx.Context(), logger, wd, auxProviderServer)
+	if moduleExecutor != "terraform" {
+		tf, err = tfsandbox.NewTofu(ctx.Context(), logger, wd, auxProviderServer, tofuresolver.ResolveOpts{})
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("opentofu sandbox construction failed: %w", err)
 		}
 		logger.Log(ctx.Context(), tfsandbox.Info, "Using OpenTofu for module execution")
 	} else {
-		tf, err = tfsandbox.NewTerreform(ctx.Context(), logger, wd, auxProviderServer)
+		tf, err = tfsandbox.NewTerraform(ctx.Context(), logger, wd, auxProviderServer)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("terraform sandbox construction failed: %w", err)
 		}

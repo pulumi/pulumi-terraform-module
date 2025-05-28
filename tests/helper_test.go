@@ -9,13 +9,19 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 //nolint:unused
 func newTestTofu(t *testing.T) *tfsandbox.ModuleRuntime {
 	srv := newTestAuxProviderServer(t)
 
-	tofu, err := tfsandbox.NewTofu(context.Background(), tfsandbox.DiscardLogger, nil, srv)
+	tofu, err := tfsandbox.NewTofu(context.Background(),
+		tfsandbox.DiscardLogger,
+		nil,
+		srv,
+		tofuresolver.ResolveOpts{})
+
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

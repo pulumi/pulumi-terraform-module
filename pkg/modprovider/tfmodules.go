@@ -40,6 +40,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 type ModuleSchemaOverride struct {
@@ -615,7 +616,7 @@ func resolveModuleSources(
 	logger tfsandbox.Logger,
 	auxServer *auxprovider.Server,
 ) (string, error) {
-	tf, err := tfsandbox.NewTofu(ctx, logger, tfsandbox.ModuleWorkdir(source, version), auxServer)
+	tf, err := tfsandbox.NewTofu(ctx, logger, tfsandbox.ModuleWorkdir(source, version), auxServer, tofuresolver.ResolveOpts{})
 	if err != nil {
 		return "", fmt.Errorf("tofu sandbox construction failure: %w", err)
 	}

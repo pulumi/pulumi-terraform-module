@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hc-install/fs"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -96,7 +97,11 @@ func (t *ModuleRuntime) WorkingDir() string {
 
 // NewTofu will create a new Tofu client which can be used to
 // programmatically interact with the tofu cli
-func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (
+func NewTofu(ctx context.Context,
+	logger Logger,
+	workdir Workdir,
+	auxServer *auxprovider.Server,
+	resolveOptions tofuresolver.ResolveOpts) (
 	*ModuleRuntime, error) {
 	// This is only used for testing.
 	if workdir == nil {
@@ -105,7 +110,7 @@ func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *aux
 		})
 	}
 
-	execPath, err := tofuresolver.Resolve(ctx, tofuresolver.ResolveOpts{})
+	execPath, err := tofuresolver.Resolve(ctx, resolveOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error downloading tofu: %w", err)
 	}
@@ -138,7 +143,7 @@ func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *aux
 
 // NewTerreform will create a new client which can be used to
 // programmatically interact with the terraform cli
-func NewTerreform(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (
+func NewTerraform(ctx context.Context, logger Logger, workdir Workdir, auxServer *auxprovider.Server) (
 	*ModuleRuntime, error) {
 	// This is only used for testing.
 	if workdir == nil {
@@ -188,6 +193,72 @@ func NewTerreform(ctx context.Context, logger Logger, workdir Workdir, auxServer
 		tf:       tf,
 		reattach: reattach,
 	}, nil
+}
+
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
+}
+
+func NewRuntimeFromExecutable(
+	moduleExecutor string,
+	ctx context.Context,
+	logger Logger,
+	workdir Workdir,
+	auxServer *auxprovider.Server) (*ModuleRuntime, error) {
+
+	workDir, err := workdirGetOrCreate(ctx, logger, workdir)
+	if err != nil {
+		return nil, err
+	}
+	tf, err := tfexec.NewTerraform(workDir, moduleExecutor)
+	if err != nil {
+		return nil, fmt.Errorf("error creating a tofu executor: %w", err)
+	}
+
+	var reattach *tfexec.ReattachInfo
+	if auxServer != nil {
+		reattach = &auxServer.ReattachInfo
+	}
+
+	return &ModuleRuntime{
+		tf:       tf,
+		reattach: reattach,
+	}, nil
+}
+
+func PickModuleRuntime(
+	moduleExecutor string,
+	ctx context.Context,
+	logger Logger,
+	workdir Workdir,
+	auxServer *auxprovider.Server) (*ModuleRuntime, error) {
+
+	// check if the module executor is a path to an existing executable
+	if fileExists(moduleExecutor) {
+		return NewRuntimeFromExecutable(moduleExecutor, ctx, logger, workdir, auxServer)
+	}
+
+	if strings.HasPrefix("opentofu", moduleExecutor) || strings.HasPrefix("tofu", moduleExecutor) {
+		resolveOptions := tofuresolver.ResolveOpts{}
+		if parts := strings.Split(moduleExecutor, "@"); len(parts) == 2 {
+			// If the module executor is in the format "opentofu@version" or "tofu@version",
+			// we extract the version and set it in the resolve options.
+			parsedVersion, err := semver.Parse(parts[1])
+			if err != nil {
+				return nil, fmt.Errorf("error parsing version %q for %s: %w", parts[1], parts[0], err)
+			}
+			resolveOptions.Version = &parsedVersion
+		}
+
+		return NewTofu(ctx, logger, workdir, auxServer, resolveOptions)
+	}
+
+	// check if the module executor is a path to an existing executable
+	return NewTerraform(ctx, logger, workdir, auxServer)
 }
 
 //nolint:unused

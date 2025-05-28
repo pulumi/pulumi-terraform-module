@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -80,11 +81,12 @@ type server struct {
 	// there are no Output values inside this map. In the current implementation this is OK as the data is only
 	// used to produce Terraform files to feed to opentofu and lacks the capability to track these dependencies.
 	providerConfig resource.PropertyMap
-	// useOpentofu indicates whether the provider is using opentofu or not.
-	// by default this is false and the provider will use a terraform executable available
-	// in the PATH.
-	// if this is true, then the provider will use opentofu executable and will download one if it is not available.
-	useOpentofu bool
+	// moduleExecutor is the executable that will be used to run the module.
+	// by default this is terraform, using the CLI available in the PATH.
+	// the user could also provide a path to a binary to use instead of the default.
+	// for example, moduleExecutor could be set to "opentofu" to use the opentofu CLI.
+	// in which case we will try to find the opentofu binary in the PATH or download it if it is not available.
+	moduleExecutor string
 
 	auxProviderServer *auxprovider.Server
 }
@@ -294,21 +296,16 @@ func (s *server) Configure(
 
 	s.providerConfig = config
 
-	if config.HasValue(resource.PropertyKey(useOpentofuVariableName)) {
-		if useOpenTofu, ok := config[useOpentofuVariableName]; ok {
-			if useOpenTofu.IsBool() {
-				s.useOpentofu = useOpenTofu.BoolValue()
-			} else if useOpenTofu.IsString() {
-				// a boolean value might be passed as a string due to legacy provider SDK behavior
-				// which JSON-encodes the value as a string
-				s.useOpentofu = useOpenTofu.StringValue() == "true"
-			}
+	if config.HasValue(resource.PropertyKey(moduleExecutorVariableName)) {
+		if executor, ok := config[moduleExecutorVariableName]; ok && executor.IsString() {
+			// remove quotes from the string value in case it was JSON-encoded
+			value := strings.ReplaceAll(executor.StringValue(), "\"", "")
+			s.moduleExecutor = value
 		}
 	} else {
-		// if the user didn't specify the useOpentofu variable
+		// if the user didn't specify the executor variable
 		// then we check the environment variable
-		envVar := os.Getenv(useOpentofuEnvironmentVariable)
-		s.useOpentofu = envVar == "true" || envVar == "1"
+		s.moduleExecutor = os.Getenv(moduleExecutorEnvironmentVariable)
 	}
 
 	return &pulumirpc.ConfigureResponse{
@@ -392,7 +389,7 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 	for propertyKey, originalSerializedConfig := range config {
 		if string(propertyKey) == "version" ||
 			string(propertyKey) == "pluginDownloadURL" ||
-			string(propertyKey) == useOpentofuVariableName {
+			string(propertyKey) == moduleExecutorVariableName {
 			// skip properties that are not provider configurations
 			continue
 		}
@@ -473,7 +470,7 @@ func (s *server) Construct(
 				packageRef,
 				s.providerSelfURN,
 				providersConfig,
-				s.useOpentofu,
+				s.moduleExecutor,
 				resourceOptions,
 			)
 

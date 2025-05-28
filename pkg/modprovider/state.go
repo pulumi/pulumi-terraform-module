@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 const (
@@ -262,7 +263,7 @@ func (h *moduleStateHandler) Delete(
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
+	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer, tofuresolver.ResolveOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}
@@ -341,7 +342,7 @@ func (h *moduleStateHandler) Read(
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
+	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer, tofuresolver.ResolveOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}
