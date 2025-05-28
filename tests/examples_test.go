@@ -105,7 +105,10 @@ func Test_AlbExample(t *testing.T) {
 		optup.ProgressStreams(tw),
 	)
 
-	assert.Equal(t, &map[string]int{"create": conditionalCount(47, 46)}, upResult.Summary.ResourceChanges)
+	assert.Equal(t, &map[string]int{
+		// 4 ModuleState resources account for 46+4=50.
+		"create": conditionalCount(50, 46),
+	}, upResult.Summary.ResourceChanges)
 
 	if !viewsEnabled {
 		// Due to some issues specific to TF, the first preview is non-empty but detects some drift on the
