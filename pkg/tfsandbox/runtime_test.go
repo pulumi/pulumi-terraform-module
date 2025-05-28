@@ -39,6 +39,24 @@ func TestTofuInit(t *testing.T) {
 	assert.Contains(t, res.String(), "OpenTofu initialized in an empty directory")
 }
 
+func TestNewTerraformInit(t *testing.T) {
+	srv := newTestAuxProviderServer(t)
+	ctx := context.Background()
+	logger := DiscardLogger
+	tf, err := NewTerraform(ctx, logger, nil, srv)
+	assert.NoError(t, err)
+	assert.NotNil(t, tf)
+	err = tf.Init(ctx, DiscardLogger)
+	assert.NoError(t, err, "error running terraform init")
+	t.Logf("WorkingDir: %s", tf.WorkingDir())
+
+	var res bytes.Buffer
+	err = tf.tf.InitJSON(context.Background(), &res)
+	assert.NoError(t, err)
+	t.Logf("Output: %s", res.String())
+	assert.Contains(t, res.String(), "Terraform initialized in an empty directory")
+}
+
 func TestTofuPlan(t *testing.T) {
 	tofu := newTestTofu(t)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
