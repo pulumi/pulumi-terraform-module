@@ -35,13 +35,13 @@ func ModuleInstanceWorkdir(modUrn urn.URN) Workdir {
 }
 
 // This workdir will be used for generic operations such as module schema inference.
-func ModuleWorkdir(source TFModuleSource, version TFModuleVersion, executor string) Workdir {
+func ModuleWorkdir(source TFModuleSource, version TFModuleVersion) Workdir {
 	s := url.PathEscape(string(source))
 	if version != "" {
 		v := url.PathEscape(string(version))
-		return Workdir([]string{executor, "by-module-source-and-version", s, v})
+		return Workdir([]string{"by-module-source-and-version", s, v})
 	}
-	return Workdir([]string{executor, "by-module-source", s})
+	return Workdir([]string{"by-module-source", s})
 }
 
 // Get or create a folder under $TMPDIR matching the current Pulumi project and stack.

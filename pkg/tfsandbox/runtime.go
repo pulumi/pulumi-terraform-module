@@ -261,25 +261,30 @@ func PickModuleRuntime(
 
 	// check if the module executor is a path to an existing executable
 	if fileExists(moduleExecutor) {
+		logger.Log(ctx, Debug, fmt.Sprintf("Using module executor from path: %s", moduleExecutor))
 		return NewRuntimeFromExecutable(ctx, logger, workdir, auxServer, moduleExecutor)
 	}
 
 	if strings.HasPrefix(moduleExecutor, "opentofu") || strings.HasPrefix(moduleExecutor, "tofu") {
 		resolveOptions := tofuresolver.ResolveOpts{}
+		var version string
 		if parts := strings.Split(moduleExecutor, "@"); len(parts) == 2 {
 			// If the module executor is in the format "opentofu@version" or "tofu@version",
 			// we extract the version and set it in the resolve options.
-			parsedVersion, err := semver.Parse(parts[1])
+			version = parts[1]
+			parsedVersion, err := semver.Parse(version)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing version %q for %s: %w", parts[1], parts[0], err)
 			}
 			resolveOptions.Version = &parsedVersion
 		}
 
+		logger.Log(ctx, Debug, fmt.Sprintf("Using module executor %s %s", moduleExecutor, version))
 		return NewTofu(ctx, logger, workdir, auxServer, resolveOptions)
 	}
 
 	// check if the module executor is a path to an existing executable
+	logger.Log(ctx, Debug, "Using default Terraform CLI as module executor")
 	return NewTerraform(ctx, logger, workdir, auxServer)
 }
 

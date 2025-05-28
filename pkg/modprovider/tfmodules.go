@@ -622,7 +622,7 @@ func resolveModuleSources(
 	tf, err := tfsandbox.PickModuleRuntime(
 		ctx,
 		logger,
-		tfsandbox.ModuleWorkdir(source, version, moduleExecutor),
+		tfsandbox.ModuleWorkdir(source, version),
 		auxServer,
 		moduleExecutor)
 	if err != nil {
