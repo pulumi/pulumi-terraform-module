@@ -70,7 +70,7 @@ func viewStepsGeneric(
 			return
 		}
 
-		// TODO sometimes addresses change but identity remains the same.
+		// TODO[pulumi/pulumi-terraform-module#61] sometimes addresses change but identity remains the same.
 		addr := rplan.Address()
 
 		var priorRState, finalRState *tfsandbox.ResourceState
@@ -98,7 +98,7 @@ func viewStepsGeneric(
 	if finalState != nil {
 		sameCounter := 0
 		finalState.VisitResourceStates(func(rs *tfsandbox.ResourceState) {
-			// TODO sometimes addresses change but identity remains the same.
+			// TODO[pulumi/pulumi-terraform-module#61] sometimes addresses change but identity remains
 			addr := rs.Address()
 
 			// Skip planned resources.
@@ -142,7 +142,6 @@ func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
 	case tfsandbox.Create:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_CREATE}
 	case tfsandbox.Read:
-		// TODO is this always right? Currently only supporting refresh-to-Read.
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_REFRESH}
 	case tfsandbox.Delete:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_DELETE}
@@ -253,7 +252,7 @@ func viewStepsForResource(
 			Old: oldViewState,
 			New: newViewStateToSend,
 
-			// TODO translate TF diff details to Pulumi view diff details.
+			// TODO[pulumi/pulumi-terraform-module#100] translate TF diff details to Pulumi view
 			//
 			// Keys:            []string{},                           // need to attribute replacement plans to properties here
 			// Diffs:           []string{},                           // need to provide an approximation of DetailedDiff here
@@ -298,7 +297,8 @@ func viewStepsAfterDestroy(
 	steps := []*pulumirpc.ViewStep{}
 
 	stateBeforeDestroy.VisitResourceStates(func(rs ResourceState) {
-		// TODO: check stateAfterDestroy to account for partial errors where not all resources were deleted.
+		// TODO[pulumi/pulumi-terraform-module#342]: check stateAfterDestroy to account for partial errors
+		// where not all resources were deleted.
 		ty := childResourceTypeToken(packageName, rs.Type()).String()
 		name := childResourceName(rs.Address())
 

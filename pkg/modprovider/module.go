@@ -74,12 +74,6 @@ func (h *moduleHandler) Diff(
 	_ context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	// TODO should post-`pulumi refresh` diff have any custom handling?
-	//
-	// This is described in:
-	// https://pulumi-developer-docs.readthedocs.io/latest/developer-docs/providers/implementers-guide.html#refresh
-	//
-	// Simply comparing inputs probably works fine for that case, but running `tofu plan` may be problematic.
 	changes := pulumirpc.DiffResponse_DIFF_NONE
 
 	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
@@ -92,14 +86,7 @@ func (h *moduleHandler) Diff(
 		return nil, err
 	}
 
-	// TODO are there some cases where `tofu plan` would consider making changes here even though inputs have not
-	// changed? Would it be worth it to run it to consult the plan results?
-	//
-	// One scenario is refresh finding drift, but probably this will be addressed by using
-	// https://github.com/pulumi/pulumi/pull/19487 and running plan and apply with the -refresh=false setting.
-	//
-	// Another scenario is one of the TF providers or perhaps the module source itself being upgraded and wanting
-	// to initiate updates, even if module inputs have not changed at all.
+	// TODO[pulumi/pulumi-terraform-module#332] detect and correct drift
 	if !oldInputs.DeepEquals(newInputs) {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
@@ -200,15 +187,15 @@ func (h *moduleHandler) applyModuleOperation(
 	var views []*pulumirpc.ViewStep
 	var moduleOutputs resource.PropertyMap
 
-	// TODO should we also publish views before Apply just to start showing something fast?
-
+	// TODO[pulumi/pulumi-terraform-module#247] show resources sooner by publishing views based on plan result
+	// before expensive apply operation runs.
 	var applyErr error
 
 	if preview {
 		views = viewStepsPlan(packageName, plan)
 		moduleOutputs = plan.Outputs()
 	} else {
-		tfState, err := tf.Apply(ctx, logger) // TODO this can reuse the plan it just planned.
+		tfState, err := tf.Apply(ctx, logger) // TODO[pulumi/pulumi-terraform-module#341] reuse the plan
 		if tfState != nil {
 			msg := fmt.Sprintf("tf.Apply produced the following state: %s", tfState.PrettyPrint())
 			logger.Log(ctx, tfsandbox.Debug, msg)
@@ -230,10 +217,9 @@ func (h *moduleHandler) applyModuleOperation(
 	}
 
 	if applyErr != nil {
-
-		// TODO Wrap partial errors in initializationError.
-		// This does not quite work as expected yet as views get recorded into state as pending_operations.
-		// They need to be recorded as finalized operations because they did complete.
+		// TODO[pulumi/pulumi-terraform-module#342] Possibly wrap partial errors in initializationError. This
+		// does not quite work as expected yet as views get recorded into state as pending_operations. They
+		// need to be recorded as finalized operations because they did complete.
 		if 1+2 == 4 {
 			applyErr = h.initializationError(moduleOutputs, applyErr.Error())
 		}

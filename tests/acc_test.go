@@ -217,7 +217,8 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 
 	integrationTest.SetConfig(t, "step", "2")
 
-	// TODO Views do not support update plans properly yet so using a different code paths here.
+	// TODO[pulumi/pulumi-terraform-module#343] Views do not support update plans properly yet so using a different
+	// code paths here.
 	if viewsEnabled {
 		t.Logf("viewsEnabled")
 		previewResult := integrationTest.Preview(t,
@@ -799,7 +800,6 @@ func TestE2eDotnet(t *testing.T) {
 
 var viewsEnabled = flags.EnableViewsPreview
 
-// TODO Pulumi CLI needs to correctly compute operation count over views.
 func conditionalCount(withoutViews, withViews int) int {
 	if viewsEnabled {
 		return withViews
@@ -1214,7 +1214,7 @@ func TestRefreshDeleted(t *testing.T) {
 // Verify that when there is no drift, refresh works without any changes.
 func TestRefreshNoChanges(t *testing.T) {
 	if viewsEnabled {
-		t.Skip("TODO awaiting platform here")
+		t.Skip("TODO[pulumi/pulumi-terraform-module#344]")
 	}
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	testWriter := newTestWriter(t)
@@ -1257,16 +1257,7 @@ func TestRefreshNoChanges(t *testing.T) {
 
 	rc := refreshResult.Summary.ResourceChanges
 	assert.Equal(t, &map[string]int{
-		// TODO why is the count 2 with views?
-		//
-		// Without views the count is 4 because it counts Stack, Module, ModuleState, Bucket.
-		//
-		// Is Bucket not counted with views, or is Stack not counted?
-		//
-		// It turns out module provider was not generating Same steps for views, because TF plan had no entries
-		// for unchanged resources. This should be fixed but currently attempting to fix this hits an engine
-		// panic. TBD.
-		"same": conditionalCount(4, 2),
+		"same": conditionalCount(4, 3),
 	}, rc)
 }
 
@@ -1329,7 +1320,7 @@ func TestDeleteLambda(t *testing.T) {
 		t.Fatalf("failed to get IAM role %s: %v", *iamInput.RoleName, err)
 	}
 
-	resp, err := cloudwatchlogsClient.DescribeLogGroups(context.TODO(), cloudwatchlogsInput)
+	resp, err := cloudwatchlogsClient.DescribeLogGroups(context.Background(), cloudwatchlogsInput)
 	if err != nil {
 		log.Fatalf("failed to describe log group, %v", err)
 	}

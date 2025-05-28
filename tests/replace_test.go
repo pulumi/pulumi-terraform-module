@@ -113,7 +113,7 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 // Now check that delete-then-create plans surface as such.
 func Test_replace_forcenew_create_delete(t *testing.T) {
 	if viewsEnabled {
-		t.Skip("TODO investigating why this fails under views with snapshot integrity failure")
+		t.Skip("TODO[pulumi/pulumi-terraform-module#345] investigating why this fails under views")
 	}
 
 	tw := newTestWriter(t)
