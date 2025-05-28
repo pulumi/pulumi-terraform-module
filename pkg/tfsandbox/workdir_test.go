@@ -28,19 +28,19 @@ func Test_ModuleWorkdir(t *testing.T) {
 	// This is just a convention, testing to illustrate.
 
 	assert.Equal(t, filepath.Join(os.TempDir(), "pulumi-terraform-module",
-		"workdirs", "by-module-source-and-version",
+		"workdirs", "tofu", "by-module-source-and-version",
 		"terraform-aws-modules%2Fvpc%2Faws", "5.19.0"),
-		workdirPath(ModuleWorkdir("terraform-aws-modules/vpc/aws", "5.19.0")))
+		workdirPath(ModuleWorkdir("terraform-aws-modules/vpc/aws", "5.19.0", "tofu")))
 
 	assert.Equal(t, filepath.Join(os.TempDir(), "pulumi-terraform-module",
-		"workdirs", "by-module-source", "terraform-aws-modules%2Fvpc%2Faws"),
-		workdirPath(ModuleWorkdir("terraform-aws-modules/vpc/aws", "")))
+		"workdirs", "terraform", "by-module-source", "terraform-aws-modules%2Fvpc%2Faws"),
+		workdirPath(ModuleWorkdir("terraform-aws-modules/vpc/aws", "", "terraform")))
 }
 
 func Test_workdirGetOrCreate(t *testing.T) {
 	ctx := context.Background()
 
-	wd := ModuleWorkdir("my-module", "")
+	wd := ModuleWorkdir("my-module", "", "terraform")
 
 	err := os.RemoveAll(workdirPath(wd))
 	require.NoError(t, err)
