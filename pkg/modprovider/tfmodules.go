@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -315,26 +314,24 @@ func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Ver
 
 func InferModuleSchema(
 	ctx context.Context,
+	tf *tfsandbox.ModuleRuntime,
 	packageName packageName,
 	mod TFModuleSource,
 	ver TFModuleVersion,
-	auxServer *auxprovider.Server,
-	moduleExecutor string,
 ) (*InferredModuleSchema, error) {
-	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil), auxServer, moduleExecutor)
+	return inferModuleSchema(ctx, tf, packageName, mod, ver, newComponentLogger(nil, nil))
 }
 
 func inferModuleSchema(
 	ctx context.Context,
+	tf *tfsandbox.ModuleRuntime,
 	packageName packageName,
 	mod TFModuleSource,
 	tfModuleVersion TFModuleVersion,
 	logger tfsandbox.Logger,
-	auxServer *auxprovider.Server,
-	moduleExector string,
 ) (*InferredModuleSchema, error) {
 
-	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger, auxServer, moduleExector)
+	module, err := extractModuleContent(ctx, tf, mod, tfModuleVersion, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -538,13 +535,12 @@ func combineInferredModuleSchema(
 
 func extractModuleContent(
 	ctx context.Context,
+	tf *tfsandbox.ModuleRuntime,
 	source TFModuleSource,
 	version TFModuleVersion,
 	logger tfsandbox.Logger,
-	auxServer *auxprovider.Server,
-	moduleExecutor string,
 ) (*configs.Module, error) {
-	modDir, err := resolveModuleSources(ctx, source, version, logger, auxServer, moduleExecutor)
+	modDir, err := resolveModuleSources(ctx, tf, source, version, logger)
 	if err != nil {
 		return nil, fmt.Errorf("resolve module sources: %w", err)
 	}
@@ -613,28 +609,17 @@ func findResolvedModuleDir(mj *modulesJSON, key string) (string, error) {
 
 func resolveModuleSources(
 	ctx context.Context,
+	tf *tfsandbox.ModuleRuntime,
 	source tfsandbox.TFModuleSource,
 	version tfsandbox.TFModuleVersion, //optional
 	logger tfsandbox.Logger,
-	auxServer *auxprovider.Server,
-	moduleExecutor string,
 ) (string, error) {
-	tf, err := tfsandbox.PickModuleRuntime(
-		ctx,
-		logger,
-		tfsandbox.ModuleWorkdir(source, version),
-		auxServer,
-		moduleExecutor)
-	if err != nil {
-		return "", fmt.Errorf("sandbox construction failure: %w", err)
-	}
-
 	key := "mymod"
 
 	inputs := resource.PropertyMap{}
 	outputs := []tfsandbox.TFOutputSpec{}
 	providerConfig := map[string]resource.PropertyMap{}
-	err = tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
+	err := tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
 	if err != nil {
 		return "", fmt.Errorf("terraform file creation failed: %w", err)
 	}

@@ -1,3 +1,17 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tests
 
 import (
@@ -8,7 +22,6 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -16,13 +29,15 @@ import (
 )
 
 func Test_RdsExample(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-rds-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -48,13 +63,15 @@ func Test_RdsExample(t *testing.T) {
 }
 
 func Test_EksExample(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-eks-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -78,13 +95,15 @@ func Test_EksExample(t *testing.T) {
 }
 
 func Test_AlbExample(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-alb-example"))
 	require.NoError(t, err)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()

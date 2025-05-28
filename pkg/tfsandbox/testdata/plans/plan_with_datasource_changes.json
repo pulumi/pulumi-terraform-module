@@ -1,0 +1,5281 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.1",
+  "planned_values": {
+    "outputs": {
+      "internal_output_is_secret_lambda_cloudwatch_log_group_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_cloudwatch_log_group_name": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_event_source_mapping_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_event_source_mapping_function_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_event_source_mapping_state": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_event_source_mapping_state_transition_reason": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_event_source_mapping_uuid": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_arn_static": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_invoke_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_kms_key_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_last_modified": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_name": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_qualified_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_qualified_invoke_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_signing_job_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_signing_profile_version_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_source_code_hash": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_source_code_size": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_url": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_url_id": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_function_version": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_layer_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_layer_created_date": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_layer_layer_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_layer_source_code_size": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_layer_version": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_role_arn": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_role_name": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_lambda_role_unique_id": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_local_filename": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "internal_output_is_secret_s3_object": {
+        "sensitive": false,
+        "value": false,
+        "type": "bool"
+      },
+      "lambda_cloudwatch_log_group_arn": {
+        "sensitive": false
+      },
+      "lambda_cloudwatch_log_group_name": {
+        "sensitive": false,
+        "value": "/aws/lambda/309610-testlambda",
+        "type": "string"
+      },
+      "lambda_event_source_mapping_arn": {
+        "sensitive": false,
+        "value": {},
+        "type": [
+          "object",
+          {}
+        ]
+      },
+      "lambda_event_source_mapping_function_arn": {
+        "sensitive": false,
+        "value": {},
+        "type": [
+          "object",
+          {}
+        ]
+      },
+      "lambda_event_source_mapping_state": {
+        "sensitive": false,
+        "value": {},
+        "type": [
+          "object",
+          {}
+        ]
+      },
+      "lambda_event_source_mapping_state_transition_reason": {
+        "sensitive": false,
+        "value": {},
+        "type": [
+          "object",
+          {}
+        ]
+      },
+      "lambda_event_source_mapping_uuid": {
+        "sensitive": false,
+        "value": {},
+        "type": [
+          "object",
+          {}
+        ]
+      },
+      "lambda_function_arn": {
+        "sensitive": false
+      },
+      "lambda_function_arn_static": {
+        "sensitive": false,
+        "value": "arn:aws:lambda:us-west-2:616138583583:function:309610-testlambda",
+        "type": "string"
+      },
+      "lambda_function_invoke_arn": {
+        "sensitive": false
+      },
+      "lambda_function_kms_key_arn": {
+        "sensitive": false,
+        "type": "dynamic"
+      },
+      "lambda_function_last_modified": {
+        "sensitive": false
+      },
+      "lambda_function_name": {
+        "sensitive": false,
+        "value": "309610-testlambda",
+        "type": "string"
+      },
+      "lambda_function_qualified_arn": {
+        "sensitive": false
+      },
+      "lambda_function_qualified_invoke_arn": {
+        "sensitive": false
+      },
+      "lambda_function_signing_job_arn": {
+        "sensitive": false
+      },
+      "lambda_function_signing_profile_version_arn": {
+        "sensitive": false
+      },
+      "lambda_function_source_code_hash": {
+        "sensitive": false
+      },
+      "lambda_function_source_code_size": {
+        "sensitive": false
+      },
+      "lambda_function_url": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_function_url_id": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_function_version": {
+        "sensitive": false
+      },
+      "lambda_layer_arn": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_layer_created_date": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_layer_layer_arn": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_layer_source_code_size": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_layer_version": {
+        "sensitive": false,
+        "value": "",
+        "type": "string"
+      },
+      "lambda_role_arn": {
+        "sensitive": false
+      },
+      "lambda_role_name": {
+        "sensitive": false,
+        "value": "309610-testlambda",
+        "type": "string"
+      },
+      "lambda_role_unique_id": {
+        "sensitive": false
+      },
+      "local_filename": {
+        "sensitive": false,
+        "value": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+        "type": "string"
+      },
+      "s3_object": {
+        "sensitive": false,
+        "value": {
+          "bucket": null,
+          "key": null,
+          "version_id": null
+        },
+        "type": [
+          "object",
+          {
+            "bucket": "dynamic",
+            "key": "dynamic",
+            "version_id": "dynamic"
+          }
+        ]
+      }
+    },
+    "root_module": {
+      "child_modules": [
+        {
+          "resources": [
+            {
+              "address": "module.test-lambda.aws_cloudwatch_log_group.lambda[0]",
+              "mode": "managed",
+              "type": "aws_cloudwatch_log_group",
+              "name": "lambda",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "kms_key_id": null,
+                "name": "/aws/lambda/309610-testlambda",
+                "retention_in_days": 0,
+                "skip_destroy": false,
+                "tags": null
+              },
+              "sensitive_values": {
+                "tags_all": {}
+              }
+            },
+            {
+              "address": "module.test-lambda.aws_iam_role.lambda[0]",
+              "mode": "managed",
+              "type": "aws_iam_role",
+              "name": "lambda",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+                "description": null,
+                "force_detach_policies": true,
+                "max_session_duration": 3600,
+                "name": "309610-testlambda",
+                "path": "/",
+                "permissions_boundary": null,
+                "tags": null
+              },
+              "sensitive_values": {
+                "inline_policy": [],
+                "managed_policy_arns": [],
+                "tags_all": {}
+              }
+            },
+            {
+              "address": "module.test-lambda.aws_iam_role_policy.logs[0]",
+              "mode": "managed",
+              "type": "aws_iam_role_policy",
+              "name": "logs",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "name": "309610-testlambda-logs",
+                "role": "309610-testlambda"
+              },
+              "sensitive_values": {}
+            },
+            {
+              "address": "module.test-lambda.aws_lambda_function.this[0]",
+              "mode": "managed",
+              "type": "aws_lambda_function",
+              "name": "this",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "code_signing_config_arn": null,
+                "dead_letter_config": [],
+                "description": "",
+                "environment": [],
+                "ephemeral_storage": [
+                  {
+                    "size": 512
+                  }
+                ],
+                "file_system_config": [],
+                "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+                "function_name": "309610-testlambda",
+                "handler": "app.handler",
+                "image_config": [],
+                "image_uri": null,
+                "kms_key_arn": null,
+                "layers": null,
+                "logging_config": [
+                  {
+                    "application_log_level": null,
+                    "log_format": "Text",
+                    "system_log_level": null
+                  }
+                ],
+                "memory_size": 128,
+                "package_type": "Zip",
+                "publish": false,
+                "replace_security_groups_on_destroy": null,
+                "replacement_security_group_ids": null,
+                "reserved_concurrent_executions": -1,
+                "runtime": "nodejs22.x",
+                "s3_bucket": null,
+                "s3_key": null,
+                "s3_object_version": null,
+                "skip_destroy": false,
+                "snap_start": [],
+                "tags": {
+                  "terraform-aws-modules": "lambda"
+                },
+                "tags_all": {
+                  "terraform-aws-modules": "lambda"
+                },
+                "timeout": 3,
+                "timeouts": null,
+                "vpc_config": []
+              },
+              "sensitive_values": {
+                "architectures": [],
+                "dead_letter_config": [],
+                "environment": [],
+                "ephemeral_storage": [
+                  {}
+                ],
+                "file_system_config": [],
+                "image_config": [],
+                "logging_config": [
+                  {}
+                ],
+                "snap_start": [],
+                "tags": {},
+                "tags_all": {},
+                "tracing_config": [],
+                "vpc_config": []
+              }
+            },
+            {
+              "address": "module.test-lambda.data.aws_iam_policy_document.logs[0]",
+              "mode": "data",
+              "type": "aws_iam_policy_document",
+              "name": "logs",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/aws",
+              "schema_version": 0,
+              "values": {
+                "override_json": null,
+                "override_policy_documents": null,
+                "policy_id": null,
+                "source_json": null,
+                "source_policy_documents": null,
+                "statement": [
+                  {
+                    "actions": [
+                      "logs:CreateLogGroup",
+                      "logs:CreateLogStream",
+                      "logs:PutLogEvents"
+                    ],
+                    "condition": [],
+                    "effect": "Allow",
+                    "not_actions": null,
+                    "not_principals": [],
+                    "not_resources": null,
+                    "principals": [],
+                    "sid": null
+                  }
+                ],
+                "version": null
+              },
+              "sensitive_values": {
+                "statement": [
+                  {
+                    "actions": [
+                      false,
+                      false,
+                      false
+                    ],
+                    "condition": [],
+                    "not_principals": [],
+                    "principals": [],
+                    "resources": []
+                  }
+                ]
+              }
+            },
+            {
+              "address": "module.test-lambda.local_file.archive_plan[0]",
+              "mode": "managed",
+              "type": "local_file",
+              "name": "archive_plan",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/local",
+              "schema_version": 0,
+              "values": {
+                "content": "{\"filename\": \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip\", \"runtime\": \"nodejs22.x\", \"artifacts_dir\": \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds\", \"build_plan\": [[[\"zip\", \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/src/app.ts\", null]]]}",
+                "content_base64": null,
+                "directory_permission": "0755",
+                "file_permission": "0644",
+                "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.plan.json",
+                "sensitive_content": null,
+                "source": null
+              },
+              "sensitive_values": {
+                "sensitive_content": true
+              }
+            },
+            {
+              "address": "module.test-lambda.null_resource.archive[0]",
+              "mode": "managed",
+              "type": "null_resource",
+              "name": "archive",
+              "index": 0,
+              "provider_name": "registry.opentofu.org/hashicorp/null",
+              "schema_version": 0,
+              "values": {
+                "triggers": {
+                  "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+                  "timestamp": "1748357515357285000"
+                }
+              },
+              "sensitive_values": {
+                "triggers": {}
+              }
+            }
+          ],
+          "address": "module.test-lambda"
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "module.test-lambda.data.aws_iam_policy_document.logs[0]",
+      "module_address": "module.test-lambda",
+      "mode": "data",
+      "type": "aws_iam_policy_document",
+      "name": "logs",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "read"
+        ],
+        "before": null,
+        "after": {
+          "override_json": null,
+          "override_policy_documents": null,
+          "policy_id": null,
+          "source_json": null,
+          "source_policy_documents": null,
+          "statement": [
+            {
+              "actions": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "condition": [],
+              "effect": "Allow",
+              "not_actions": null,
+              "not_principals": [],
+              "not_resources": null,
+              "principals": [],
+              "sid": null
+            }
+          ],
+          "version": null
+        },
+        "after_unknown": {
+          "id": true,
+          "json": true,
+          "minified_json": true,
+          "statement": [
+            {
+              "actions": [
+                false,
+                false,
+                false
+              ],
+              "condition": [],
+              "not_principals": [],
+              "principals": [],
+              "resources": true
+            }
+          ]
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "statement": [
+            {
+              "actions": [
+                false,
+                false,
+                false
+              ],
+              "condition": [],
+              "not_principals": [],
+              "principals": [],
+              "resources": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "address": "module.test-lambda.aws_cloudwatch_log_group.lambda[0]",
+      "module_address": "module.test-lambda",
+      "mode": "managed",
+      "type": "aws_cloudwatch_log_group",
+      "name": "lambda",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "kms_key_id": null,
+          "name": "/aws/lambda/309610-testlambda",
+          "retention_in_days": 0,
+          "skip_destroy": false,
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true,
+          "log_group_class": true,
+          "name_prefix": true,
+          "tags_all": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "module.test-lambda.aws_iam_role.lambda[0]",
+      "module_address": "module.test-lambda",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "lambda",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": true,
+          "max_session_duration": 3600,
+          "name": "309610-testlambda",
+          "path": "/",
+          "permissions_boundary": null,
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": true,
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "module.test-lambda.aws_iam_role_policy.logs[0]",
+      "module_address": "module.test-lambda",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "logs",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "309610-testlambda-logs",
+          "role": "309610-testlambda"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "policy": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "module.test-lambda.aws_lambda_function.this[0]",
+      "module_address": "module.test-lambda",
+      "mode": "managed",
+      "type": "aws_lambda_function",
+      "name": "this",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "code_signing_config_arn": null,
+          "dead_letter_config": [],
+          "description": "",
+          "environment": [],
+          "ephemeral_storage": [
+            {
+              "size": 512
+            }
+          ],
+          "file_system_config": [],
+          "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+          "function_name": "309610-testlambda",
+          "handler": "app.handler",
+          "image_config": [],
+          "image_uri": null,
+          "kms_key_arn": null,
+          "layers": null,
+          "logging_config": [
+            {
+              "application_log_level": null,
+              "log_format": "Text",
+              "system_log_level": null
+            }
+          ],
+          "memory_size": 128,
+          "package_type": "Zip",
+          "publish": false,
+          "replace_security_groups_on_destroy": null,
+          "replacement_security_group_ids": null,
+          "reserved_concurrent_executions": -1,
+          "runtime": "nodejs22.x",
+          "s3_bucket": null,
+          "s3_key": null,
+          "s3_object_version": null,
+          "skip_destroy": false,
+          "snap_start": [],
+          "tags": {
+            "terraform-aws-modules": "lambda"
+          },
+          "tags_all": {
+            "terraform-aws-modules": "lambda"
+          },
+          "timeout": 3,
+          "timeouts": null,
+          "vpc_config": []
+        },
+        "after_unknown": {
+          "architectures": true,
+          "arn": true,
+          "code_sha256": true,
+          "dead_letter_config": [],
+          "environment": [],
+          "ephemeral_storage": [
+            {}
+          ],
+          "file_system_config": [],
+          "id": true,
+          "image_config": [],
+          "invoke_arn": true,
+          "last_modified": true,
+          "logging_config": [
+            {
+              "log_group": true
+            }
+          ],
+          "qualified_arn": true,
+          "qualified_invoke_arn": true,
+          "role": true,
+          "signing_job_arn": true,
+          "signing_profile_version_arn": true,
+          "snap_start": [],
+          "source_code_hash": true,
+          "source_code_size": true,
+          "tags": {},
+          "tags_all": {},
+          "tracing_config": true,
+          "version": true,
+          "vpc_config": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "architectures": [],
+          "dead_letter_config": [],
+          "environment": [],
+          "ephemeral_storage": [
+            {}
+          ],
+          "file_system_config": [],
+          "image_config": [],
+          "logging_config": [
+            {}
+          ],
+          "snap_start": [],
+          "tags": {},
+          "tags_all": {},
+          "tracing_config": [],
+          "vpc_config": []
+        }
+      }
+    },
+    {
+      "address": "module.test-lambda.local_file.archive_plan[0]",
+      "module_address": "module.test-lambda",
+      "mode": "managed",
+      "type": "local_file",
+      "name": "archive_plan",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/local",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content": "{\"filename\": \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip\", \"runtime\": \"nodejs22.x\", \"artifacts_dir\": \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds\", \"build_plan\": [[[\"zip\", \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/src/app.ts\", null]]]}",
+          "content_base64": null,
+          "directory_permission": "0755",
+          "file_permission": "0644",
+          "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.plan.json",
+          "sensitive_content": null,
+          "source": null
+        },
+        "after_unknown": {
+          "content_base64sha256": true,
+          "content_base64sha512": true,
+          "content_md5": true,
+          "content_sha1": true,
+          "content_sha256": true,
+          "content_sha512": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "sensitive_content": true
+        }
+      }
+    },
+    {
+      "address": "module.test-lambda.null_resource.archive[0]",
+      "module_address": "module.test-lambda",
+      "mode": "managed",
+      "type": "null_resource",
+      "name": "archive",
+      "index": 0,
+      "provider_name": "registry.opentofu.org/hashicorp/null",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "triggers": {
+            "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+            "timestamp": "1748357515357285000"
+          }
+        },
+        "after_unknown": {
+          "id": true,
+          "triggers": {}
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "triggers": {}
+        }
+      }
+    }
+  ],
+  "output_changes": {
+    "internal_output_is_secret_lambda_cloudwatch_log_group_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_cloudwatch_log_group_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_event_source_mapping_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_event_source_mapping_function_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_event_source_mapping_state": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_event_source_mapping_state_transition_reason": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_event_source_mapping_uuid": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_arn_static": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_invoke_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_kms_key_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_last_modified": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_qualified_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_qualified_invoke_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_signing_job_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_signing_profile_version_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_source_code_hash": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_source_code_size": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_url": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_url_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_function_version": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_layer_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_layer_created_date": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_layer_layer_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_layer_source_code_size": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_layer_version": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_role_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_role_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_lambda_role_unique_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_local_filename": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "internal_output_is_secret_s3_object": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": false,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_cloudwatch_log_group_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_cloudwatch_log_group_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "/aws/lambda/309610-testlambda",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_event_source_mapping_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_event_source_mapping_function_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_event_source_mapping_state": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_event_source_mapping_state_transition_reason": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_event_source_mapping_uuid": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {},
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_arn_static": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "arn:aws:lambda:us-west-2:616138583583:function:309610-testlambda",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_invoke_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_kms_key_arn": {
+      "actions": [
+        "no-op"
+      ],
+      "before": null,
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_last_modified": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "309610-testlambda",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_qualified_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_qualified_invoke_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_signing_job_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_signing_profile_version_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_source_code_hash": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_source_code_size": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_url": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_url_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_function_version": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_layer_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_layer_created_date": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_layer_layer_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_layer_source_code_size": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_layer_version": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_role_arn": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_role_name": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "309610-testlambda",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "lambda_role_unique_id": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after_unknown": true,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "local_filename": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    },
+    "s3_object": {
+      "actions": [
+        "create"
+      ],
+      "before": null,
+      "after": {
+        "bucket": null,
+        "key": null,
+        "version_id": null
+      },
+      "after_unknown": false,
+      "before_sensitive": false,
+      "after_sensitive": false
+    }
+  },
+  "prior_state": {
+    "format_version": "1.0",
+    "terraform_version": "1.9.1",
+    "values": {
+      "outputs": {
+        "internal_output_is_secret_lambda_cloudwatch_log_group_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_cloudwatch_log_group_name": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_function_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_state": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_state_transition_reason": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_uuid": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_arn_static": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_invoke_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_kms_key_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_last_modified": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_name": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_qualified_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_qualified_invoke_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_signing_job_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_signing_profile_version_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_source_code_hash": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_source_code_size": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_url": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_url_id": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_function_version": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_layer_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_layer_created_date": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_layer_layer_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_layer_source_code_size": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_layer_version": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_role_arn": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_role_name": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_lambda_role_unique_id": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_local_filename": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "internal_output_is_secret_s3_object": {
+          "sensitive": false,
+          "value": false,
+          "type": "bool"
+        },
+        "lambda_cloudwatch_log_group_name": {
+          "sensitive": false,
+          "value": "/aws/lambda/309610-testlambda",
+          "type": "string"
+        },
+        "lambda_event_source_mapping_arn": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        },
+        "lambda_event_source_mapping_function_arn": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        },
+        "lambda_event_source_mapping_state": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        },
+        "lambda_event_source_mapping_state_transition_reason": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        },
+        "lambda_event_source_mapping_uuid": {
+          "sensitive": false,
+          "value": {},
+          "type": [
+            "object",
+            {}
+          ]
+        },
+        "lambda_function_arn_static": {
+          "sensitive": false,
+          "value": "arn:aws:lambda:us-west-2:616138583583:function:309610-testlambda",
+          "type": "string"
+        },
+        "lambda_function_name": {
+          "sensitive": false,
+          "value": "309610-testlambda",
+          "type": "string"
+        },
+        "lambda_function_url": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_function_url_id": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_layer_arn": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_layer_created_date": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_layer_layer_arn": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_layer_source_code_size": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_layer_version": {
+          "sensitive": false,
+          "value": "",
+          "type": "string"
+        },
+        "lambda_role_name": {
+          "sensitive": false,
+          "value": "309610-testlambda",
+          "type": "string"
+        },
+        "local_filename": {
+          "sensitive": false,
+          "value": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+          "type": "string"
+        },
+        "s3_object": {
+          "sensitive": false,
+          "value": {
+            "bucket": null,
+            "key": null,
+            "version_id": null
+          },
+          "type": [
+            "object",
+            {
+              "bucket": "dynamic",
+              "key": "dynamic",
+              "version_id": "dynamic"
+            }
+          ]
+        }
+      },
+      "root_module": {
+        "child_modules": [
+          {
+            "resources": [
+              {
+                "address": "module.test-lambda.data.aws_caller_identity.current",
+                "mode": "data",
+                "type": "aws_caller_identity",
+                "name": "current",
+                "provider_name": "registry.opentofu.org/hashicorp/aws",
+                "schema_version": 0,
+                "values": {
+                  "account_id": "616138583583",
+                  "arn": "arn:aws:sts::616138583583:assumed-role/AWSReservedSSO_AdministratorAccess_224e23fb315b65cb/anton@pulumi.com",
+                  "id": "616138583583",
+                  "user_id": "AROAY65FYVYP6E2HSUXEV:anton@pulumi.com"
+                },
+                "sensitive_values": {}
+              },
+              {
+                "address": "module.test-lambda.data.aws_iam_policy_document.assume_role[0]",
+                "mode": "data",
+                "type": "aws_iam_policy_document",
+                "name": "assume_role",
+                "index": 0,
+                "provider_name": "registry.opentofu.org/hashicorp/aws",
+                "schema_version": 0,
+                "values": {
+                  "id": "2690255455",
+                  "json": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"sts:AssumeRole\",\n      \"Principal\": {\n        \"Service\": \"lambda.amazonaws.com\"\n      }\n    }\n  ]\n}",
+                  "minified_json": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"}}]}",
+                  "override_json": null,
+                  "override_policy_documents": null,
+                  "policy_id": null,
+                  "source_json": null,
+                  "source_policy_documents": null,
+                  "statement": [
+                    {
+                      "actions": [
+                        "sts:AssumeRole"
+                      ],
+                      "condition": [],
+                      "effect": "Allow",
+                      "not_actions": [],
+                      "not_principals": [],
+                      "not_resources": [],
+                      "principals": [
+                        {
+                          "identifiers": [
+                            "lambda.amazonaws.com"
+                          ],
+                          "type": "Service"
+                        }
+                      ],
+                      "resources": [],
+                      "sid": ""
+                    }
+                  ],
+                  "version": "2012-10-17"
+                },
+                "sensitive_values": {
+                  "statement": [
+                    {
+                      "actions": [
+                        false
+                      ],
+                      "condition": [],
+                      "not_actions": [],
+                      "not_principals": [],
+                      "not_resources": [],
+                      "principals": [
+                        {
+                          "identifiers": [
+                            false
+                          ]
+                        }
+                      ],
+                      "resources": []
+                    }
+                  ]
+                }
+              },
+              {
+                "address": "module.test-lambda.data.aws_partition.current",
+                "mode": "data",
+                "type": "aws_partition",
+                "name": "current",
+                "provider_name": "registry.opentofu.org/hashicorp/aws",
+                "schema_version": 0,
+                "values": {
+                  "dns_suffix": "amazonaws.com",
+                  "id": "aws",
+                  "partition": "aws",
+                  "reverse_dns_prefix": "com.amazonaws"
+                },
+                "sensitive_values": {}
+              },
+              {
+                "address": "module.test-lambda.data.aws_region.current",
+                "mode": "data",
+                "type": "aws_region",
+                "name": "current",
+                "provider_name": "registry.opentofu.org/hashicorp/aws",
+                "schema_version": 0,
+                "values": {
+                  "description": "US West (Oregon)",
+                  "endpoint": "ec2.us-west-2.amazonaws.com",
+                  "id": "us-west-2",
+                  "name": "us-west-2"
+                },
+                "sensitive_values": {}
+              },
+              {
+                "address": "module.test-lambda.data.external.archive_prepare[0]",
+                "mode": "data",
+                "type": "external",
+                "name": "archive_prepare",
+                "index": 0,
+                "provider_name": "registry.opentofu.org/hashicorp/external",
+                "schema_version": 0,
+                "values": {
+                  "id": "-",
+                  "program": [
+                    "python3",
+                    ".terraform/modules/test-lambda/package.py",
+                    "prepare"
+                  ],
+                  "query": {
+                    "artifacts_dir": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds",
+                    "docker": null,
+                    "hash_extra": "",
+                    "hash_extra_paths": "[]",
+                    "paths": "{\"cwd\":\"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/pulumi-terraform-module/workdirs/by-urn/urn:pulumi:test::awslambdamod::lambda:index:Module::test-lambda\",\"module\":\".terraform/modules/test-lambda\",\"root\":\".\"}",
+                    "recreate_missing_package": "true",
+                    "runtime": "nodejs22.x",
+                    "source_path": "\"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/src/app.ts\""
+                  },
+                  "result": {
+                    "build_plan": "{\"filename\": \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip\", \"runtime\": \"nodejs22.x\", \"artifacts_dir\": \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds\", \"build_plan\": [[[\"zip\", \"/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/src/app.ts\", null]]]}",
+                    "build_plan_filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.plan.json",
+                    "filename": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds/4c2fb2faaa4135823029b1431bf51ab3d6c367c25f357f6959e86c9467b890be.zip",
+                    "timestamp": "1748357515357285000",
+                    "was_missing": "true"
+                  },
+                  "working_dir": null
+                },
+                "sensitive_values": {
+                  "program": [
+                    false,
+                    false,
+                    false
+                  ],
+                  "query": {},
+                  "result": {}
+                }
+              }
+            ],
+            "address": "module.test-lambda"
+          }
+        ]
+      }
+    }
+  },
+  "configuration": {
+    "provider_config": {
+      "module.test-lambda:aws": {
+        "name": "aws",
+        "full_name": "registry.opentofu.org/hashicorp/aws",
+        "module_address": "module.test-lambda",
+        "version_constraint": "\u003e= 5.79.0"
+      },
+      "module.test-lambda:external": {
+        "name": "external",
+        "full_name": "registry.opentofu.org/hashicorp/external",
+        "module_address": "module.test-lambda",
+        "version_constraint": "\u003e= 1.0.0"
+      },
+      "module.test-lambda:local": {
+        "name": "local",
+        "full_name": "registry.opentofu.org/hashicorp/local",
+        "module_address": "module.test-lambda",
+        "version_constraint": "\u003e= 1.0.0"
+      },
+      "module.test-lambda:null": {
+        "name": "null",
+        "full_name": "registry.opentofu.org/hashicorp/null",
+        "module_address": "module.test-lambda",
+        "version_constraint": "\u003e= 2.0.0"
+      }
+    },
+    "root_module": {
+      "outputs": {
+        "internal_output_is_secret_lambda_cloudwatch_log_group_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_cloudwatch_log_group_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_cloudwatch_log_group_name": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_cloudwatch_log_group_name",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_function_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_function_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_state": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_state",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_state_transition_reason": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_state_transition_reason",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_event_source_mapping_uuid": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_uuid",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_arn_static": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_arn_static",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_invoke_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_invoke_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_kms_key_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_kms_key_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_last_modified": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_last_modified",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_name": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_name",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_qualified_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_qualified_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_qualified_invoke_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_qualified_invoke_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_signing_job_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_signing_job_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_signing_profile_version_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_signing_profile_version_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_source_code_hash": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_source_code_hash",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_source_code_size": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_source_code_size",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_url": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_url",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_url_id": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_url_id",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_function_version": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_version",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_layer_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_layer_created_date": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_created_date",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_layer_layer_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_layer_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_layer_source_code_size": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_source_code_size",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_layer_version": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_version",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_role_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_role_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_role_name": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_role_name",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_lambda_role_unique_id": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_role_unique_id",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_local_filename": {
+          "expression": {
+            "references": [
+              "module.test-lambda.local_filename",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "internal_output_is_secret_s3_object": {
+          "expression": {
+            "references": [
+              "module.test-lambda.s3_object",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_cloudwatch_log_group_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_cloudwatch_log_group_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_cloudwatch_log_group_name": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_cloudwatch_log_group_name",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_event_source_mapping_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_event_source_mapping_function_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_function_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_event_source_mapping_state": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_state",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_event_source_mapping_state_transition_reason": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_state_transition_reason",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_event_source_mapping_uuid": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_event_source_mapping_uuid",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_arn_static": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_arn_static",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_invoke_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_invoke_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_kms_key_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_kms_key_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_last_modified": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_last_modified",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_name": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_name",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_qualified_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_qualified_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_qualified_invoke_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_qualified_invoke_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_signing_job_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_signing_job_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_signing_profile_version_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_signing_profile_version_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_source_code_hash": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_source_code_hash",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_source_code_size": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_source_code_size",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_url": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_url",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_url_id": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_url_id",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_function_version": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_function_version",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_layer_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_layer_created_date": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_created_date",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_layer_layer_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_layer_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_layer_source_code_size": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_source_code_size",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_layer_version": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_layer_version",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_role_arn": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_role_arn",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_role_name": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_role_name",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "lambda_role_unique_id": {
+          "expression": {
+            "references": [
+              "module.test-lambda.lambda_role_unique_id",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "local_filename": {
+          "expression": {
+            "references": [
+              "module.test-lambda.local_filename",
+              "module.test-lambda"
+            ]
+          }
+        },
+        "s3_object": {
+          "expression": {
+            "references": [
+              "module.test-lambda.s3_object",
+              "module.test-lambda"
+            ]
+          }
+        }
+      },
+      "module_calls": {
+        "test-lambda": {
+          "source": "terraform-aws-modules/lambda/aws",
+          "expressions": {
+            "artifacts_dir": {
+              "constant_value": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/builds"
+            },
+            "function_name": {
+              "constant_value": "309610-testlambda"
+            },
+            "handler": {
+              "constant_value": "app.handler"
+            },
+            "runtime": {
+              "constant_value": "nodejs22.x"
+            },
+            "source_path": {
+              "constant_value": "/private/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/TestLambdaMemorySizeDiff3062966304/001/lambdamod-memory-diff/src/app.ts"
+            }
+          },
+          "module": {
+            "outputs": {
+              "lambda_cloudwatch_log_group_arn": {
+                "expression": {
+                  "references": [
+                    "local.log_group_arn"
+                  ]
+                },
+                "description": "The ARN of the Cloudwatch Log Group"
+              },
+              "lambda_cloudwatch_log_group_name": {
+                "expression": {
+                  "references": [
+                    "local.log_group_name"
+                  ]
+                },
+                "description": "The name of the Cloudwatch Log Group"
+              },
+              "lambda_event_source_mapping_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_event_source_mapping.this"
+                  ]
+                },
+                "description": "The event source mapping ARN"
+              },
+              "lambda_event_source_mapping_function_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_event_source_mapping.this"
+                  ]
+                },
+                "description": "The the ARN of the Lambda function the event source mapping is sending events to"
+              },
+              "lambda_event_source_mapping_state": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_event_source_mapping.this"
+                  ]
+                },
+                "description": "The state of the event source mapping"
+              },
+              "lambda_event_source_mapping_state_transition_reason": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_event_source_mapping.this"
+                  ]
+                },
+                "description": "The reason the event source mapping is in its current state"
+              },
+              "lambda_event_source_mapping_uuid": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_event_source_mapping.this"
+                  ]
+                },
+                "description": "The UUID of the created event source mapping"
+              },
+              "lambda_function_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The ARN of the Lambda Function"
+              },
+              "lambda_function_arn_static": {
+                "expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "data.aws_region.current.name",
+                    "data.aws_region.current",
+                    "data.aws_caller_identity.current.account_id",
+                    "data.aws_caller_identity.current",
+                    "var.function_name"
+                  ]
+                },
+                "description": "The static ARN of the Lambda Function. Use this to avoid cycle errors between resources (e.g., Step Functions)"
+              },
+              "lambda_function_invoke_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].invoke_arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The Invoke ARN of the Lambda Function"
+              },
+              "lambda_function_kms_key_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].kms_key_arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The ARN for the KMS encryption key of Lambda Function"
+              },
+              "lambda_function_last_modified": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].last_modified",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The date Lambda Function resource was last modified"
+              },
+              "lambda_function_name": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].function_name",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The name of the Lambda Function"
+              },
+              "lambda_function_qualified_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].qualified_arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The ARN identifying your Lambda Function Version"
+              },
+              "lambda_function_qualified_invoke_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].qualified_invoke_arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The Invoke ARN identifying your Lambda Function Version"
+              },
+              "lambda_function_signing_job_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].signing_job_arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "ARN of the signing job"
+              },
+              "lambda_function_signing_profile_version_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].signing_profile_version_arn",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "ARN of the signing profile version"
+              },
+              "lambda_function_source_code_hash": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].source_code_hash",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "Base64-encoded representation of raw SHA-256 sum of the zip file"
+              },
+              "lambda_function_source_code_size": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].source_code_size",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "The size in bytes of the function .zip file"
+              },
+              "lambda_function_url": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function_url.this[0].function_url",
+                    "aws_lambda_function_url.this[0]",
+                    "aws_lambda_function_url.this"
+                  ]
+                },
+                "description": "The URL of the Lambda Function URL"
+              },
+              "lambda_function_url_id": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function_url.this[0].url_id",
+                    "aws_lambda_function_url.this[0]",
+                    "aws_lambda_function_url.this"
+                  ]
+                },
+                "description": "The Lambda Function URL generated id"
+              },
+              "lambda_function_version": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_function.this[0].version",
+                    "aws_lambda_function.this[0]",
+                    "aws_lambda_function.this"
+                  ]
+                },
+                "description": "Latest published version of Lambda Function"
+              },
+              "lambda_layer_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_layer_version.this[0].arn",
+                    "aws_lambda_layer_version.this[0]",
+                    "aws_lambda_layer_version.this"
+                  ]
+                },
+                "description": "The ARN of the Lambda Layer with version"
+              },
+              "lambda_layer_created_date": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_layer_version.this[0].created_date",
+                    "aws_lambda_layer_version.this[0]",
+                    "aws_lambda_layer_version.this"
+                  ]
+                },
+                "description": "The date Lambda Layer resource was created"
+              },
+              "lambda_layer_layer_arn": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_layer_version.this[0].layer_arn",
+                    "aws_lambda_layer_version.this[0]",
+                    "aws_lambda_layer_version.this"
+                  ]
+                },
+                "description": "The ARN of the Lambda Layer without version"
+              },
+              "lambda_layer_source_code_size": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_layer_version.this[0].source_code_size",
+                    "aws_lambda_layer_version.this[0]",
+                    "aws_lambda_layer_version.this"
+                  ]
+                },
+                "description": "The size in bytes of the Lambda Layer .zip file"
+              },
+              "lambda_layer_version": {
+                "expression": {
+                  "references": [
+                    "aws_lambda_layer_version.this[0].version",
+                    "aws_lambda_layer_version.this[0]",
+                    "aws_lambda_layer_version.this"
+                  ]
+                },
+                "description": "The Lambda Layer version"
+              },
+              "lambda_role_arn": {
+                "expression": {
+                  "references": [
+                    "aws_iam_role.lambda[0].arn",
+                    "aws_iam_role.lambda[0]",
+                    "aws_iam_role.lambda"
+                  ]
+                },
+                "description": "The ARN of the IAM role created for the Lambda Function"
+              },
+              "lambda_role_name": {
+                "expression": {
+                  "references": [
+                    "aws_iam_role.lambda[0].name",
+                    "aws_iam_role.lambda[0]",
+                    "aws_iam_role.lambda"
+                  ]
+                },
+                "description": "The name of the IAM role created for the Lambda Function"
+              },
+              "lambda_role_unique_id": {
+                "expression": {
+                  "references": [
+                    "aws_iam_role.lambda[0].unique_id",
+                    "aws_iam_role.lambda[0]",
+                    "aws_iam_role.lambda"
+                  ]
+                },
+                "description": "The unique id of the IAM role created for the Lambda Function"
+              },
+              "local_filename": {
+                "expression": {
+                  "references": [
+                    "local.filename"
+                  ]
+                },
+                "description": "The filename of zip archive deployed (if deployment was from local)",
+                "depends_on": [
+                  "null_resource.archive"
+                ]
+              },
+              "s3_object": {
+                "expression": {
+                  "references": [
+                    "local.s3_bucket",
+                    "local.s3_key",
+                    "local.s3_object_version"
+                  ]
+                },
+                "description": "The map with S3 object data of zip archive deployed (if deployment was from S3)"
+              }
+            },
+            "resources": [
+              {
+                "address": "aws_cloudwatch_log_group.lambda",
+                "mode": "managed",
+                "type": "aws_cloudwatch_log_group",
+                "name": "lambda",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "kms_key_id": {
+                    "references": [
+                      "var.cloudwatch_logs_kms_key_id"
+                    ]
+                  },
+                  "log_group_class": {
+                    "references": [
+                      "var.cloudwatch_logs_log_group_class"
+                    ]
+                  },
+                  "name": {
+                    "references": [
+                      "var.logging_log_group",
+                      "var.lambda_at_edge",
+                      "var.function_name"
+                    ]
+                  },
+                  "retention_in_days": {
+                    "references": [
+                      "var.cloudwatch_logs_retention_in_days"
+                    ]
+                  },
+                  "skip_destroy": {
+                    "references": [
+                      "var.cloudwatch_logs_skip_destroy"
+                    ]
+                  },
+                  "tags": {
+                    "references": [
+                      "var.tags",
+                      "var.cloudwatch_logs_tags"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.use_existing_cloudwatch_log_group"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role.lambda",
+                "mode": "managed",
+                "type": "aws_iam_role",
+                "name": "lambda",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "assume_role_policy": {
+                    "references": [
+                      "data.aws_iam_policy_document.assume_role[0].json",
+                      "data.aws_iam_policy_document.assume_role[0]",
+                      "data.aws_iam_policy_document.assume_role"
+                    ]
+                  },
+                  "description": {
+                    "references": [
+                      "var.role_description"
+                    ]
+                  },
+                  "force_detach_policies": {
+                    "references": [
+                      "var.role_force_detach_policies"
+                    ]
+                  },
+                  "max_session_duration": {
+                    "references": [
+                      "var.role_maximum_session_duration"
+                    ]
+                  },
+                  "name": {
+                    "references": [
+                      "local.role_name"
+                    ]
+                  },
+                  "path": {
+                    "references": [
+                      "var.role_path"
+                    ]
+                  },
+                  "permissions_boundary": {
+                    "references": [
+                      "var.role_permissions_boundary"
+                    ]
+                  },
+                  "tags": {
+                    "references": [
+                      "var.tags",
+                      "var.role_tags"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.additional_inline",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "additional_inline",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "data.aws_iam_policy_document.additional_inline[0].json",
+                      "data.aws_iam_policy_document.additional_inline[0]",
+                      "data.aws_iam_policy_document.additional_inline"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_policy_statements"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.additional_json",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "additional_json",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "var.policy_json"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_policy_json"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.additional_jsons",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "additional_jsons",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name",
+                      "count.index"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "var.policy_jsons",
+                      "count.index"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_policy_jsons",
+                    "var.number_of_policy_jsons"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.async",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "async",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "data.aws_iam_policy_document.async[0].json",
+                      "data.aws_iam_policy_document.async[0]",
+                      "data.aws_iam_policy_document.async"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_async_event_policy"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.dead_letter",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "dead_letter",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "data.aws_iam_policy_document.dead_letter[0].json",
+                      "data.aws_iam_policy_document.dead_letter[0]",
+                      "data.aws_iam_policy_document.dead_letter"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_dead_letter_policy"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.logs",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "logs",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "data.aws_iam_policy_document.logs[0].json",
+                      "data.aws_iam_policy_document.logs[0]",
+                      "data.aws_iam_policy_document.logs"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_cloudwatch_logs_policy"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.tracing",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "tracing",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "data.aws_iam_policy.tracing[0].policy",
+                      "data.aws_iam_policy.tracing[0]",
+                      "data.aws_iam_policy.tracing"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_tracing_policy"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy.vpc",
+                "mode": "managed",
+                "type": "aws_iam_role_policy",
+                "name": "vpc",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "local.policy_name"
+                    ]
+                  },
+                  "policy": {
+                    "references": [
+                      "data.aws_iam_policy.vpc[0].policy",
+                      "data.aws_iam_policy.vpc[0]",
+                      "data.aws_iam_policy.vpc"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_network_policy"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy_attachment.additional_many",
+                "mode": "managed",
+                "type": "aws_iam_role_policy_attachment",
+                "name": "additional_many",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "policy_arn": {
+                    "references": [
+                      "var.policies",
+                      "count.index"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_policies",
+                    "var.number_of_policies"
+                  ]
+                }
+              },
+              {
+                "address": "aws_iam_role_policy_attachment.additional_one",
+                "mode": "managed",
+                "type": "aws_iam_role_policy_attachment",
+                "name": "additional_one",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "policy_arn": {
+                    "references": [
+                      "var.policy"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "aws_iam_role.lambda[0].name",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_policy"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_event_source_mapping.this",
+                "mode": "managed",
+                "type": "aws_lambda_event_source_mapping",
+                "name": "this",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "batch_size": {
+                    "references": [
+                      "each.value.batch_size",
+                      "each.value"
+                    ]
+                  },
+                  "bisect_batch_on_function_error": {
+                    "references": [
+                      "each.value.bisect_batch_on_function_error",
+                      "each.value"
+                    ]
+                  },
+                  "enabled": {
+                    "references": [
+                      "each.value.enabled",
+                      "each.value"
+                    ]
+                  },
+                  "event_source_arn": {
+                    "references": [
+                      "each.value.event_source_arn",
+                      "each.value"
+                    ]
+                  },
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].arn",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "function_response_types": {
+                    "references": [
+                      "each.value.function_response_types",
+                      "each.value"
+                    ]
+                  },
+                  "maximum_batching_window_in_seconds": {
+                    "references": [
+                      "each.value.maximum_batching_window_in_seconds",
+                      "each.value"
+                    ]
+                  },
+                  "maximum_record_age_in_seconds": {
+                    "references": [
+                      "each.value.maximum_record_age_in_seconds",
+                      "each.value"
+                    ]
+                  },
+                  "maximum_retry_attempts": {
+                    "references": [
+                      "each.value.maximum_retry_attempts",
+                      "each.value"
+                    ]
+                  },
+                  "parallelization_factor": {
+                    "references": [
+                      "each.value.parallelization_factor",
+                      "each.value"
+                    ]
+                  },
+                  "queues": {
+                    "references": [
+                      "each.value.queues",
+                      "each.value"
+                    ]
+                  },
+                  "starting_position": {
+                    "references": [
+                      "each.value.starting_position",
+                      "each.value"
+                    ]
+                  },
+                  "starting_position_timestamp": {
+                    "references": [
+                      "each.value.starting_position_timestamp",
+                      "each.value"
+                    ]
+                  },
+                  "tags": {
+                    "references": [
+                      "var.tags",
+                      "each.value.tags",
+                      "each.value"
+                    ]
+                  },
+                  "topics": {
+                    "references": [
+                      "each.value.topics",
+                      "each.value"
+                    ]
+                  },
+                  "tumbling_window_in_seconds": {
+                    "references": [
+                      "each.value.tumbling_window_in_seconds",
+                      "each.value"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "for_each_expression": {
+                  "references": [
+                    "var.event_source_mapping",
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.create_unqualified_alias_allowed_triggers"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_function.this",
+                "mode": "managed",
+                "type": "aws_lambda_function",
+                "name": "this",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "architectures": {
+                    "references": [
+                      "var.architectures"
+                    ]
+                  },
+                  "code_signing_config_arn": {
+                    "references": [
+                      "var.code_signing_config_arn"
+                    ]
+                  },
+                  "description": {
+                    "references": [
+                      "var.description"
+                    ]
+                  },
+                  "filename": {
+                    "references": [
+                      "local.filename"
+                    ]
+                  },
+                  "function_name": {
+                    "references": [
+                      "var.function_name"
+                    ]
+                  },
+                  "handler": {
+                    "references": [
+                      "var.package_type",
+                      "var.handler"
+                    ]
+                  },
+                  "image_uri": {
+                    "references": [
+                      "var.image_uri"
+                    ]
+                  },
+                  "kms_key_arn": {
+                    "references": [
+                      "var.kms_key_arn"
+                    ]
+                  },
+                  "layers": {
+                    "references": [
+                      "var.layers"
+                    ]
+                  },
+                  "memory_size": {
+                    "references": [
+                      "var.memory_size"
+                    ]
+                  },
+                  "package_type": {
+                    "references": [
+                      "var.package_type"
+                    ]
+                  },
+                  "publish": {
+                    "references": [
+                      "var.lambda_at_edge",
+                      "var.snap_start",
+                      "var.publish"
+                    ]
+                  },
+                  "replace_security_groups_on_destroy": {
+                    "references": [
+                      "var.replace_security_groups_on_destroy"
+                    ]
+                  },
+                  "replacement_security_group_ids": {
+                    "references": [
+                      "var.replacement_security_group_ids"
+                    ]
+                  },
+                  "reserved_concurrent_executions": {
+                    "references": [
+                      "var.reserved_concurrent_executions"
+                    ]
+                  },
+                  "role": {
+                    "references": [
+                      "var.create_role",
+                      "aws_iam_role.lambda[0].arn",
+                      "aws_iam_role.lambda[0]",
+                      "aws_iam_role.lambda",
+                      "var.lambda_role"
+                    ]
+                  },
+                  "runtime": {
+                    "references": [
+                      "var.package_type",
+                      "var.runtime"
+                    ]
+                  },
+                  "s3_bucket": {
+                    "references": [
+                      "local.s3_bucket"
+                    ]
+                  },
+                  "s3_key": {
+                    "references": [
+                      "local.s3_key"
+                    ]
+                  },
+                  "s3_object_version": {
+                    "references": [
+                      "local.s3_object_version"
+                    ]
+                  },
+                  "skip_destroy": {
+                    "references": [
+                      "var.skip_destroy"
+                    ]
+                  },
+                  "source_code_hash": {
+                    "references": [
+                      "var.ignore_source_code_hash",
+                      "local.filename",
+                      "local.filename",
+                      "local.was_missing",
+                      "local.filename"
+                    ]
+                  },
+                  "tags": {
+                    "references": [
+                      "var.include_default_tag",
+                      "var.tags",
+                      "var.function_tags"
+                    ]
+                  },
+                  "timeout": {
+                    "references": [
+                      "var.lambda_at_edge",
+                      "var.timeout",
+                      "var.timeout"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer"
+                  ]
+                },
+                "depends_on": [
+                  "null_resource.archive",
+                  "aws_s3_object.lambda_package",
+                  "aws_cloudwatch_log_group.lambda",
+                  "aws_iam_role_policy.additional_inline",
+                  "aws_iam_role_policy.additional_json",
+                  "aws_iam_role_policy.additional_jsons",
+                  "aws_iam_role_policy.async",
+                  "aws_iam_role_policy.dead_letter",
+                  "aws_iam_role_policy.logs",
+                  "aws_iam_role_policy.tracing",
+                  "aws_iam_role_policy.vpc",
+                  "aws_iam_role_policy_attachment.additional_many",
+                  "aws_iam_role_policy_attachment.additional_one"
+                ]
+              },
+              {
+                "address": "aws_lambda_function_event_invoke_config.this",
+                "mode": "managed",
+                "type": "aws_lambda_function_event_invoke_config",
+                "name": "this",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].function_name",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "maximum_event_age_in_seconds": {
+                    "references": [
+                      "var.maximum_event_age_in_seconds"
+                    ]
+                  },
+                  "maximum_retry_attempts": {
+                    "references": [
+                      "var.maximum_retry_attempts"
+                    ]
+                  },
+                  "qualifier": {
+                    "references": [
+                      "each.key",
+                      "aws_lambda_function.this[0].version",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "for_each_expression": {
+                  "references": [
+                    "local.qualifiers",
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.create_async_event_config"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_function_recursion_config.this",
+                "mode": "managed",
+                "type": "aws_lambda_function_recursion_config",
+                "name": "this",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].function_name",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "recursive_loop": {
+                    "references": [
+                      "var.recursive_loop"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.recursive_loop"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_function_url.this",
+                "mode": "managed",
+                "type": "aws_lambda_function_url",
+                "name": "this",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "authorization_type": {
+                    "references": [
+                      "var.authorization_type"
+                    ]
+                  },
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].function_name",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "invoke_mode": {
+                    "references": [
+                      "var.invoke_mode"
+                    ]
+                  },
+                  "qualifier": {
+                    "references": [
+                      "var.create_unqualified_alias_lambda_function_url",
+                      "aws_lambda_function.this[0].version",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.create_lambda_function_url"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_layer_version.this",
+                "mode": "managed",
+                "type": "aws_lambda_layer_version",
+                "name": "this",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "compatible_architectures": {
+                    "references": [
+                      "var.compatible_architectures"
+                    ]
+                  },
+                  "compatible_runtimes": {
+                    "references": [
+                      "var.compatible_runtimes",
+                      "var.compatible_runtimes",
+                      "var.runtime",
+                      "var.runtime"
+                    ]
+                  },
+                  "description": {
+                    "references": [
+                      "var.description"
+                    ]
+                  },
+                  "filename": {
+                    "references": [
+                      "local.filename"
+                    ]
+                  },
+                  "layer_name": {
+                    "references": [
+                      "var.layer_name"
+                    ]
+                  },
+                  "license_info": {
+                    "references": [
+                      "var.license_info"
+                    ]
+                  },
+                  "s3_bucket": {
+                    "references": [
+                      "local.s3_bucket"
+                    ]
+                  },
+                  "s3_key": {
+                    "references": [
+                      "local.s3_key"
+                    ]
+                  },
+                  "s3_object_version": {
+                    "references": [
+                      "local.s3_object_version"
+                    ]
+                  },
+                  "skip_destroy": {
+                    "references": [
+                      "var.layer_skip_destroy"
+                    ]
+                  },
+                  "source_code_hash": {
+                    "references": [
+                      "var.ignore_source_code_hash",
+                      "local.filename",
+                      "local.filename",
+                      "local.was_missing",
+                      "local.filename"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_layer"
+                  ]
+                },
+                "depends_on": [
+                  "null_resource.archive",
+                  "aws_s3_object.lambda_package"
+                ]
+              },
+              {
+                "address": "aws_lambda_permission.current_version_triggers",
+                "mode": "managed",
+                "type": "aws_lambda_permission",
+                "name": "current_version_triggers",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "action": {
+                    "references": [
+                      "each.value.action",
+                      "each.value"
+                    ]
+                  },
+                  "event_source_token": {
+                    "references": [
+                      "each.value.event_source_token",
+                      "each.value"
+                    ]
+                  },
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].function_name",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "function_url_auth_type": {
+                    "references": [
+                      "each.value.function_url_auth_type",
+                      "each.value"
+                    ]
+                  },
+                  "principal": {
+                    "references": [
+                      "each.value.principal",
+                      "each.value",
+                      "each.value.service",
+                      "each.value"
+                    ]
+                  },
+                  "principal_org_id": {
+                    "references": [
+                      "each.value.principal_org_id",
+                      "each.value"
+                    ]
+                  },
+                  "qualifier": {
+                    "references": [
+                      "aws_lambda_function.this[0].version",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "source_account": {
+                    "references": [
+                      "each.value.source_account",
+                      "each.value"
+                    ]
+                  },
+                  "source_arn": {
+                    "references": [
+                      "each.value.source_arn",
+                      "each.value"
+                    ]
+                  },
+                  "statement_id_prefix": {
+                    "references": [
+                      "each.value.statement_id",
+                      "each.value",
+                      "each.key"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "for_each_expression": {
+                  "references": [
+                    "var.allowed_triggers",
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.create_current_version_allowed_triggers"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_permission.unqualified_alias_triggers",
+                "mode": "managed",
+                "type": "aws_lambda_permission",
+                "name": "unqualified_alias_triggers",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "action": {
+                    "references": [
+                      "each.value.action",
+                      "each.value"
+                    ]
+                  },
+                  "event_source_token": {
+                    "references": [
+                      "each.value.event_source_token",
+                      "each.value"
+                    ]
+                  },
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].function_name",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "function_url_auth_type": {
+                    "references": [
+                      "each.value.function_url_auth_type",
+                      "each.value"
+                    ]
+                  },
+                  "principal": {
+                    "references": [
+                      "each.value.principal",
+                      "each.value",
+                      "each.value.service",
+                      "each.value"
+                    ]
+                  },
+                  "principal_org_id": {
+                    "references": [
+                      "each.value.principal_org_id",
+                      "each.value"
+                    ]
+                  },
+                  "source_account": {
+                    "references": [
+                      "each.value.source_account",
+                      "each.value"
+                    ]
+                  },
+                  "source_arn": {
+                    "references": [
+                      "each.value.source_arn",
+                      "each.value"
+                    ]
+                  },
+                  "statement_id_prefix": {
+                    "references": [
+                      "each.value.statement_id",
+                      "each.value",
+                      "each.key"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "for_each_expression": {
+                  "references": [
+                    "var.allowed_triggers",
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.create_unqualified_alias_allowed_triggers"
+                  ]
+                }
+              },
+              {
+                "address": "aws_lambda_provisioned_concurrency_config.current_version",
+                "mode": "managed",
+                "type": "aws_lambda_provisioned_concurrency_config",
+                "name": "current_version",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "function_name": {
+                    "references": [
+                      "aws_lambda_function.this[0].function_name",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  },
+                  "provisioned_concurrent_executions": {
+                    "references": [
+                      "var.provisioned_concurrent_executions"
+                    ]
+                  },
+                  "qualifier": {
+                    "references": [
+                      "aws_lambda_function.this[0].version",
+                      "aws_lambda_function.this[0]",
+                      "aws_lambda_function.this"
+                    ]
+                  }
+                },
+                "schema_version": 1,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.provisioned_concurrent_executions"
+                  ]
+                }
+              },
+              {
+                "address": "aws_s3_object.lambda_package",
+                "mode": "managed",
+                "type": "aws_s3_object",
+                "name": "lambda_package",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "acl": {
+                    "references": [
+                      "var.s3_acl"
+                    ]
+                  },
+                  "bucket": {
+                    "references": [
+                      "var.s3_bucket"
+                    ]
+                  },
+                  "key": {
+                    "references": [
+                      "local.s3_key"
+                    ]
+                  },
+                  "kms_key_id": {
+                    "references": [
+                      "var.s3_kms_key_id"
+                    ]
+                  },
+                  "server_side_encryption": {
+                    "references": [
+                      "var.s3_server_side_encryption"
+                    ]
+                  },
+                  "source": {
+                    "references": [
+                      "data.external.archive_prepare[0].result.filename",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare"
+                    ]
+                  },
+                  "storage_class": {
+                    "references": [
+                      "var.s3_object_storage_class"
+                    ]
+                  },
+                  "tags": {
+                    "references": [
+                      "var.s3_object_tags_only",
+                      "var.s3_object_tags",
+                      "var.tags",
+                      "var.s3_object_tags"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.store_on_s3",
+                    "var.create_package"
+                  ]
+                },
+                "depends_on": [
+                  "null_resource.archive"
+                ]
+              },
+              {
+                "address": "local_file.archive_plan",
+                "mode": "managed",
+                "type": "local_file",
+                "name": "archive_plan",
+                "provider_config_key": "module.test-lambda:local",
+                "expressions": {
+                  "content": {
+                    "references": [
+                      "data.external.archive_prepare[0].result.build_plan",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare"
+                    ]
+                  },
+                  "directory_permission": {
+                    "constant_value": "0755"
+                  },
+                  "file_permission": {
+                    "constant_value": "0644"
+                  },
+                  "filename": {
+                    "references": [
+                      "data.external.archive_prepare[0].result.build_plan_filename",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "var.create",
+                    "var.create_package"
+                  ]
+                }
+              },
+              {
+                "address": "null_resource.archive",
+                "mode": "managed",
+                "type": "null_resource",
+                "name": "archive",
+                "provider_config_key": "module.test-lambda:null",
+                "provisioners": [
+                  {
+                    "type": "local-exec",
+                    "expressions": {
+                      "command": {
+                        "references": [
+                          "data.external.archive_prepare[0].result.build_plan_filename",
+                          "data.external.archive_prepare[0].result",
+                          "data.external.archive_prepare[0]",
+                          "data.external.archive_prepare"
+                        ]
+                      },
+                      "interpreter": {
+                        "references": [
+                          "local.python",
+                          "path.module",
+                          "data.external.archive_prepare[0].result.timestamp",
+                          "data.external.archive_prepare[0].result",
+                          "data.external.archive_prepare[0]",
+                          "data.external.archive_prepare"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "expressions": {
+                  "triggers": {
+                    "references": [
+                      "data.external.archive_prepare[0].result.filename",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare",
+                      "var.trigger_on_package_timestamp",
+                      "data.external.archive_prepare[0].result.timestamp",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "var.create",
+                    "var.create_package"
+                  ]
+                },
+                "depends_on": [
+                  "local_file.archive_plan"
+                ]
+              },
+              {
+                "address": "null_resource.sam_metadata_aws_lambda_function",
+                "mode": "managed",
+                "type": "null_resource",
+                "name": "sam_metadata_aws_lambda_function",
+                "provider_config_key": "module.test-lambda:null",
+                "expressions": {
+                  "triggers": {
+                    "references": [
+                      "var.source_path",
+                      "data.external.archive_prepare[0].result.filename",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_sam_metadata",
+                    "var.create_package",
+                    "var.create_function",
+                    "var.create_layer"
+                  ]
+                },
+                "depends_on": [
+                  "data.external.archive_prepare",
+                  "null_resource.archive"
+                ]
+              },
+              {
+                "address": "null_resource.sam_metadata_aws_lambda_layer_version",
+                "mode": "managed",
+                "type": "null_resource",
+                "name": "sam_metadata_aws_lambda_layer_version",
+                "provider_config_key": "module.test-lambda:null",
+                "expressions": {
+                  "triggers": {
+                    "references": [
+                      "var.source_path",
+                      "data.external.archive_prepare[0].result.filename",
+                      "data.external.archive_prepare[0].result",
+                      "data.external.archive_prepare[0]",
+                      "data.external.archive_prepare"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_sam_metadata",
+                    "var.create_package",
+                    "var.create_layer"
+                  ]
+                },
+                "depends_on": [
+                  "data.external.archive_prepare",
+                  "null_resource.archive"
+                ]
+              },
+              {
+                "address": "data.aws_arn.log_group_arn",
+                "mode": "data",
+                "type": "aws_arn",
+                "name": "log_group_arn",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "arn": {
+                    "references": [
+                      "local.log_group_arn_regional"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.lambda_at_edge"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_caller_identity.current",
+                "mode": "data",
+                "type": "aws_caller_identity",
+                "name": "current",
+                "provider_config_key": "module.test-lambda:aws",
+                "schema_version": 0
+              },
+              {
+                "address": "data.aws_cloudwatch_log_group.lambda",
+                "mode": "data",
+                "type": "aws_cloudwatch_log_group",
+                "name": "lambda",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "name": {
+                    "references": [
+                      "var.logging_log_group",
+                      "var.lambda_at_edge",
+                      "var.function_name"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create",
+                    "var.create_function",
+                    "var.create_layer",
+                    "var.use_existing_cloudwatch_log_group"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy.tracing",
+                "mode": "data",
+                "type": "aws_iam_policy",
+                "name": "tracing",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "arn": {
+                    "references": [
+                      "data.aws_partition.current.partition",
+                      "data.aws_partition.current"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_tracing_policy"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy.vpc",
+                "mode": "data",
+                "type": "aws_iam_policy",
+                "name": "vpc",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "arn": {
+                    "references": [
+                      "data.aws_partition.current.partition",
+                      "data.aws_partition.current"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_network_policy"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy_document.additional_inline",
+                "mode": "data",
+                "type": "aws_iam_policy_document",
+                "name": "additional_inline",
+                "provider_config_key": "module.test-lambda:aws",
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_policy_statements"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy_document.assume_role",
+                "mode": "data",
+                "type": "aws_iam_policy_document",
+                "name": "assume_role",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "statement": [
+                    {
+                      "actions": {
+                        "constant_value": [
+                          "sts:AssumeRole"
+                        ]
+                      },
+                      "effect": {
+                        "constant_value": "Allow"
+                      },
+                      "principals": [
+                        {
+                          "identifiers": {
+                            "references": [
+                              "local.trusted_entities_services"
+                            ]
+                          },
+                          "type": {
+                            "constant_value": "Service"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy_document.async",
+                "mode": "data",
+                "type": "aws_iam_policy_document",
+                "name": "async",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "statement": [
+                    {
+                      "actions": {
+                        "constant_value": [
+                          "sns:Publish",
+                          "sqs:SendMessage",
+                          "events:PutEvents",
+                          "lambda:InvokeFunction"
+                        ]
+                      },
+                      "effect": {
+                        "constant_value": "Allow"
+                      },
+                      "resources": {
+                        "references": [
+                          "var.destination_on_failure",
+                          "var.destination_on_success"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_async_event_policy"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy_document.dead_letter",
+                "mode": "data",
+                "type": "aws_iam_policy_document",
+                "name": "dead_letter",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "statement": [
+                    {
+                      "actions": {
+                        "constant_value": [
+                          "sns:Publish",
+                          "sqs:SendMessage"
+                        ]
+                      },
+                      "effect": {
+                        "constant_value": "Allow"
+                      },
+                      "resources": {
+                        "references": [
+                          "var.dead_letter_target_arn"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_dead_letter_policy"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_iam_policy_document.logs",
+                "mode": "data",
+                "type": "aws_iam_policy_document",
+                "name": "logs",
+                "provider_config_key": "module.test-lambda:aws",
+                "expressions": {
+                  "statement": [
+                    {
+                      "actions": {
+                        "references": [
+                          "var.use_existing_cloudwatch_log_group",
+                          "var.attach_create_log_group_permission"
+                        ]
+                      },
+                      "effect": {
+                        "constant_value": "Allow"
+                      },
+                      "resources": {
+                        "references": [
+                          "local.log_group_arn"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "local.create_role",
+                    "var.attach_cloudwatch_logs_policy"
+                  ]
+                }
+              },
+              {
+                "address": "data.aws_partition.current",
+                "mode": "data",
+                "type": "aws_partition",
+                "name": "current",
+                "provider_config_key": "module.test-lambda:aws",
+                "schema_version": 0
+              },
+              {
+                "address": "data.aws_region.current",
+                "mode": "data",
+                "type": "aws_region",
+                "name": "current",
+                "provider_config_key": "module.test-lambda:aws",
+                "schema_version": 0
+              },
+              {
+                "address": "data.external.archive_prepare",
+                "mode": "data",
+                "type": "external",
+                "name": "archive_prepare",
+                "provider_config_key": "module.test-lambda:external",
+                "expressions": {
+                  "program": {
+                    "references": [
+                      "local.python",
+                      "path.module"
+                    ]
+                  },
+                  "query": {
+                    "references": [
+                      "path.module",
+                      "path.root",
+                      "path.cwd",
+                      "var.build_in_docker",
+                      "var.docker_pip_cache",
+                      "var.docker_build_root",
+                      "var.docker_file",
+                      "var.docker_image",
+                      "var.docker_with_ssh_agent",
+                      "var.docker_additional_options",
+                      "var.docker_entrypoint",
+                      "var.artifacts_dir",
+                      "var.runtime",
+                      "var.source_path",
+                      "var.hash_extra",
+                      "var.recreate_missing_package"
+                    ]
+                  }
+                },
+                "schema_version": 0,
+                "count_expression": {
+                  "references": [
+                    "var.create",
+                    "var.create_package"
+                  ]
+                }
+              }
+            ],
+            "variables": {
+              "allowed_triggers": {
+                "default": {},
+                "description": "Map of allowed triggers to create Lambda permissions"
+              },
+              "architectures": {
+                "description": "Instruction set architecture for your Lambda function. Valid values are [\"x86_64\"] and [\"arm64\"]."
+              },
+              "artifacts_dir": {
+                "default": "builds",
+                "description": "Directory name where artifacts should be stored"
+              },
+              "assume_role_policy_statements": {
+                "default": {},
+                "description": "Map of dynamic policy statements for assuming Lambda Function role (trust relationship)"
+              },
+              "attach_async_event_policy": {
+                "default": false,
+                "description": "Controls whether async event policy should be added to IAM role for Lambda Function"
+              },
+              "attach_cloudwatch_logs_policy": {
+                "default": true,
+                "description": "Controls whether CloudWatch Logs policy should be added to IAM role for Lambda Function"
+              },
+              "attach_create_log_group_permission": {
+                "default": true,
+                "description": "Controls whether to add the create log group permission to the CloudWatch logs policy"
+              },
+              "attach_dead_letter_policy": {
+                "default": false,
+                "description": "Controls whether SNS/SQS dead letter notification policy should be added to IAM role for Lambda Function"
+              },
+              "attach_network_policy": {
+                "default": false,
+                "description": "Controls whether VPC/network policy should be added to IAM role for Lambda Function"
+              },
+              "attach_policies": {
+                "default": false,
+                "description": "Controls whether list of policies should be added to IAM role for Lambda Function"
+              },
+              "attach_policy": {
+                "default": false,
+                "description": "Controls whether policy should be added to IAM role for Lambda Function"
+              },
+              "attach_policy_json": {
+                "default": false,
+                "description": "Controls whether policy_json should be added to IAM role for Lambda Function"
+              },
+              "attach_policy_jsons": {
+                "default": false,
+                "description": "Controls whether policy_jsons should be added to IAM role for Lambda Function"
+              },
+              "attach_policy_statements": {
+                "default": false,
+                "description": "Controls whether policy_statements should be added to IAM role for Lambda Function"
+              },
+              "attach_tracing_policy": {
+                "default": false,
+                "description": "Controls whether X-Ray tracing policy should be added to IAM role for Lambda Function"
+              },
+              "authorization_type": {
+                "default": "NONE",
+                "description": "The type of authentication that the Lambda Function URL uses. Set to 'AWS_IAM' to restrict access to authenticated IAM users only. Set to 'NONE' to bypass IAM authentication and create a public endpoint."
+              },
+              "build_in_docker": {
+                "default": false,
+                "description": "Whether to build dependencies in Docker"
+              },
+              "cloudwatch_logs_kms_key_id": {
+                "description": "The ARN of the KMS Key to use when encrypting log data."
+              },
+              "cloudwatch_logs_log_group_class": {
+                "description": "Specified the log class of the log group. Possible values are: `STANDARD` or `INFREQUENT_ACCESS`"
+              },
+              "cloudwatch_logs_retention_in_days": {
+                "description": "Specifies the number of days you want to retain log events in the specified log group. Possible values are: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, and 3653."
+              },
+              "cloudwatch_logs_skip_destroy": {
+                "default": false,
+                "description": "Whether to keep the log group (and any logs it may contain) at destroy time."
+              },
+              "cloudwatch_logs_tags": {
+                "default": {},
+                "description": "A map of tags to assign to the resource."
+              },
+              "code_signing_config_arn": {
+                "description": "Amazon Resource Name (ARN) for a Code Signing Configuration"
+              },
+              "compatible_architectures": {
+                "description": "A list of Architectures Lambda layer is compatible with. Currently x86_64 and arm64 can be specified."
+              },
+              "compatible_runtimes": {
+                "default": [],
+                "description": "A list of Runtimes this layer is compatible with. Up to 5 runtimes can be specified."
+              },
+              "cors": {
+                "default": {},
+                "description": "CORS settings to be used by the Lambda Function URL"
+              },
+              "create": {
+                "default": true,
+                "description": "Controls whether resources should be created"
+              },
+              "create_async_event_config": {
+                "default": false,
+                "description": "Controls whether async event configuration for Lambda Function/Alias should be created"
+              },
+              "create_current_version_allowed_triggers": {
+                "default": true,
+                "description": "Whether to allow triggers on current version of Lambda Function (this will revoke permissions from previous version because Terraform manages only current resources)"
+              },
+              "create_current_version_async_event_config": {
+                "default": true,
+                "description": "Whether to allow async event configuration on current version of Lambda Function (this will revoke permissions from previous version because Terraform manages only current resources)"
+              },
+              "create_function": {
+                "default": true,
+                "description": "Controls whether Lambda Function resource should be created"
+              },
+              "create_lambda_function_url": {
+                "default": false,
+                "description": "Controls whether the Lambda Function URL resource should be created"
+              },
+              "create_layer": {
+                "default": false,
+                "description": "Controls whether Lambda Layer resource should be created"
+              },
+              "create_package": {
+                "default": true,
+                "description": "Controls whether Lambda package should be created"
+              },
+              "create_role": {
+                "default": true,
+                "description": "Controls whether IAM role for Lambda Function should be created"
+              },
+              "create_sam_metadata": {
+                "default": false,
+                "description": "Controls whether the SAM metadata null resource should be created"
+              },
+              "create_unqualified_alias_allowed_triggers": {
+                "default": true,
+                "description": "Whether to allow triggers on unqualified alias pointing to $LATEST version"
+              },
+              "create_unqualified_alias_async_event_config": {
+                "default": true,
+                "description": "Whether to allow async event configuration on unqualified alias pointing to $LATEST version"
+              },
+              "create_unqualified_alias_lambda_function_url": {
+                "default": true,
+                "description": "Whether to use unqualified alias pointing to $LATEST version in Lambda Function URL"
+              },
+              "dead_letter_target_arn": {
+                "description": "The ARN of an SNS topic or SQS queue to notify when an invocation fails."
+              },
+              "description": {
+                "default": "",
+                "description": "Description of your Lambda Function (or Layer)"
+              },
+              "destination_on_failure": {
+                "description": "Amazon Resource Name (ARN) of the destination resource for failed asynchronous invocations"
+              },
+              "destination_on_success": {
+                "description": "Amazon Resource Name (ARN) of the destination resource for successful asynchronous invocations"
+              },
+              "docker_additional_options": {
+                "default": [],
+                "description": "Additional options to pass to the docker run command (e.g. to set environment variables, volumes, etc.)"
+              },
+              "docker_build_root": {
+                "default": "",
+                "description": "Root dir where to build in Docker"
+              },
+              "docker_entrypoint": {
+                "description": "Path to the Docker entrypoint to use"
+              },
+              "docker_file": {
+                "default": "",
+                "description": "Path to a Dockerfile when building in Docker"
+              },
+              "docker_image": {
+                "default": "",
+                "description": "Docker image to use for the build"
+              },
+              "docker_pip_cache": {
+                "description": "Whether to mount a shared pip cache folder into docker environment or not"
+              },
+              "docker_with_ssh_agent": {
+                "default": false,
+                "description": "Whether to pass SSH_AUTH_SOCK into docker environment or not"
+              },
+              "environment_variables": {
+                "default": {},
+                "description": "A map that defines environment variables for the Lambda Function."
+              },
+              "ephemeral_storage_size": {
+                "default": 512,
+                "description": "Amount of ephemeral storage (/tmp) in MB your Lambda Function can use at runtime. Valid value between 512 MB to 10,240 MB (10 GB)."
+              },
+              "event_source_mapping": {
+                "default": {},
+                "description": "Map of event source mapping"
+              },
+              "file_system_arn": {
+                "description": "The Amazon Resource Name (ARN) of the Amazon EFS Access Point that provides access to the file system."
+              },
+              "file_system_local_mount_path": {
+                "description": "The path where the function can access the file system, starting with /mnt/."
+              },
+              "function_name": {
+                "default": "",
+                "description": "A unique name for your Lambda Function"
+              },
+              "function_tags": {
+                "default": {},
+                "description": "A map of tags to assign only to the lambda function"
+              },
+              "handler": {
+                "default": "",
+                "description": "Lambda Function entrypoint in your code"
+              },
+              "hash_extra": {
+                "default": "",
+                "description": "The string to add into hashing function. Useful when building same source path for different functions."
+              },
+              "ignore_source_code_hash": {
+                "default": false,
+                "description": "Whether to ignore changes to the function's source code hash. Set to true if you manage infrastructure and code deployments separately."
+              },
+              "image_config_command": {
+                "default": [],
+                "description": "The CMD for the docker image"
+              },
+              "image_config_entry_point": {
+                "default": [],
+                "description": "The ENTRYPOINT for the docker image"
+              },
+              "image_config_working_directory": {
+                "description": "The working directory for the docker image"
+              },
+              "image_uri": {
+                "description": "The ECR image URI containing the function's deployment package."
+              },
+              "include_default_tag": {
+                "default": true,
+                "description": "Set to false to not include the default tag in the tags map."
+              },
+              "invoke_mode": {
+                "description": "Invoke mode of the Lambda Function URL. Valid values are BUFFERED (default) and RESPONSE_STREAM."
+              },
+              "ipv6_allowed_for_dual_stack": {
+                "description": "Allows outbound IPv6 traffic on VPC functions that are connected to dual-stack subnets"
+              },
+              "kms_key_arn": {
+                "description": "The ARN of KMS key to use by your Lambda Function"
+              },
+              "lambda_at_edge": {
+                "default": false,
+                "description": "Set this to true if using Lambda@Edge, to enable publishing, limit the timeout, and allow edgelambda.amazonaws.com to invoke the function"
+              },
+              "lambda_at_edge_logs_all_regions": {
+                "default": true,
+                "description": "Whether to specify a wildcard in IAM policy used by Lambda@Edge to allow logging in all regions"
+              },
+              "lambda_role": {
+                "default": "",
+                "description": " IAM role ARN attached to the Lambda Function. This governs both who / what can invoke your Lambda Function, as well as what resources our Lambda Function has access to. See Lambda Permission Model for more details."
+              },
+              "layer_name": {
+                "default": "",
+                "description": "Name of Lambda Layer to create"
+              },
+              "layer_skip_destroy": {
+                "default": false,
+                "description": "Whether to retain the old version of a previously deployed Lambda Layer."
+              },
+              "layers": {
+                "description": "List of Lambda Layer Version ARNs (maximum of 5) to attach to your Lambda Function."
+              },
+              "license_info": {
+                "default": "",
+                "description": "License info for your Lambda Layer. Eg, MIT or full url of a license."
+              },
+              "local_existing_package": {
+                "description": "The absolute path to an existing zip-file to use"
+              },
+              "logging_application_log_level": {
+                "default": "INFO",
+                "description": "The application log level of the Lambda Function. Valid values are \"TRACE\", \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\", or \"FATAL\"."
+              },
+              "logging_log_format": {
+                "default": "Text",
+                "description": "The log format of the Lambda Function. Valid values are \"JSON\" or \"Text\"."
+              },
+              "logging_log_group": {
+                "description": "The CloudWatch log group to send logs to."
+              },
+              "logging_system_log_level": {
+                "default": "INFO",
+                "description": "The system log level of the Lambda Function. Valid values are \"DEBUG\", \"INFO\", or \"WARN\"."
+              },
+              "maximum_event_age_in_seconds": {
+                "description": "Maximum age of a request that Lambda sends to a function for processing in seconds. Valid values between 60 and 21600."
+              },
+              "maximum_retry_attempts": {
+                "description": "Maximum number of times to retry when the function returns an error. Valid values between 0 and 2. Defaults to 2."
+              },
+              "memory_size": {
+                "default": 128,
+                "description": "Amount of memory in MB your Lambda Function can use at runtime. Valid value between 128 MB to 10,240 MB (10 GB), in 64 MB increments."
+              },
+              "number_of_policies": {
+                "default": 0,
+                "description": "Number of policies to attach to IAM role for Lambda Function"
+              },
+              "number_of_policy_jsons": {
+                "default": 0,
+                "description": "Number of policies JSON to attach to IAM role for Lambda Function"
+              },
+              "package_type": {
+                "default": "Zip",
+                "description": "The Lambda deployment package type. Valid options: Zip or Image"
+              },
+              "policies": {
+                "default": [],
+                "description": "List of policy statements ARN to attach to Lambda Function role"
+              },
+              "policy": {
+                "description": "An additional policy document ARN to attach to the Lambda Function role"
+              },
+              "policy_json": {
+                "description": "An additional policy document as JSON to attach to the Lambda Function role"
+              },
+              "policy_jsons": {
+                "default": [],
+                "description": "List of additional policy documents as JSON to attach to Lambda Function role"
+              },
+              "policy_name": {
+                "description": "IAM policy name. It override the default value, which is the same as role_name"
+              },
+              "policy_path": {
+                "description": "Path of policies to that should be added to IAM role for Lambda Function"
+              },
+              "policy_statements": {
+                "default": {},
+                "description": "Map of dynamic policy statements to attach to Lambda Function role"
+              },
+              "provisioned_concurrent_executions": {
+                "default": -1,
+                "description": "Amount of capacity to allocate. Set to 1 or greater to enable, or set to 0 to disable provisioned concurrency."
+              },
+              "publish": {
+                "default": false,
+                "description": "Whether to publish creation/change as new Lambda Function Version."
+              },
+              "putin_khuylo": {
+                "default": true,
+                "description": "Do you agree that Putin doesn't respect Ukrainian sovereignty and territorial integrity? More info: https://en.wikipedia.org/wiki/Putin_khuylo!"
+              },
+              "recreate_missing_package": {
+                "default": true,
+                "description": "Whether to recreate missing Lambda package if it is missing locally or not"
+              },
+              "recursive_loop": {
+                "description": "Lambda function recursion configuration. Valid values are Allow or Terminate."
+              },
+              "replace_security_groups_on_destroy": {
+                "description": "(Optional) When true, all security groups defined in vpc_security_group_ids will be replaced with the default security group after the function is destroyed. Set the replacement_security_group_ids variable to use a custom list of security groups for replacement instead."
+              },
+              "replacement_security_group_ids": {
+                "description": "(Optional) List of security group IDs to assign to orphaned Lambda function network interfaces upon destruction. replace_security_groups_on_destroy must be set to true to use this attribute."
+              },
+              "reserved_concurrent_executions": {
+                "default": -1,
+                "description": "The amount of reserved concurrent executions for this Lambda Function. A value of 0 disables Lambda Function from being triggered and -1 removes any concurrency limitations. Defaults to Unreserved Concurrency Limits -1."
+              },
+              "role_description": {
+                "description": "Description of IAM role to use for Lambda Function"
+              },
+              "role_force_detach_policies": {
+                "default": true,
+                "description": "Specifies to force detaching any policies the IAM role has before destroying it."
+              },
+              "role_maximum_session_duration": {
+                "default": 3600,
+                "description": "Maximum session duration, in seconds, for the IAM role"
+              },
+              "role_name": {
+                "description": "Name of IAM role to use for Lambda Function"
+              },
+              "role_path": {
+                "description": "Path of IAM role to use for Lambda Function"
+              },
+              "role_permissions_boundary": {
+                "description": "The ARN of the policy that is used to set the permissions boundary for the IAM role used by Lambda Function"
+              },
+              "role_tags": {
+                "default": {},
+                "description": "A map of tags to assign to IAM role"
+              },
+              "runtime": {
+                "default": "",
+                "description": "Lambda Function runtime"
+              },
+              "s3_acl": {
+                "default": "private",
+                "description": "The canned ACL to apply. Valid values are private, public-read, public-read-write, aws-exec-read, authenticated-read, bucket-owner-read, and bucket-owner-full-control. Defaults to private."
+              },
+              "s3_bucket": {
+                "description": "S3 bucket to store artifacts"
+              },
+              "s3_existing_package": {
+                "description": "The S3 bucket object with keys bucket, key, version pointing to an existing zip-file to use"
+              },
+              "s3_kms_key_id": {
+                "description": "Specifies a custom KMS key to use for S3 object encryption."
+              },
+              "s3_object_override_default_tags": {
+                "default": false,
+                "description": "Whether to override the default_tags from provider? NB: S3 objects support a maximum of 10 tags."
+              },
+              "s3_object_storage_class": {
+                "default": "ONEZONE_IA",
+                "description": "Specifies the desired Storage Class for the artifact uploaded to S3. Can be either STANDARD, REDUCED_REDUNDANCY, ONEZONE_IA, INTELLIGENT_TIERING, or STANDARD_IA."
+              },
+              "s3_object_tags": {
+                "default": {},
+                "description": "A map of tags to assign to S3 bucket object."
+              },
+              "s3_object_tags_only": {
+                "default": false,
+                "description": "Set to true to not merge tags with s3_object_tags. Useful to avoid breaching S3 Object 10 tag limit."
+              },
+              "s3_prefix": {
+                "description": "Directory name where artifacts should be stored in the S3 bucket. If unset, the path from `artifacts_dir` is used"
+              },
+              "s3_server_side_encryption": {
+                "description": "Specifies server-side encryption of the object in S3. Valid values are \"AES256\" and \"aws:kms\"."
+              },
+              "skip_destroy": {
+                "description": "Set to true if you do not wish the function to be deleted at destroy time, and instead just remove the function from the Terraform state. Useful for Lambda@Edge functions attached to CloudFront distributions."
+              },
+              "snap_start": {
+                "default": false,
+                "description": "(Optional) Snap start settings for low-latency startups"
+              },
+              "source_path": {
+                "description": "The absolute path to a local file or directory containing your Lambda source code"
+              },
+              "store_on_s3": {
+                "default": false,
+                "description": "Whether to store produced artifacts on S3 or locally."
+              },
+              "tags": {
+                "default": {},
+                "description": "A map of tags to assign to resources."
+              },
+              "timeout": {
+                "default": 3,
+                "description": "The amount of time your Lambda Function has to run in seconds."
+              },
+              "timeouts": {
+                "default": {},
+                "description": "Define maximum timeout for creating, updating, and deleting Lambda Function resources"
+              },
+              "tracing_mode": {
+                "description": "Tracing mode of the Lambda Function. Valid value can be either PassThrough or Active."
+              },
+              "trigger_on_package_timestamp": {
+                "default": true,
+                "description": "Whether to recreate the Lambda package if the timestamp changes"
+              },
+              "trusted_entities": {
+                "default": [],
+                "description": "List of additional trusted entities for assuming Lambda Function role (trust relationship)"
+              },
+              "use_existing_cloudwatch_log_group": {
+                "default": false,
+                "description": "Whether to use an existing CloudWatch log group or create new"
+              },
+              "vpc_security_group_ids": {
+                "description": "List of security group ids when Lambda Function should run in the VPC."
+              },
+              "vpc_subnet_ids": {
+                "description": "List of subnet ids when Lambda Function should run in the VPC. Usually private or intra subnets."
+              }
+            }
+          },
+          "version_constraint": "7.20.1"
+        }
+      }
+    }
+  },
+  "relevant_attributes": [
+    {
+      "resource": "module.test-lambda.aws_cloudwatch_log_group.lambda[0]",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_cloudwatch_log_group.lambda[0]",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_iam_role.lambda[0]",
+      "attribute": [
+        "unique_id"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_iam_role.lambda[0]",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_iam_role.lambda[0]",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_event_source_mapping.this",
+      "attribute": []
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "function_name"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "kms_key_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "version"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "source_code_size"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "last_modified"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "invoke_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "signing_profile_version_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "qualified_invoke_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "signing_job_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "source_code_hash"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function.this[0]",
+      "attribute": [
+        "qualified_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function_url.this[0]",
+      "attribute": [
+        "url_id"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_function_url.this[0]",
+      "attribute": [
+        "function_url"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_layer_version.this[0]",
+      "attribute": [
+        "created_date"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_layer_version.this[0]",
+      "attribute": [
+        "version"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_layer_version.this[0]",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_layer_version.this[0]",
+      "attribute": [
+        "source_code_size"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_lambda_layer_version.this[0]",
+      "attribute": [
+        "layer_arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.aws_s3_object.lambda_package[0]",
+      "attribute": [
+        "version_id"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_arn.log_group_arn[0]",
+      "attribute": [
+        "partition"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_arn.log_group_arn[0]",
+      "attribute": [
+        "account"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_arn.log_group_arn[0]",
+      "attribute": [
+        "service"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_arn.log_group_arn[0]",
+      "attribute": [
+        "resource"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_caller_identity.current",
+      "attribute": [
+        "account_id"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_cloudwatch_log_group.lambda[0]",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_cloudwatch_log_group.lambda[0]",
+      "attribute": [
+        "arn"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_iam_policy_document.assume_role[0]",
+      "attribute": [
+        "json"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_iam_policy_document.logs[0]",
+      "attribute": [
+        "json"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_partition.current",
+      "attribute": [
+        "partition"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.aws_region.current",
+      "attribute": [
+        "name"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.external.archive_prepare[0]",
+      "attribute": [
+        "result",
+        "build_plan_filename"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.external.archive_prepare[0]",
+      "attribute": [
+        "result",
+        "build_plan"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.external.archive_prepare[0]",
+      "attribute": [
+        "result",
+        "filename"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.external.archive_prepare[0]",
+      "attribute": [
+        "result",
+        "was_missing"
+      ]
+    },
+    {
+      "resource": "module.test-lambda.data.external.archive_prepare[0]",
+      "attribute": [
+        "result",
+        "timestamp"
+      ]
+    }
+  ],
+  "timestamp": "2025-05-27T14:51:54Z"
+}

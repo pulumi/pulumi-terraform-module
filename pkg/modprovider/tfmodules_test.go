@@ -45,8 +45,10 @@ func TestExtractModuleContentWorks(t *testing.T) {
 	testUsingExectutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
 		logger := &testLogger{}
-		awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.21.0",
-			logger, srv, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, srv, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
+
+		awsVpc, err := extractModuleContent(ctx, tf, "terraform-aws-modules/vpc/aws", "5.18.1", logger)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
 		for _, log := range logger.logs {
@@ -60,7 +62,9 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 	packageName := packageName("terraform-aws-modules")
 	testUsingExectutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
-		awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.21.0", srv, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
+		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 		// verify a sample of the inputs with different inferred types
@@ -222,7 +226,9 @@ func TestApplyModuleOverrides(t *testing.T) {
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
 	testUsingExectutor(t, func(executor string) {
 		testServer := newTestAuxProviderServer(t)
-		awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version, testServer, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, testServer, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
+		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 		// We cannot infer which outputs are required or not so everything is optional, initially.
@@ -286,7 +292,9 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	logger := tfsandbox.DiscardLogger
 	testUsingExectutor(t, func(executor string) {
 		testServer := newTestAuxProviderServer(t)
-		mod, err := extractModuleContent(ctx, TFModuleSource(p), "", logger, testServer, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, testServer, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
+		mod, err := extractModuleContent(ctx, tf, TFModuleSource(p), "", logger)
 		require.NoError(t, err)
 		require.NotNil(t, mod, "module contents should not be nil")
 	})
@@ -299,12 +307,14 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 
 	testUsingExectutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
+
 		demoSchema, err := InferModuleSchema(ctx,
+			tf,
 			packageName,
 			"github.com/yemisprojects/s3_website_module_demo",
-			version,
-			srv,
-			executor)
+			version)
 
 		assert.NoError(t, err, "failed to infer module schema for github module")
 		assert.NotNil(t, demoSchema, "inferred module schema for aws vpc module is nil")
@@ -348,13 +358,15 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
 
 	testUsingExectutor(t, func(executor string) {
+		srv := newTestAuxProviderServer(t)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
 		consulClusterSchema, err := InferModuleSchema(ctx,
+			tf,
 			packageName,
 			"github.com/hashicorp/terraform-aws-consul//modules/consul-cluster",
-			version,
-			newTestAuxProviderServer(t),
-			executor,
-		)
+			version)
+
 		assert.NoError(t, err, "failed to infer module schema for github submodule")
 		assert.NotNil(t, consulClusterSchema, "inferred module schema for aws consul cluster submodule is nil")
 		// verify a sample of the inputs with different inferred types
@@ -384,14 +396,16 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 
 func TestResolveModuleSources(t *testing.T) {
 	testUsingExectutor(t, func(executor string) {
+		srv := newTestAuxProviderServer(t)
+		tf, err := tfsandbox.PickModuleRuntime(context.Background(), tfsandbox.DiscardLogger, nil, srv, executor)
+		require.NoError(t, err, "failed to pick module runtime")
 
 		t.Run("local path-based module source", func(t *testing.T) {
 			ctx := context.Background()
 			src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 			p, err := filepath.Abs(src)
 			require.NoError(t, err)
-			d, err := resolveModuleSources(ctx, TFModuleSource(p), "", tfsandbox.DiscardLogger,
-				newTestAuxProviderServer(t), executor)
+			d, err := resolveModuleSources(ctx, tf, TFModuleSource(p), "", tfsandbox.DiscardLogger)
 			require.NoError(t, err)
 
 			bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -407,8 +421,7 @@ func TestResolveModuleSources(t *testing.T) {
 			ctx := context.Background()
 			s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
 			v := TFModuleVersion("4.5.0")
-			d, err := resolveModuleSources(ctx, s, v, tfsandbox.DiscardLogger,
-				newTestAuxProviderServer(t), executor)
+			d, err := resolveModuleSources(ctx, tf, s, v, tfsandbox.DiscardLogger)
 			require.NoError(t, err)
 
 			bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -422,8 +435,7 @@ func TestResolveModuleSources(t *testing.T) {
 		t.Run("remote module source github", func(t *testing.T) {
 			ctx := context.Background()
 			moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
-			workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger,
-				newTestAuxProviderServer(t), executor)
+			workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
 			require.NoError(t, err)
 
 			bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
@@ -436,8 +448,7 @@ func TestResolveModuleSources(t *testing.T) {
 		t.Run("remote module source with version in source path", func(t *testing.T) {
 			ctx := context.Background()
 			moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-			workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger,
-				newTestAuxProviderServer(t), executor)
+			workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
 			require.NoError(t, err)
 
 			bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
@@ -450,8 +461,7 @@ func TestResolveModuleSources(t *testing.T) {
 		t.Run("remote module source with git path prefix", func(t *testing.T) {
 			ctx := context.Background()
 			moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-			workingDirectory, err := resolveModuleSources(ctx, moduleSource, "", tfsandbox.DiscardLogger,
-				newTestAuxProviderServer(t), executor)
+			workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
 			require.NoError(t, err)
 
 			bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))

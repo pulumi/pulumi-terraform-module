@@ -1,3 +1,17 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tests
 
 import (
@@ -8,7 +22,6 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -36,6 +49,8 @@ const (
 //
 // The first test checks the most common case.
 func Test_replace_forcenew_delete_create(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", replacemod))
@@ -44,7 +59,7 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
+	pt := newPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
@@ -89,6 +104,8 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 // Now check that delete-then-create plans surface as such.
 func Test_replace_forcenew_create_delete(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	replacemodPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace2mod"))
@@ -97,7 +114,7 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
+	pt := newPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, replacemodPath, "mod")
@@ -143,6 +160,8 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 // Now check resources that are replaced with a replace_triggered_by trigger. It uses the default TF delete_create
 // order. There is no test for a create_delete order as it should work fine for triggers as well as normal replaces.
 func Test_replace_trigger_delete_create(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace3mod"))
@@ -151,7 +170,7 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
+	pt := newPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
@@ -212,6 +231,8 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 // plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
 // approximately renders this as a replacement, where the deletion of the resource is a no-op.
 func Test_replace_drift_deleted(t *testing.T) {
+	t.Parallel()
+
 	localProviderBinPath := ensureCompiledProvider(t)
 
 	modPath, err := filepath.Abs(filepath.Join("testdata", "modules", "replace4mod"))
@@ -221,7 +242,7 @@ func Test_replace_drift_deleted(t *testing.T) {
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := newPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "rmod")
