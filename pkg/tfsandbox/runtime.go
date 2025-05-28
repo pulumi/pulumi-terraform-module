@@ -219,11 +219,11 @@ func fileExists(filename string) bool {
 }
 
 func NewRuntimeFromExecutable(
-	moduleExecutor string,
 	ctx context.Context,
 	logger Logger,
 	workdir Workdir,
-	auxServer *auxprovider.Server) (*ModuleRuntime, error) {
+	auxServer *auxprovider.Server,
+	moduleExecutor string) (*ModuleRuntime, error) {
 
 	workDir, err := workdirGetOrCreate(ctx, logger, workdir)
 	if err != nil {
@@ -261,7 +261,7 @@ func PickModuleRuntime(
 
 	// check if the module executor is a path to an existing executable
 	if fileExists(moduleExecutor) {
-		return NewRuntimeFromExecutable(moduleExecutor, ctx, logger, workdir, auxServer)
+		return NewRuntimeFromExecutable(ctx, logger, workdir, auxServer, moduleExecutor)
 	}
 
 	if strings.HasPrefix(moduleExecutor, "opentofu") || strings.HasPrefix(moduleExecutor, "tofu") {
