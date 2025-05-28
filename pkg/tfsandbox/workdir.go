@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Location hint for the working directory for Tofu operations.
+// Location hint for the working directory for Terraform/Tofu operations.
 type Workdir []string
 
 // This workdir dedicated to given module URN.
@@ -42,6 +42,15 @@ func ModuleWorkdir(source TFModuleSource, version TFModuleVersion) Workdir {
 		return Workdir([]string{"by-module-source-and-version", s, v})
 	}
 	return Workdir([]string{"by-module-source", s})
+}
+
+// Prepend the executor name to the workdir path.
+func (w Workdir) WithExecutor(executor string) Workdir {
+	path := []string{executor}
+	for _, part := range w {
+		path = append(path, part)
+	}
+	return Workdir(path)
 }
 
 // Get or create a folder under $TMPDIR matching the current Pulumi project and stack.
