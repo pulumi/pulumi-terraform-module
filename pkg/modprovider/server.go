@@ -40,6 +40,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
@@ -416,7 +417,7 @@ func (s *server) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		return nil, fmt.Errorf("Unsupported type: %q", req.GetType())
 	}
 
@@ -484,7 +485,7 @@ func (s *server) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			return s.moduleHandler.Check(ctx, req)
@@ -508,7 +509,7 @@ func (s *server) CheckConfig(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	// Temporarily duplicate the Handshake check because old Pulumi CLI versions ignored Handshake errors.
-	if useCustomResource && !s.pulumiCliSupportsViews {
+	if flags.EnableViewsPreview && !s.pulumiCliSupportsViews {
 		return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
 			"views support. Please update Pulumi CLI to the latest version.\n\n" +
 			"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
@@ -545,7 +546,7 @@ func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			return s.moduleHandler.Diff(ctx, req)
@@ -568,7 +569,7 @@ func (s *server) Handshake(
 	_ context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		if !req.SupportsViews {
 			s.pulumiCliSupportsViews = false
 			return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
@@ -590,7 +591,7 @@ func (s *server) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
@@ -615,7 +616,7 @@ func (s *server) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
@@ -640,7 +641,7 @@ func (s *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
@@ -676,7 +677,7 @@ func (s *server) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
 ) (*pulumirpc.ReadResponse, error) {
-	if useCustomResource {
+	if flags.EnableViewsPreview {
 		switch {
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)

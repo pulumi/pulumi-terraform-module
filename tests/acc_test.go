@@ -38,7 +38,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 )
 
 const (
@@ -796,7 +797,7 @@ func TestE2eDotnet(t *testing.T) {
 	}
 }
 
-var viewsEnabled = cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW"))
+var viewsEnabled = flags.EnableViewsPreview
 
 // TODO Pulumi CLI needs to correctly compute operation count over views.
 func conditionalCount(withoutViews, withViews int) int {

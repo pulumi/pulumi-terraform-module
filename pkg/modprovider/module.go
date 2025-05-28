@@ -17,7 +17,6 @@ package modprovider
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -27,16 +26,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
-
-var useCustomResource bool = cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW"))
 
 const (
 	moduleTypeName              = "Module"
@@ -137,7 +134,7 @@ func (h *moduleHandler) prepSandbox(
 	outputSpecs := []tfsandbox.TFOutputSpec{}
 	for outputName := range inferredModule.Outputs {
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name: tfsandbox.DecodePulumiTopLevelKey(outputName),
+			Name: tfsandbox.DecodePulumiTopLevelKey(outputName, flags.EnableViewsPreview),
 		})
 	}
 

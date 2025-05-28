@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
+	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 	go_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	nodejs_codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -116,7 +117,7 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		},
 		Resources: map[string]schema.ResourceSpec{
 			mainResourceToken: {
-				IsComponent:     !useCustomResource,
+				IsComponent:     !flags.EnableViewsPreview,
 				InputProperties: inputs,
 				RequiredInputs:  asStrings(inferredModule.RequiredInputs),
 				ObjectTypeSpec: schema.ObjectTypeSpec{

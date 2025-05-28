@@ -16,19 +16,15 @@ package tfsandbox
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
-var useCustomResource bool = cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW"))
-
-func isValidPulumiTopLevelKey(key string) bool {
+func isValidPulumiTopLevelKey(key string, useCustomResource bool) bool {
 	switch {
 	case useCustomResource && pulumix.IsReservedCustomResourcePropertyKey(key):
 		return false
@@ -39,11 +35,11 @@ func isValidPulumiTopLevelKey(key string) bool {
 	}
 }
 
-func PulumiTopLevelKey(tfKey string) resource.PropertyKey {
+func PulumiTopLevelKey(tfKey string, useCustomResource bool) resource.PropertyKey {
 	switch {
-	case !isValidPulumiTopLevelKey(tfKey):
+	case !isValidPulumiTopLevelKey(tfKey, useCustomResource):
 		disamb := fmt.Sprintf("%s_", tfKey)
-		contract.Assertf(isValidPulumiTopLevelKey(disamb),
+		contract.Assertf(isValidPulumiTopLevelKey(disamb, useCustomResource),
 			"Failed to disambiguate reserved key %q as %q which is still reserved",
 			tfKey, disamb)
 		return resource.PropertyKey(disamb)
@@ -53,11 +49,11 @@ func PulumiTopLevelKey(tfKey string) resource.PropertyKey {
 }
 
 // Inverse of [pulumiTopLevelKey].
-func DecodePulumiTopLevelKey(pk resource.PropertyKey) string {
+func DecodePulumiTopLevelKey(pk resource.PropertyKey, useCustomResource bool) string {
 	s := string(pk)
 	if strings.HasSuffix(s, "_") {
 		p := s[0 : len(s)-1]
-		if !isValidPulumiTopLevelKey(p) {
+		if !isValidPulumiTopLevelKey(p, useCustomResource) {
 			return p
 		}
 	}

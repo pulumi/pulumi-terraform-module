@@ -23,11 +23,29 @@ import (
 )
 
 func Test_PulumiTopLevelKey(t *testing.T) {
-	assert.Equal(t, resource.PropertyKey("foo"), PulumiTopLevelKey("foo"))
-	assert.Equal(t, resource.PropertyKey("id_"), PulumiTopLevelKey("id"))
+	t.Run("no-views", func(t *testing.T) {
+		assert.Equal(t, resource.PropertyKey("foo"), PulumiTopLevelKey("foo", false))
+		assert.Equal(t, resource.PropertyKey("id"), PulumiTopLevelKey("id", false))
+		assert.Equal(t, resource.PropertyKey("urn_"), PulumiTopLevelKey("urn", false))
+	})
+
+	t.Run("views", func(t *testing.T) {
+		assert.Equal(t, resource.PropertyKey("foo"), PulumiTopLevelKey("foo", true))
+		assert.Equal(t, resource.PropertyKey("id_"), PulumiTopLevelKey("id", true))
+		assert.Equal(t, resource.PropertyKey("urn"), PulumiTopLevelKey("urn", true))
+	})
 }
 
 func Test_DecodePulumiTopLevelKey(t *testing.T) {
-	assert.Equal(t, "foo", DecodePulumiTopLevelKey("foo"))
-	assert.Equal(t, "id", DecodePulumiTopLevelKey("id_"))
+	t.Run("no-views", func(t *testing.T) {
+		assert.Equal(t, "foo", DecodePulumiTopLevelKey("foo", false))
+		assert.Equal(t, "id_", DecodePulumiTopLevelKey("id_", false))
+		assert.Equal(t, "urn", DecodePulumiTopLevelKey("urn_", false))
+	})
+
+	t.Run("views", func(t *testing.T) {
+		assert.Equal(t, "foo", DecodePulumiTopLevelKey("foo", true))
+		assert.Equal(t, "id", DecodePulumiTopLevelKey("id_", true))
+		assert.Equal(t, "urn_", DecodePulumiTopLevelKey("urn_", true))
+	})
 }
