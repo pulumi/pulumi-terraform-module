@@ -45,7 +45,7 @@ func TestExtractModuleContentWorks(t *testing.T) {
 	testUsingExectutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
 		logger := &testLogger{}
-		awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1",
+		awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.21.0",
 			logger, srv, executor)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
@@ -60,7 +60,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 	packageName := packageName("terraform-aws-modules")
 	testUsingExectutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
-		awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.19.0", srv, executor)
+		awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.21.0", srv, executor)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 		// verify a sample of the inputs with different inferred types
@@ -218,7 +218,7 @@ func TestParsingModuleSchemaOverrides(t *testing.T) {
 func TestApplyModuleOverrides(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("vpc")
-	version := TFModuleVersion("5.18.1")
+	version := TFModuleVersion("5.21.0")
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
 	testUsingExectutor(t, func(executor string) {
 		testServer := newTestAuxProviderServer(t)
