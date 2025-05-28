@@ -42,8 +42,8 @@ func (l *testLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, msg 
 
 func TestExtractModuleContentWorks(t *testing.T) {
 	ctx := context.Background()
-	srv := newTestAuxProviderServer(t)
 	testUsingExectutor(t, func(executor string) {
+		srv := newTestAuxProviderServer(t)
 		logger := &testLogger{}
 		awsVpc, err := extractModuleContent(ctx, "terraform-aws-modules/vpc/aws", "5.18.1",
 			logger, srv, executor)
@@ -58,8 +58,8 @@ func TestExtractModuleContentWorks(t *testing.T) {
 func TestInferringModuleSchemaWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("terraform-aws-modules")
-	srv := newTestAuxProviderServer(t)
 	testUsingExectutor(t, func(executor string) {
+		srv := newTestAuxProviderServer(t)
 		awsVpcSchema, err := InferModuleSchema(ctx, packageName, "terraform-aws-modules/vpc/aws", "5.19.0", srv, executor)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
@@ -220,8 +220,8 @@ func TestApplyModuleOverrides(t *testing.T) {
 	packageName := packageName("vpc")
 	version := TFModuleVersion("5.18.1")
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
-	testServer := newTestAuxProviderServer(t)
 	testUsingExectutor(t, func(executor string) {
+		testServer := newTestAuxProviderServer(t)
 		awsVpcSchema, err := InferModuleSchema(ctx, packageName, source, version, testServer, executor)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
@@ -282,9 +282,10 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
-	testServer := newTestAuxProviderServer(t)
+
 	logger := tfsandbox.DiscardLogger
 	testUsingExectutor(t, func(executor string) {
+		testServer := newTestAuxProviderServer(t)
 		mod, err := extractModuleContent(ctx, TFModuleSource(p), "", logger, testServer, executor)
 		require.NoError(t, err)
 		require.NotNil(t, mod, "module contents should not be nil")
@@ -295,8 +296,9 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("demoWebsite")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
-	srv := newTestAuxProviderServer(t)
+
 	testUsingExectutor(t, func(executor string) {
+		srv := newTestAuxProviderServer(t)
 		demoSchema, err := InferModuleSchema(ctx,
 			packageName,
 			"github.com/yemisprojects/s3_website_module_demo",
