@@ -163,7 +163,7 @@ func TestParsingModuleSchemaOverrides(t *testing.T) {
 	assert.Equal(t, *testSchemaOverride.MinimumVersion, "0.1.0", "minimum version is incorrect")
 	assert.Equal(t, testSchemaOverride.MaximumVersion, "6.0.0", "maximum version is incorrect")
 	assert.NotNil(t, testSchemaOverride.PartialSchema, "partial schema is nil")
-	assert.Equal(t, testSchemaOverride.PartialSchema.Inputs, map[string]*schema.PropertySpec{
+	assert.Equal(t, testSchemaOverride.PartialSchema.Inputs, map[resource.PropertyKey]*schema.PropertySpec{
 		"example_input": {
 			Description: "An example input for the module.",
 			TypeSpec:    stringType,
@@ -173,7 +173,7 @@ func TestParsingModuleSchemaOverrides(t *testing.T) {
 		},
 	})
 
-	assert.Equal(t, testSchemaOverride.PartialSchema.Outputs, map[string]*schema.PropertySpec{
+	assert.Equal(t, testSchemaOverride.PartialSchema.Outputs, map[resource.PropertyKey]*schema.PropertySpec{
 		"example_output": {
 			TypeSpec:    boolType,
 			Description: "An example output for the module.",
