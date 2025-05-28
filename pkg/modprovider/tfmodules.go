@@ -554,7 +554,7 @@ func extractModuleContent(
 		if err != nil {
 			logger.Log(ctx,
 				tfsandbox.Error,
-				"extractModuleContent: failed to cleanup module directory "+modDir)
+				"extractModuleContent: failed to cleanup module directory: "+err.Error())
 		}
 	}()
 
