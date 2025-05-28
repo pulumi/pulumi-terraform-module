@@ -69,7 +69,7 @@ jobs:
     strategy:
       matrix:
         # We don't have any release verification configurations, so we only run on Linux to print warnings to help users configure the release verification.
-        runner: ["ubuntu-latest"]
+        runner: ["macos-latest"]
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Configure Git to checkout files with long names

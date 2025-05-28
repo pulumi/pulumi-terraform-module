@@ -12,7 +12,7 @@ on:
 jobs:
   post_build:
     name: post_build
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     if: false
     steps:
       - name: Placeholder

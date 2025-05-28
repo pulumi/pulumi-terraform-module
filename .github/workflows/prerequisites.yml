@@ -41,7 +41,7 @@ env:
 jobs:
   prerequisites:
     name: prerequisites
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     outputs:
       version: ${{ steps.provider-version.outputs.version }}
     steps:
