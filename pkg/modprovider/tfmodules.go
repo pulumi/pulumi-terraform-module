@@ -546,7 +546,7 @@ func extractModuleContent(
 ) (*configs.Module, error) {
 	modDir, err := resolveModuleSources(ctx, source, version, logger, auxServer, moduleExecutor)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve module sources: %w", err)
 	}
 
 	parser := configs.NewParser(nil)
