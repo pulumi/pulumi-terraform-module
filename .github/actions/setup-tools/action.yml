@@ -93,5 +93,7 @@ runs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform version
-    - run: terraform version
+    - name: Show Terraform Version
+      shell: bash
+      run: |
+        terraform -version
