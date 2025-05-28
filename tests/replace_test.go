@@ -22,7 +22,6 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -60,7 +59,7 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
+	pt := newPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
@@ -115,7 +114,7 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
+	pt := newPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, replacemodPath, "mod")
@@ -171,7 +170,7 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 	progPath := filepath.Join("testdata", "programs", "ts", "replacetest-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, progPath, localPath)
+	pt := newPulumiTest(t, progPath, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "mod")
@@ -243,7 +242,7 @@ func Test_replace_drift_deleted(t *testing.T) {
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := newPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
 	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "rmod")

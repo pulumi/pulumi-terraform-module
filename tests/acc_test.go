@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -71,7 +72,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	randModProg := filepath.Join("testdata", "programs", "ts", "randmod-program")
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := newPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
 	packageName := randmod
@@ -152,7 +153,7 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "lambdamod-memory-diff")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -191,7 +192,7 @@ func TestPartialApply(t *testing.T) {
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "partial-apply")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -243,7 +244,7 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 
 	moduleProvider := "terraform-module"
 	localPath := opttest.LocalProviderPath(moduleProvider, filepath.Dir(localProviderBinPath))
-	pt := pulumitest.NewPulumiTest(t, twoinstProgram, localPath)
+	pt := newPulumiTest(t, twoinstProgram, localPath)
 	pt.CopyToTempDir(t)
 
 	packageName := randmod
@@ -345,7 +346,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		pulumiConvert(t, localProviderBinPath, pclDir, testDir, "typescript", generateOnly)
 	})
 
-	pt := pulumitest.NewPulumiTest(t, testDir,
+	pt := newPulumiTest(t, testDir,
 		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)),
 		opttest.SkipInstall())
 	pt.CopyToTempDir(t)
@@ -397,7 +398,7 @@ func TestS3BucketModSecret(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -466,7 +467,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 		return fullPath
 	}
 
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram,
+	integrationTest := newPulumiTest(t, testProgram,
 		opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
 		opttest.Env("PULUMI_TERRAFORM_MODULE_WAIT_TIMEOUT", "5m"))
 
@@ -590,7 +591,7 @@ func TestE2eTs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-			integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+			integrationTest := newPulumiTest(t, testProgram, localPath)
 
 			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
@@ -662,7 +663,7 @@ func TestE2eDotnet(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "dotnet", tc.name)
-			integrationTest := pulumitest.NewPulumiTest(
+			integrationTest := newPulumiTest(
 				t,
 				testProgram,
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
@@ -740,7 +741,7 @@ func TestE2ePython(t *testing.T) {
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
 			testProgram := filepath.Join("testdata", "programs", "python", tc.name)
-			integrationTest := pulumitest.NewPulumiTest(
+			integrationTest := newPulumiTest(
 				t,
 				testProgram,
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
@@ -823,7 +824,7 @@ func TestE2eGo(t *testing.T) {
 				opttest.SkipInstall(),
 			}
 
-			e2eTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
+			e2eTest := newPulumiTest(t, testProgram, testOpts...)
 
 			// Get a prefix for resource names to avoid naming conflicts
 			prefix := generateTestResourcePrefix()
@@ -900,7 +901,7 @@ func TestE2eYAML(t *testing.T) {
 				opttest.SkipInstall(),
 			}
 
-			e2eTest := pulumitest.NewPulumiTest(t, testProgram, testOpts...)
+			e2eTest := newPulumiTest(t, testProgram, testOpts...)
 
 			// Get a prefix for resource names to avoid naming conflicts
 			prefix := generateTestResourcePrefix()
@@ -938,7 +939,7 @@ func TestDiffDetail(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	diffDetailTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	diffDetailTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -988,7 +989,7 @@ func TestRefresh(t *testing.T) {
 
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	it := newPulumiTest(t, testProgram, localPath)
 
 	expectBucketTag := func(tagvalue string) {
 		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
@@ -1047,7 +1048,7 @@ func TestRefreshDeleted(t *testing.T) {
 
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	it := newPulumiTest(t, testProgram, localPath)
 
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
@@ -1099,7 +1100,7 @@ func TestRefreshNoChanges(t *testing.T) {
 
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	it := newPulumiTest(t, testProgram, localPath)
 
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
@@ -1127,7 +1128,7 @@ func TestDeleteLambda(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "awslambdamod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
-	integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -1239,7 +1240,7 @@ func Test_Dependencies(t *testing.T) {
 	randModProg := filepath.Join("testdata", "programs", "ts", "dep-tester")
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := newPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
 	packageName := randmod
@@ -1251,6 +1252,7 @@ func Test_Dependencies(t *testing.T) {
 	t.Logf("pulumi up said: %s\n", upOutput.StdOut+upOutput.StdErr)
 
 	deploy := pt.ExportStack(t)
+	fixupRandomizedStackURNs(&deploy)
 
 	t.Logf("DEPLOYMENT: %v", string(deploy.Deployment))
 
@@ -1325,7 +1327,7 @@ func Test_LocalModule_RelativePath(t *testing.T) {
 	anyProgram := filepath.Join("testdata", "programs", "ts", "randmod-program")
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
-	pt := pulumitest.NewPulumiTest(t, anyProgram, localPath)
+	pt := newPulumiTest(t, anyProgram, localPath)
 	pt.CopyToTempDir(t)
 
 	err = os.CopyFS(filepath.Join(pt.WorkingDir(), "randmod"), os.DirFS(randMod))
@@ -1385,6 +1387,8 @@ func mustFindDeploymentResourceByType(
 	found := 0
 
 	stack := pt.ExportStack(t)
+	fixupRandomizedStackURNs(&stack)
+
 	var deployment apitype.DeploymentV3
 	err := json.Unmarshal(stack.Deployment, &deployment)
 	require.NoErrorf(t, err, "failed to unmarshal deployment")
@@ -1397,6 +1401,11 @@ func mustFindDeploymentResourceByType(
 	}
 	require.Equalf(t, 1, found, "Expected to find only 1 resource with type: %s", resourceType.String())
 	return res
+}
+
+func fixupRandomizedStackURNs(stack *apitype.UntypedDeployment) {
+	re := regexp.MustCompile(`urn:pulumi:[^:]+[:][:]`)
+	stack.Deployment = re.ReplaceAll(stack.Deployment, []byte(`urn:pulumi:test::`))
 }
 
 // runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
