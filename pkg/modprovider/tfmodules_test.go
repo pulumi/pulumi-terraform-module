@@ -64,7 +64,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 		srv := newTestAuxProviderServer(t)
 		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
-		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
+		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, "terraform-aws-modules/vpc/aws", "5.19.0")
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
 		// verify a sample of the inputs with different inferred types
@@ -289,10 +289,10 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
 
-	logger := tfsandbox.DiscardLogger
 	testUsingExectutor(t, func(executor string) {
+		logger := tfsandbox.DiscardLogger
 		testServer := newTestAuxProviderServer(t)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, testServer, executor)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, testServer, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
 		mod, err := extractModuleContent(ctx, tf, TFModuleSource(p), "", logger)
 		require.NoError(t, err)
