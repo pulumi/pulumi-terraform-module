@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 const (
@@ -253,6 +252,7 @@ func (h *moduleStateHandler) Delete(
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
+	moduleExecutor string,
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
@@ -263,7 +263,7 @@ func (h *moduleStateHandler) Delete(
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer, tofuresolver.ResolveOpts{})
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, wd, h.auxProviderServer, moduleExecutor)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}
@@ -321,6 +321,7 @@ func (h *moduleStateHandler) Read(
 	req *pulumirpc.ReadRequest,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
+	moduleExecutor string,
 ) (*pulumirpc.ReadResponse, error) {
 	if req.Inputs == nil {
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
@@ -342,7 +343,7 @@ func (h *moduleStateHandler) Read(
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer, tofuresolver.ResolveOpts{})
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, wd, h.auxProviderServer, moduleExecutor)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}

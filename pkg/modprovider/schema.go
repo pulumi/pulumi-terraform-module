@@ -108,11 +108,11 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 
 	moduleExecutorVariable := schema.PropertySpec{
 		TypeSpec: schema.TypeSpec{
-			Type: "boolean",
+			Type: "string",
 		},
 
 		Description: "Sets the executor used to run the module.",
-		Default:     false,
+		Default:     "",
 		DefaultInfo: &schema.DefaultSpec{
 			Environment: []string{moduleExecutorEnvironmentVariable},
 		},

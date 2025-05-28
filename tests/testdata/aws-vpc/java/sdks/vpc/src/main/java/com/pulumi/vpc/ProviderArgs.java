@@ -6,7 +6,6 @@ package com.pulumi.vpc;
 import com.pulumi.core.Output;
 import com.pulumi.core.annotations.Import;
 import com.pulumi.core.internal.Codegen;
-import java.lang.Boolean;
 import java.lang.Object;
 import java.lang.String;
 import java.util.Map;
@@ -35,25 +34,25 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
     }
 
     /**
-     * Set to true to use OpenTofu to run the module.
+     * Sets the executor used to run the module.
      * 
      */
-    @Import(name="useOpentofu", json=true)
-    private @Nullable Output<Boolean> useOpentofu;
+    @Import(name="executor")
+    private @Nullable Output<String> executor;
 
     /**
-     * @return Set to true to use OpenTofu to run the module.
+     * @return Sets the executor used to run the module.
      * 
      */
-    public Optional<Output<Boolean>> useOpentofu() {
-        return Optional.ofNullable(this.useOpentofu);
+    public Optional<Output<String>> executor() {
+        return Optional.ofNullable(this.executor);
     }
 
     private ProviderArgs() {}
 
     private ProviderArgs(ProviderArgs $) {
         this.aws = $.aws;
-        this.useOpentofu = $.useOpentofu;
+        this.executor = $.executor;
     }
 
     public static Builder builder() {
@@ -96,28 +95,28 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
         }
 
         /**
-         * @param useOpentofu Set to true to use OpenTofu to run the module.
+         * @param executor Sets the executor used to run the module.
          * 
          * @return builder
          * 
          */
-        public Builder useOpentofu(@Nullable Output<Boolean> useOpentofu) {
-            $.useOpentofu = useOpentofu;
+        public Builder executor(@Nullable Output<String> executor) {
+            $.executor = executor;
             return this;
         }
 
         /**
-         * @param useOpentofu Set to true to use OpenTofu to run the module.
+         * @param executor Sets the executor used to run the module.
          * 
          * @return builder
          * 
          */
-        public Builder useOpentofu(Boolean useOpentofu) {
-            return useOpentofu(Output.of(useOpentofu));
+        public Builder executor(String executor) {
+            return executor(Output.of(executor));
         }
 
         public ProviderArgs build() {
-            $.useOpentofu = Codegen.booleanProp("useOpentofu").output().arg($.useOpentofu).env("PULUMI_TERRAFORM_MODULE_USE_OPENTOFU").def(false).getNullable();
+            $.executor = Codegen.stringProp("executor").output().arg($.executor).env("PULUMI_TERRAFORM_MODULE_EXECUTOR").def("").getNullable();
             return $;
         }
     }

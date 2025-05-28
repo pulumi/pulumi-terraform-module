@@ -111,7 +111,7 @@ func (s *server) Parameterize(
 	s.packageVersion = inferPackageVersion(pargs.TFModuleVersion)
 	logger := newResourceLogger(s.hostClient, "")
 	inferredModuleSchema, err := inferModuleSchema(ctx, s.packageName,
-		pargs.TFModuleSource, pargs.TFModuleVersion, logger, s.auxProviderServer)
+		pargs.TFModuleSource, pargs.TFModuleVersion, logger, s.auxProviderServer, s.moduleExecutor)
 	if err != nil {
 		return nil, fmt.Errorf("error while inferring module schema for '%s' version %s: %w",
 			pargs.TFModuleSource,
@@ -585,7 +585,11 @@ func (s *server) Delete(
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
-		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
+		return s.moduleStateHandler.Delete(ctx, req,
+			s.params.TFModuleSource,
+			s.params.TFModuleVersion,
+			providersConfig,
+			s.moduleExecutor)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Delete(ctx, req)
 	default:
@@ -608,7 +612,7 @@ func (s *server) Read(
 ) (*pulumirpc.ReadResponse, error) {
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, s.moduleExecutor)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Read(ctx, req)
 	default:

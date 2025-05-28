@@ -32,7 +32,7 @@ export class Provider extends pulumi.ProviderResource {
         opts = opts || {};
         {
             resourceInputs["aws"] = pulumi.output(args ? args.aws : undefined).apply(JSON.stringify);
-            resourceInputs["useOpentofu"] = pulumi.output((args ? args.useOpentofu : undefined) ?? (utilities.getEnvBoolean("PULUMI_TERRAFORM_MODULE_USE_OPENTOFU") || false)).apply(JSON.stringify);
+            resourceInputs["executor"] = (args ? args.executor : undefined) ?? (utilities.getEnv("PULUMI_TERRAFORM_MODULE_EXECUTOR") || "");
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Provider.__pulumiType, name, resourceInputs, opts, false /*dependency*/, utilities.getPackage());
@@ -48,7 +48,7 @@ export interface ProviderArgs {
      */
     aws?: pulumi.Input<{[key: string]: any}>;
     /**
-     * Set to true to use OpenTofu to run the module.
+     * Sets the executor used to run the module.
      */
-    useOpentofu?: pulumi.Input<boolean>;
+    executor?: pulumi.Input<string>;
 }

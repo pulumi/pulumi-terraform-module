@@ -40,7 +40,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 type ModuleSchemaOverride struct {
@@ -320,8 +319,9 @@ func InferModuleSchema(
 	mod TFModuleSource,
 	ver TFModuleVersion,
 	auxServer *auxprovider.Server,
+	moduleExecutor string,
 ) (*InferredModuleSchema, error) {
-	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil), auxServer)
+	return inferModuleSchema(ctx, packageName, mod, ver, newComponentLogger(nil, nil), auxServer, moduleExecutor)
 }
 
 func inferModuleSchema(
@@ -331,9 +331,10 @@ func inferModuleSchema(
 	tfModuleVersion TFModuleVersion,
 	logger tfsandbox.Logger,
 	auxServer *auxprovider.Server,
+	moduleExector string,
 ) (*InferredModuleSchema, error) {
 
-	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger, auxServer)
+	module, err := extractModuleContent(ctx, mod, tfModuleVersion, logger, auxServer, moduleExector)
 	if err != nil {
 		return nil, err
 	}
@@ -541,8 +542,9 @@ func extractModuleContent(
 	version TFModuleVersion,
 	logger tfsandbox.Logger,
 	auxServer *auxprovider.Server,
+	moduleExecutor string,
 ) (*configs.Module, error) {
-	modDir, err := resolveModuleSources(ctx, source, version, logger, auxServer)
+	modDir, err := resolveModuleSources(ctx, source, version, logger, auxServer, moduleExecutor)
 	if err != nil {
 		return nil, err
 	}
@@ -615,10 +617,16 @@ func resolveModuleSources(
 	version tfsandbox.TFModuleVersion, //optional
 	logger tfsandbox.Logger,
 	auxServer *auxprovider.Server,
+	moduleExecutor string,
 ) (string, error) {
-	tf, err := tfsandbox.NewTofu(ctx, logger, tfsandbox.ModuleWorkdir(source, version), auxServer, tofuresolver.ResolveOpts{})
+	tf, err := tfsandbox.PickModuleRuntime(
+		ctx,
+		logger,
+		tfsandbox.ModuleWorkdir(source, version),
+		auxServer,
+		moduleExecutor)
 	if err != nil {
-		return "", fmt.Errorf("tofu sandbox construction failure: %w", err)
+		return "", fmt.Errorf("sandbox construction failure: %w", err)
 	}
 
 	key := "mymod"

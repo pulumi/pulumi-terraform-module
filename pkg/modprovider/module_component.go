@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -134,24 +133,18 @@ func newModuleComponentResource(
 	logger := newComponentLogger(ctx.Log, &component)
 
 	// decide whether to use opentofu or terraform
-	// based on the "use_opentofu" configuration option
-	// by default we use terraform available in the environment
-	// unless opted into opentofu in which case we either use it if available
-	// or download it if not available.
-	var tf *tfsandbox.ModuleRuntime
-	if moduleExecutor != "terraform" {
-		tf, err = tfsandbox.NewTofu(ctx.Context(), logger, wd, auxProviderServer, tofuresolver.ResolveOpts{})
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("opentofu sandbox construction failed: %w", err)
-		}
-		logger.Log(ctx.Context(), tfsandbox.Info, "Using OpenTofu for module execution")
-	} else {
-		tf, err = tfsandbox.NewTerraform(ctx.Context(), logger, wd, auxProviderServer)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("terraform sandbox construction failed: %w", err)
-		}
-		logger.Log(ctx.Context(), tfsandbox.Info, "Using Terraform for module execution")
+	tf, err := tfsandbox.PickModuleRuntime(
+		ctx.Context(),
+		logger, wd, auxProviderServer, moduleExecutor,
+	)
+
+	if err != nil {
+		return nil, nil, nil,
+			fmt.Errorf("failed to choose module runtime from executor %s: %w",
+				moduleExecutor, err)
 	}
+
+	logger.Log(ctx.Context(), tfsandbox.Info, "Using "+tf.Description())
 
 	// Important: the name of the module instance in TF must be at least unique enough to
 	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the

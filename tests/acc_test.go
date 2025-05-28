@@ -1207,7 +1207,7 @@ func testUsingTerraformAndOpentofu(t *testing.T, code func()) {
 
 	t.Run("using opentofu", func(t *testing.T) {
 		t.Log("Running test using OpenTofu")
-		t.Setenv("PULUMI_TERRAFORM_MODULE_USE_OPENTOFU", "true")
+		t.Setenv("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu")
 		code()
 	})
 }

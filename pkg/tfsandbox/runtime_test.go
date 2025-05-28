@@ -17,6 +17,7 @@ package tfsandbox
 import (
 	"bytes"
 	"context"
+	"os"
 	"path"
 	"testing"
 
@@ -88,4 +89,46 @@ func TestTofuApply(t *testing.T) {
 
 	err = tofu.Destroy(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu destroy")
+}
+
+func TestPickModuleRuntime(t *testing.T) {
+	srv := newTestAuxProviderServer(t)
+	ctx := context.Background()
+	logger := DiscardLogger
+
+	opentofu, err := PickModuleRuntime(ctx, logger, nil, srv, "opentofu")
+	assert.NoError(t, err)
+	assert.NotNil(t, opentofu)
+	assert.Contains(t, opentofu.Description(), "Tofu CLI")
+
+	tofu, err := PickModuleRuntime(ctx, logger, nil, srv, "tofu")
+	assert.NoError(t, err)
+	assert.NotNil(t, tofu)
+	assert.Contains(t, tofu.Description(), "Tofu CLI")
+
+	specificTofu, err := PickModuleRuntime(ctx, logger, nil, srv, "opentofu@1.7.8")
+	assert.NoError(t, err)
+	assert.NotNil(t, specificTofu)
+	assert.Contains(t, specificTofu.Description(), "Tofu CLI 1.7.8")
+
+	// anything else provided as the executor will default to a terraform runtime
+	tf, err := PickModuleRuntime(ctx, logger, nil, srv, "")
+	assert.NoError(t, err)
+	assert.NotNil(t, tf)
+	assert.Contains(t, tf.Description(), "Terraform CLI")
+
+	// from specific executable path
+	tfPath, err := PickModuleRuntime(ctx, logger, nil, srv, tf.executable)
+	assert.NoError(t, err)
+	assert.NotNil(t, tfPath)
+	assert.Equal(t, tf.executable, tfPath.executable)
+	assert.Contains(t, tfPath.Description(), "module runtime from executable "+tf.executable)
+
+	t.Cleanup(func() {
+		os.RemoveAll(opentofu.WorkingDir())
+		os.RemoveAll(tofu.WorkingDir())
+		os.RemoveAll(specificTofu.WorkingDir())
+		os.RemoveAll(tf.WorkingDir())
+		os.RemoveAll(tfPath.WorkingDir())
+	})
 }

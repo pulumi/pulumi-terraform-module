@@ -35,8 +35,14 @@ import (
 )
 
 type ModuleRuntime struct {
-	tf       *tfexec.Terraform
-	reattach *tfexec.ReattachInfo
+	tf          *tfexec.Terraform
+	reattach    *tfexec.ReattachInfo
+	description string
+	executable  string
+}
+
+func (t *ModuleRuntime) Description() string {
+	return t.description
 }
 
 func (t *ModuleRuntime) applyOptions() []tfexec.ApplyOption {
@@ -135,9 +141,16 @@ func NewTofu(ctx context.Context,
 	// 	return nil, fmt.Errorf("error setting up plugin cache: %w", err)
 	// }
 
+	description := "Tofu CLI"
+	if resolveOptions.Version != nil {
+		description = fmt.Sprintf("Tofu CLI %s", resolveOptions.Version.String())
+	}
+
 	return &ModuleRuntime{
-		tf:       tf,
-		reattach: reattach,
+		tf:          tf,
+		reattach:    reattach,
+		description: description,
+		executable:  execPath,
 	}, nil
 }
 
@@ -190,8 +203,10 @@ func NewTerraform(ctx context.Context, logger Logger, workdir Workdir, auxServer
 	// }
 
 	return &ModuleRuntime{
-		tf:       tf,
-		reattach: reattach,
+		tf:          tf,
+		reattach:    reattach,
+		description: "Terraform CLI",
+		executable:  execPath,
 	}, nil
 }
 
@@ -225,24 +240,31 @@ func NewRuntimeFromExecutable(
 	}
 
 	return &ModuleRuntime{
-		tf:       tf,
-		reattach: reattach,
+		tf:          tf,
+		reattach:    reattach,
+		executable:  moduleExecutor,
+		description: fmt.Sprintf("module runtime from executable %s", moduleExecutor),
 	}, nil
 }
 
+// PickModuleRuntime will return a ModuleRuntime based on the provided moduleExecutor.
+// if executor: <path-to-executable>, it will create a runtime from that executable.
+// if executor: opentofu[@version] || tofu[@version], it will create a tofu runtime.
+// where version is optional, if not provided it will use the latest version of tofu.
+// anything else will default to a terraform runtime.
 func PickModuleRuntime(
-	moduleExecutor string,
 	ctx context.Context,
 	logger Logger,
 	workdir Workdir,
-	auxServer *auxprovider.Server) (*ModuleRuntime, error) {
+	auxServer *auxprovider.Server,
+	moduleExecutor string) (*ModuleRuntime, error) {
 
 	// check if the module executor is a path to an existing executable
 	if fileExists(moduleExecutor) {
 		return NewRuntimeFromExecutable(moduleExecutor, ctx, logger, workdir, auxServer)
 	}
 
-	if strings.HasPrefix("opentofu", moduleExecutor) || strings.HasPrefix("tofu", moduleExecutor) {
+	if strings.HasPrefix(moduleExecutor, "opentofu") || strings.HasPrefix(moduleExecutor, "tofu") {
 		resolveOptions := tofuresolver.ResolveOpts{}
 		if parts := strings.Split(moduleExecutor, "@"); len(parts) == 2 {
 			// If the module executor is in the format "opentofu@version" or "tofu@version",
