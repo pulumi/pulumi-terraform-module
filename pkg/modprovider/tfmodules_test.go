@@ -315,11 +315,11 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 }
 
 func testUsingExectutor(t *testing.T, code func(string)) {
-	t.Run("using_executor_terraform", func(t *testing.T) {
+	t.Run("using_executor_terraform", func(*testing.T) {
 		code("terraform")
 	})
 
-	t.Run("using_executor_opentufo", func(t *testing.T) {
+	t.Run("using_executor_opentufo", func(*testing.T) {
 		code("opentofu")
 	})
 }
