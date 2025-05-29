@@ -35,11 +35,9 @@ type Tofu struct {
 	reattach *tfexec.ReattachInfo
 }
 
-func (t *Tofu) applyOptions() []tfexec.ApplyOption {
+func (t *Tofu) applyOptions(opt ...tfexec.ApplyOption) []tfexec.ApplyOption {
 	opts := []tfexec.ApplyOption{}
-	if t.reattach != nil {
-		opts = append(opts, tfexec.Reattach(*t.reattach))
-	}
+	opts = append(opts, opt...)
 	return opts
 }
 

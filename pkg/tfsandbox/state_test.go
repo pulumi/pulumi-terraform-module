@@ -62,7 +62,7 @@ func TestState(t *testing.T) {
 		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
 	}, plannedOutputs)
 
-	state, err := tofu.Apply(ctx, DiscardLogger)
+	state, err := tofu.Apply(ctx, DiscardLogger, RefreshOpts{})
 	require.NoError(t, err, "error running tofu apply")
 
 	moduleOutputs := state.Outputs()
@@ -168,7 +168,7 @@ func TestStateMatchesPlan(t *testing.T) {
 				resource.PropertyKey("number_output"): tc.expected,
 			}, plannedOutputs)
 
-			state, err := tofu.Apply(ctx, DiscardLogger)
+			state, err := tofu.Apply(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error running tofu apply")
 			moduleOutputs := state.Outputs()
 			// output value is the same as the input
@@ -224,7 +224,7 @@ func TestSecretOutputs(t *testing.T) {
 			"nested_sensitive_output": resource.MakeComputed(resource.NewStringProperty("")),
 		}, plannedOutputs)
 
-		state, err := tofu.Apply(ctx, logger)
+		state, err := tofu.Apply(ctx, logger, RefreshOpts{})
 		require.NoErrorf(t, err, "error running tofu apply: %s", buffer.String())
 		moduleOutputs := state.Outputs()
 		// output value is the same as the input

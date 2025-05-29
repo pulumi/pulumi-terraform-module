@@ -196,7 +196,8 @@ func (h *moduleHandler) applyModuleOperation(
 		views = viewStepsPlan(packageName, plan)
 		moduleOutputs = plan.Outputs()
 	} else {
-		tfState, err := tf.Apply(ctx, logger) // TODO[pulumi/pulumi-terraform-module#341] reuse the plan
+		//nolint:lll
+		tfState, err := tf.Apply(ctx, logger, tfsandbox.RefreshOpts{}) // TODO[pulumi/pulumi-terraform-module#341] reuse the plan
 		if tfState != nil {
 			msg := fmt.Sprintf("tf.Apply produced the following state: %s", tfState.PrettyPrint())
 			logger.Log(ctx, tfsandbox.Debug, msg)

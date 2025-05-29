@@ -221,7 +221,7 @@ func newModuleComponentResource(
 		moduleOutputs = plan.Outputs()
 	} else {
 		// DryRun() = false corresponds to running pulumi up
-		tfState, applyErr = tf.Apply(ctx.Context(), logger)
+		tfState, applyErr = tf.Apply(ctx.Context(), logger, tfsandbox.RefreshOpts{})
 
 		planStore.SetState(urn, tfState)
 
