@@ -173,7 +173,7 @@ func newModuleComponentResource(
 
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx.Context(), logger)
+	plan, err := tf.Plan(ctx.Context(), logger, tfsandbox.RefreshOpts{})
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}

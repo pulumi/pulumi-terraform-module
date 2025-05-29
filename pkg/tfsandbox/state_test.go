@@ -51,7 +51,7 @@ func TestState(t *testing.T) {
 	err = tofu.Init(ctx, DiscardLogger)
 	require.NoError(t, err, "error running tofu init")
 
-	initialPlan, err := tofu.Plan(ctx, DiscardLogger)
+	initialPlan, err := tofu.Plan(ctx, DiscardLogger, RefreshOpts{})
 	require.NoError(t, err, "error running tofu plan (before apply)")
 	require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -100,7 +100,7 @@ func TestState(t *testing.T) {
 	err = tofu.PushStateAndLockFile(ctx, newState, rawLockFile)
 	require.NoError(t, err, "error pushing tofu state")
 
-	plan, err := tofu.Plan(ctx, DiscardLogger)
+	plan, err := tofu.Plan(ctx, DiscardLogger, RefreshOpts{})
 	require.NoError(t, err, "error replanning")
 
 	hasUpdates := false
@@ -159,7 +159,7 @@ func TestStateMatchesPlan(t *testing.T) {
 			err = tofu.Init(ctx, DiscardLogger)
 			require.NoError(t, err, "error running tofu init")
 
-			initialPlan, err := tofu.Plan(ctx, DiscardLogger)
+			initialPlan, err := tofu.Plan(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error running tofu plan (before apply)")
 			require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -215,7 +215,7 @@ func TestSecretOutputs(t *testing.T) {
 
 		err = tofu.Init(ctx, logger)
 		require.NoErrorf(t, err, "error running tofu init: %s", buffer.String())
-		initialPlan, err := tofu.Plan(ctx, logger)
+		initialPlan, err := tofu.Plan(ctx, logger, RefreshOpts{})
 		require.NoErrorf(t, err, "error running tofu plan (before apply): %s", buffer.String())
 		require.NotNil(t, initialPlan, "expected a non-nil plan")
 

@@ -180,7 +180,7 @@ func (h *moduleHandler) applyModuleOperation(
 
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx, logger)
+	plan, err := tf.Plan(ctx, logger, tfsandbox.RefreshOpts{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
@@ -517,7 +517,7 @@ func (h *moduleHandler) Read(
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
 	}
 
-	plan, err := tf.PlanRefreshOnly(ctx, logger)
+	plan, err := tf.Plan(ctx, logger, tfsandbox.RefreshOpts{RefreshOnly: true})
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error planning refresh: %v", err))
 		return nil, err
