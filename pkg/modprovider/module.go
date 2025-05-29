@@ -323,8 +323,9 @@ func (h *moduleHandler) Create(
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
 	return &pulumirpc.CreateResponse{
-		Id:         moduleStateResourceID,
-		Properties: props,
+		Id:                  moduleStateResourceID,
+		Properties:          props,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
@@ -388,7 +389,8 @@ func (h *moduleHandler) Update(
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
 	return &pulumirpc.UpdateResponse{
-		Properties: props,
+		Properties:          props,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
@@ -551,9 +553,10 @@ func (h *moduleHandler) Read(
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:         moduleResourceID,
-		Properties: properties,
-		Inputs:     req.GetInputs(), // inputs never change on refresh
+		Id:                  moduleResourceID,
+		Properties:          properties,
+		Inputs:              req.GetInputs(), // inputs never change on refresh
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
