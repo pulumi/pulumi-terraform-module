@@ -1188,13 +1188,13 @@ func TestRefresh(t *testing.T) {
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	// logLevel := uint(13)
-	// debugOpts = debug.LoggingOptions{
-	// 	LogLevel:      &logLevel,
-	// 	LogToStdErr:   true,
-	// 	FlowToPlugins: true,
-	// 	Debug:         true,
-	// }
+	logLevel := uint(13)
+	debugOpts = debug.LoggingOptions{
+		LogLevel:      &logLevel,
+		LogToStdErr:   true,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
 
 	// Now perform a refresh.
 	t.Logf("## pulumi refresh: expect to detect drift and update it")
