@@ -178,9 +178,12 @@ func (h *moduleHandler) applyModuleOperation(
 
 	logger := newResourceLogger(h.hc, urn)
 
+	// Because of RefreshBeforeUpdate, Pulumi CLI has already refreshed at this point.
+	refreshOpts := tfsandbox.RefreshOpts{NoRefresh: true}
+
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx, logger, tfsandbox.RefreshOpts{})
+	plan, err := tf.Plan(ctx, logger, refreshOpts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
@@ -196,8 +199,8 @@ func (h *moduleHandler) applyModuleOperation(
 		views = viewStepsPlan(packageName, plan)
 		moduleOutputs = plan.Outputs()
 	} else {
-		//nolint:lll
-		tfState, err := tf.Apply(ctx, logger, tfsandbox.RefreshOpts{}) // TODO[pulumi/pulumi-terraform-module#341] reuse the plan
+		// TODO[pulumi/pulumi-terraform-module#341] reuse the plan
+		tfState, err := tf.Apply(ctx, logger, refreshOpts)
 		if tfState != nil {
 			msg := fmt.Sprintf("tf.Apply produced the following state: %s", tfState.PrettyPrint())
 			logger.Log(ctx, tfsandbox.Debug, msg)
