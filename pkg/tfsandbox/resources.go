@@ -180,7 +180,7 @@ func extractPropertyMapFromPlan(
 	stateResource tfjson.StateResource,
 	resourceChange *tfjson.ResourceChange,
 ) resource.PropertyMap {
-	resourcePropertyMap := extractPropertyMap(stateResource)
+	resourcePropertyMap := extractPropertyMapFromAttributeValues(stateResource.AttributeValues)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
 	if resourceChange != nil && resourceChange.Change.AfterUnknown != nil {
 		objectProperty = updateResourceValue(
@@ -205,10 +205,10 @@ func extractPropertyMapFromPlan(
 // extractPropertyMapFromState extracts the property map from a tfjson.StateResource that is from a state (Values)
 // it takes care of updating the values of the resource based on the SensitiveValues
 func extractPropertyMapFromState(stateResource tfjson.StateResource) resource.PropertyMap {
-	resourcePropertyMap := extractPropertyMap(stateResource)
+	resourcePropertyMap := extractPropertyMapFromAttributeValues(stateResource.AttributeValues)
 	objectProperty := resource.NewObjectProperty(resourcePropertyMap)
 	if stateResource.SensitiveValues != nil {
-		var sensitiveValues interface{}
+		var sensitiveValues any
 		err := json.Unmarshal(stateResource.SensitiveValues, &sensitiveValues)
 		contract.AssertNoErrorf(err, "failed to unmarshal SensitiveValues")
 		objectProperty = updateResourceValue(objectProperty, sensitiveValues, resourceMakeSecretConservative)
@@ -238,10 +238,10 @@ func replaceJSONNumberValue(i interface{}) (resource.PropertyValue, bool) {
 
 }
 
-// extractPropertyMap extracts the property map from a tfjson.StateResource
-func extractPropertyMap(stateResource tfjson.StateResource) resource.PropertyMap {
+// NOTE: low-level function, be careful when reusing Sensitive markers need to be applied to the result.
+func extractPropertyMapFromAttributeValues(attributeValues map[string]any) resource.PropertyMap {
 	resourceConfig := resource.PropertyMap{}
-	for attrKey, attrValue := range stateResource.AttributeValues {
+	for attrKey, attrValue := range attributeValues {
 		key := resource.PropertyKey(attrKey)
 		resourceConfig[key] = resource.NewPropertyValueRepl(attrValue, nil, replaceJSONNumberValue)
 	}

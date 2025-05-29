@@ -16,6 +16,7 @@ package tfsandbox
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -93,6 +94,12 @@ func (t *Tofu) planWithOptions(ctx context.Context, logger Logger, opts RefreshO
 	}
 
 	logger.Log(ctx, Debug, humanPlan)
+
+	planJ, err := json.MarshalIndent(plan, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	logger.Log(ctx, Debug, fmt.Sprintf("JSON plan: %s", planJ))
 
 	return plan, nil
 }

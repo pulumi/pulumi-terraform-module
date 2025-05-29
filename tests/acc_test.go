@@ -1140,10 +1140,7 @@ func TestDiffDetail(t *testing.T) {
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefresh(t *testing.T) {
 	t.Parallel()
-
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-	}
+	tw := newTestWriter(t)
 
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	ctx := context.Background()
@@ -1167,12 +1164,18 @@ func TestRefresh(t *testing.T) {
 
 	// First provision a bucket with TestTag=a and remember this state.
 	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
+
+	t.Logf("## pulumi up: create with tagvalue=a")
+	it.Up(t, optup.Diff(), optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
+
 	stateA := it.ExportStack(t)
 
 	// Then provision the bucket with TestTag=b so the bucket in the cloud is tagged with b.
 	it.SetConfig(t, "tagvalue", "b")
-	it.Up(t)
+
+	t.Logf("## pulumi up: update to set tagvalue=b")
+	it.Up(t, optup.Diff(), optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
+
 	outMapB, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
 	autogold.Expect(map[string]any{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
@@ -1181,13 +1184,27 @@ func TestRefresh(t *testing.T) {
 	it.ImportStack(t, stateA)
 	expectBucketTag("a")
 
+	// Preview
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
 	// Now perform a refresh.
-	refreshResult := it.Refresh(t)
-	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
+	t.Logf("## pulumi refresh: expect to detect drift and update it")
+	refreshResult := it.Refresh(t,
+		optrefresh.Diff(),
+		optrefresh.ProgressStreams(tw),
+		optrefresh.ErrorProgressStreams(tw),
+		optrefresh.DebugLogging(debugOpts),
+	)
 	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
 
 	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
 	expectBucketTag("b")
@@ -1199,6 +1216,8 @@ func TestRefresh(t *testing.T) {
 	outMap, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
 	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+
+	autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
 }
 
 // Verify that pulumi refresh detects deleted resources.
@@ -1634,6 +1653,8 @@ func mustFindDeploymentResourceByType(
 
 	prettyPrintedState, err := json.MarshalIndent(deployment, "", "  ")
 	require.NoError(t, err)
+
+	t.Logf("DEPLOYMENT: %s", prettyPrintedState)
 
 	require.Equalf(t, 1, found,
 		"Expected to find exactly 1 resource with type: %s\nComplete state:\n%s\n",
