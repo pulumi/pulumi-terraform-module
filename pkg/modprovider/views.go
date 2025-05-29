@@ -118,9 +118,16 @@ func viewStepOp(changeKind tfsandbox.ChangeKind, drift bool) []pulumirpc.ViewSte
 	case tfsandbox.NoOp:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_SAME}
 	case tfsandbox.Update:
-		if drift {
-			return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_REFRESH}
-		}
+		// TODO this does not seem to work, per Justin:
+		//
+		//  will not work with the current implementation… If you sent an Op UPDATE for the view, I think it will.
+		//
+		//
+		// Need to figure out if this is temporary or final.
+		//
+		// if drift {
+		// 	return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_REFRESH}
+		// }
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_UPDATE}
 	case tfsandbox.Replace:
 		return []pulumirpc.ViewStep_Op{
