@@ -41,6 +41,7 @@ const (
 	moduleResourceID            = "module"
 	moduleResourceStatePropName = "__state"
 	moduleResourceLockPropName  = "__lock"
+	moduleFreshMarker           = "__fresh"
 )
 
 type moduleHandler struct {
@@ -85,6 +86,14 @@ func (h *moduleHandler) Diff(
 	newInputs, err := plugin.UnmarshalProperties(req.GetNews(), h.marshalOpts())
 	if err != nil {
 		return nil, err
+	}
+
+	// Workaround Pulumi protocol limitations: the oldInputs were produced by Read() that marked them as __fresh,
+	// this means the context is a `pulumi refresh` operation that detected some drift. In this case the Diff must
+	// return DIFF_SOME so that the freshly detected state gets written to the Pulumi state-file.
+	_, fresh := oldInputs[moduleFreshMarker]
+	if fresh {
+		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
 	}
 
 	// TODO[pulumi/pulumi-terraform-module#332] detect and correct drift
@@ -421,6 +430,8 @@ func (h *moduleHandler) Delete(
 	if err != nil {
 		return nil, fmt.Errorf("Delete failed to unmarshal inputs: %s", err)
 	}
+	// Ignore __fresh marker used to workaround protocol limitations.
+	delete(moduleInputs, moduleFreshMarker)
 
 	oldOutputs, err := plugin.UnmarshalProperties(req.GetProperties(), h.marshalOpts())
 	if err != nil {
@@ -501,6 +512,8 @@ func (h *moduleHandler) Read(
 	if err != nil {
 		return nil, err
 	}
+	// Ignore __fresh marker used to workaround protocol limitations.
+	delete(moduleInputs, moduleFreshMarker)
 
 	oldOutputs, err := plugin.UnmarshalProperties(req.Properties, h.marshalOpts())
 	if err != nil {
@@ -556,10 +569,24 @@ func (h *moduleHandler) Read(
 		return nil, err
 	}
 
+	// inputs never change on refresh
+	freshInputs := moduleInputs
+
+	// Workaround Pulumi protocol limitations: subsequently to this Read(), Pulumi will call Diff() and although
+	// inputs are not changing the Diff() needs to return DIFF_SOME to commit the fresh outputs.
+	if len(plan.RawPlan().ResourceDrift) > 0 {
+		freshInputs[moduleFreshMarker] = resource.NewBoolProperty(true)
+	}
+
+	freshInputsStruct, err := plugin.MarshalProperties(freshInputs, h.marshalOpts())
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.ReadResponse{
 		Id:                  moduleResourceID,
 		Properties:          properties,
-		Inputs:              req.GetInputs(), // inputs never change on refresh
+		Inputs:              freshInputsStruct,
 		RefreshBeforeUpdate: true,
 	}, nil
 }
