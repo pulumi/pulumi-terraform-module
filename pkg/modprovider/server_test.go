@@ -172,7 +172,7 @@ func TestParseParameterizeRequestWithConfig(t *testing.T) {
 		assert.NotNil(t, args.Config)
 		assert.NotNil(t, args.Config.InferredModuleSchema)
 		assert.Equal(t, args.Config.InferredModuleSchema, &InferredModuleSchema{
-			NonNilOutputs: []string{"output_name"},
+			NonNilOutputs: []resource.PropertyKey{"output_name"},
 		})
 	})
 }

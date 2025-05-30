@@ -17,6 +17,7 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -36,9 +37,13 @@ import (
 func TestUnknownsInCreatePlanBySchemaType(t *testing.T) {
 	t.Parallel()
 	skipLocalRunsWithoutCreds(t)
-	ctx := context.Background()
-	tofu := newTestTofu(t)
-	tfFile := `
+
+	awsProviderVersion := "5.99.1"
+
+	init := func(awsProviderVersion string) *tfsandbox.Tofu {
+		ctx := context.Background()
+		tofu := newTestTofu(t)
+		tfFile := requiredProviders(awsProviderVersion) + `
 provider "aws" {
   region = "us-east-2"
 }
@@ -46,20 +51,27 @@ module "local" {
   source = "./local_module"
 }`
 
-	err := os.WriteFile(
-		path.Join(tofu.WorkingDir(), "main.tf"),
-		[]byte(tfFile),
-		0600,
-	)
-	assert.NoError(t, err)
-	err = os.MkdirAll(path.Join(tofu.WorkingDir(), "local_module"), 0700)
-	assert.NoError(t, err)
+		err := os.WriteFile(
+			path.Join(tofu.WorkingDir(), "main.tf"),
+			[]byte(tfFile),
+			0600,
+		)
+		assert.NoError(t, err)
+		err = os.MkdirAll(path.Join(tofu.WorkingDir(), "local_module"), 0700)
+		assert.NoError(t, err)
 
-	err = tofu.Init(ctx, tfsandbox.DiscardLogger)
-	assert.NoError(t, err)
+		err = tofu.Init(ctx, newTestLogger(t))
+		assert.NoError(t, err)
+
+		return tofu
+	}
 
 	t.Run("SDKV2_TypeList", func(t *testing.T) {
-		tfFile := `
+		t.Parallel()
+
+		tofu := init(awsProviderVersion)
+
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "aws_s3_bucket" "this" {
   lifecycle_rule { # schema.TypeList (optional, computed)
     enabled = true # required
@@ -150,8 +162,11 @@ resource "aws_s3_bucket" "this" {
 	})
 
 	t.Run("SDKV2_TypeSet", func(t *testing.T) {
+		t.Parallel()
 
-		tfFile := `
+		tofu := init(awsProviderVersion)
+
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "terraform_data" "data" {
   input = "any"
 }
@@ -204,7 +219,11 @@ resource "aws_s3_bucket" "this" {
 	})
 
 	t.Run("SDKV2_TypeSetWithNestedOptionalComputed", func(t *testing.T) {
-		tfFile = `
+		t.Parallel()
+
+		tofu := init(awsProviderVersion)
+
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "terraform_data" "data" {
   input = "any"
 }
@@ -269,7 +288,11 @@ resource "aws_instance" "this" {
 	})
 
 	t.Run("SDKV2_DynamicTypeSet", func(t *testing.T) {
-		tfFile = `
+		t.Parallel()
+
+		tofu := init(awsProviderVersion)
+
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "terraform_data" "data" {
   input = "any"
 }
@@ -380,8 +403,13 @@ resource "aws_instance" "this" {
 			}).Equal(t, actual)
 		})
 	})
+
 	t.Run("SDKV2_TypeMap", func(t *testing.T) {
-		tfFile = `
+		t.Parallel()
+
+		tofu := init(awsProviderVersion)
+
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "terraform_data" "data" {
   input = "any"
 }
@@ -433,7 +461,11 @@ resource "aws_s3_bucket_metric" "this" {
 	})
 
 	t.Run("SDKV2_TypeMapOptionalComputed", func(t *testing.T) {
-		tfFile = `
+		t.Parallel()
+
+		tofu := init(awsProviderVersion)
+
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "terraform_data" "data" {
   input = "any"
 }
@@ -470,7 +502,10 @@ resource "aws_s3_object_copy" "this" {
 	})
 
 	t.Run("PF_ListNestedBlock", func(t *testing.T) {
-		tfFile = `
+		awsProviderVersion := "5.99.0" // error on 5.99.1
+
+		tofu := init(awsProviderVersion)
+		tfFile := requiredProviders(awsProviderVersion) + `
 resource "terraform_data" "data" {
   input = "any"
 }
@@ -607,6 +642,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 			})
 	})
 
+}
+
+func requiredProviders(awsProviderVersion string) string {
+	return fmt.Sprintf(`
+                      terraform {
+                        required_providers {
+                          aws = {
+                            source  = "hashicorp/aws"
+                            version = "%s"
+                          }
+                        }
+                      }
+                `, awsProviderVersion)
 }
 
 func runPlan(t *testing.T, tofu *tfsandbox.Tofu, tfFile string) *tfsandbox.Plan {

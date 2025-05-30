@@ -23,21 +23,21 @@ import (
 	"github.com/pulumi/opentofu/command/format"
 	"github.com/pulumi/opentofu/command/jsonformat"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
-type LogLevel string
+type (
+	LogLevel = pulumix.LogLevel
+	Logger   = pulumix.Logger
+)
 
 const (
-	Info  LogLevel = "info"
-	Error LogLevel = "error"
-	Warn  LogLevel = "warn"
-	Debug LogLevel = "debug"
+	Info  = pulumix.Info
+	Error = pulumix.Error
+	Warn  = pulumix.Warn
+	Debug = pulumix.Debug
 )
-
-type Logger interface {
-	Log(ctx context.Context, level LogLevel, message string)
-	LogStatus(ctx context.Context, level LogLevel, message string)
-}
 
 type discardLogger struct{}
 

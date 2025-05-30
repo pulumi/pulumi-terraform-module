@@ -23,6 +23,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 )
 
 // Represents the TF resource type, example: "aws_instance" for aws_instance.foo.
@@ -177,13 +179,13 @@ func (p *Plan) Outputs() resource.PropertyMap {
 		if isInternalOutputResource(outputKey) {
 			continue
 		}
-		key := resource.PropertyKey(outputKey)
+		key := PulumiTopLevelKey(outputKey, flags.EnableViewsPreview)
 		if afterUnknown, ok := output.AfterUnknown.(bool); ok && afterUnknown {
 			outputs[key] = unknown()
 		} else {
 			val := resource.NewPropertyValueRepl(output.After, nil, replaceJSONNumberValue)
 			if p.outputIsSecret(outputKey) {
-				val = resource.MakeSecret(val)
+				val = resourceMakeSecretConservative(val)
 			}
 			outputs[key] = val
 		}
@@ -259,10 +261,10 @@ func (s *State) Outputs() resource.PropertyMap {
 		if isInternalOutputResource(outputKey) {
 			continue
 		}
-		key := resource.PropertyKey(outputKey)
+		key := PulumiTopLevelKey(outputKey, flags.EnableViewsPreview)
 		val := resource.NewPropertyValueRepl(output.Value, nil, replaceJSONNumberValue)
 		if s.outputIsSecret(outputKey) {
-			val = resource.MakeSecret(val)
+			val = resourceMakeSecretConservative(val)
 		}
 		outputs[key] = val
 	}

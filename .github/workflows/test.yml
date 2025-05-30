@@ -98,3 +98,82 @@ jobs:
           - 5
           - 6
           - 7
+
+  # Temporarily adding a job to test against PULUMI_ENABLE_VIEWS_PREVIEW: true
+  test-views:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    env:
+      PROVIDER_VERSION: ${{ inputs.version }}
+      PULUMI_ENABLE_VIEWS_PREVIEW: true
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        ref: ${{ env.PR_COMMIT_SHA }}
+        persist-credentials: false
+    - name: Checkout p/examples
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        repository: pulumi/examples
+        path: p-examples
+    - name: Setup tools
+      uses: ./.github/actions/setup-tools
+    - name: Prepare local workspace
+      run: make prepare_local_workspace
+    - name: Download bin
+      uses: ./.github/actions/download-provider
+    - name: Download pre-release Pulumi CLI supporting Views
+      run: |
+        rm -rf .pulumi/bin
+        ./scripts/install_views_pulumi_cli.sh
+    - name: Update path
+      run: |
+        echo "${{ github.workspace }}/bin"         >> "$GITHUB_PATH"
+        echo "${{ github.workspace }}/.pulumi/bin" >> "$GITHUB_PATH"
+    - name: Verify which Pulumi CLI is used for testing
+      run: |
+        which pulumi
+    - name: Generate Pulumi Access Token
+      id: generate_pulumi_token
+      uses: pulumi/auth-actions@1c89817aab0c66407723cdef72b05266e7376640 # v1.0.1
+      with:
+        organization: pulumi
+        requested-token-type: urn:pulumi:token-type:access_token:organization
+        export-environment-variables: false
+    - name: Export AWS Credentials
+      uses: pulumi/esc-action@efb0bc8946938f0dfbfa00e829196ec95f0d0ea7 # v1.4.0
+      env:
+        PULUMI_ACCESS_TOKEN: ${{ steps.generate_pulumi_token.outputs.pulumi-access-token }}
+      with:
+        environment: logins/pulumi-ci
+    - name: Install opentofu
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_wrapper: false
+    - name: Generate test shards
+      run: |-
+        cd tests
+        go run github.com/pulumi/shard@861c9ce4aa851e98c19f8376892bf7e47238fa1b \
+            --total ${{ matrix.total-shards }} \
+            --index ${{ matrix.current-shard }} \
+            --output env >> "$GITHUB_ENV"
+    - name: Run tests
+      run: |
+        make GOTESTARGS="-test.run ${SHARD_TESTS} ${SHARD_PATHS}" test
+    strategy:
+      fail-fast: false
+      matrix:
+        total-shards:
+          - 8
+        current-shard:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7

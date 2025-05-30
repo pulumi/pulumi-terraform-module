@@ -17,6 +17,7 @@ package tests
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
@@ -34,7 +36,7 @@ import (
 func newTestTofu(t *testing.T) *tfsandbox.Tofu {
 	srv := newTestAuxProviderServer(t)
 
-	tofu, err := tfsandbox.NewTofu(context.Background(), tfsandbox.DiscardLogger, nil, srv)
+	tofu, err := tfsandbox.NewTofu(context.Background(), newTestLogger(t), nil, srv)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -92,8 +94,22 @@ func skipLocalRunsWithoutCreds(t *testing.T) {
 
 func newPulumiTest(t pulumitest.PT, source string, opts ...opttest.Option) *pulumitest.PulumiTest {
 	t.Helper()
+
+	// Ensure a locally pinned Pulumi CLI is used for the test.
+	localPulumi := filepath.Join(getRoot(t), ".pulumi")
+	pulumiCommand, err := auto.NewPulumiCommand(&auto.PulumiCommandOptions{
+		Root: localPulumi,
+	})
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+	opts = append(opts, opttest.WorkspaceOptions(auto.Pulumi(pulumiCommand)))
+
+	// Randomize the stack name so that parallel tests have fewer collision points.
 	pto := integration.ProgramTestOptions{Dir: source}
 	randomStackName := pto.GetStackName()
 	opts = append(opts, opttest.StackName(string(randomStackName)))
+
 	return pulumitest.NewPulumiTest(t, source, opts...)
 }
