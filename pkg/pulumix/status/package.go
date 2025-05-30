@@ -39,13 +39,13 @@ type Pool interface {
 
 // Configures the [Pool] behavior.
 type PoolOpts struct {
-	// How many connections to keep per address. Default: 1
+	// How many connections to keep per address. Default: 16
 	MaxConnectionsPerAddress int
 }
 
 func NewPool(opts PoolOpts) Pool {
 	if opts.MaxConnectionsPerAddress == 0 {
-		opts.MaxConnectionsPerAddress = 1
+		opts.MaxConnectionsPerAddress = 16
 	}
 	return &resourceStatusClientPoolImpl{opts: opts}
 }
