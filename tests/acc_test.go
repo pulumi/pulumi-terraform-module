@@ -1188,13 +1188,13 @@ func TestRefresh(t *testing.T) {
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	logLevel := uint(13)
-	debugOpts = debug.LoggingOptions{
-		LogLevel:      &logLevel,
-		LogToStdErr:   true,
-		FlowToPlugins: true,
-		Debug:         true,
-	}
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
 
 	// Now perform a refresh.
 	t.Logf("## pulumi refresh: expect to detect drift and update it")
@@ -1212,31 +1212,22 @@ func TestRefresh(t *testing.T) {
 	// TODO[github.com/pulumi/pulumi#2710] Refresh does not update stack outputs
 	outMap, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
-	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+	autogold.Expect(map[string]any{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+
+	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
+	expectBucketTag("b")
 
 	if viewsEnabled {
 		// Update the Module resource AND the bucket resource-view, total count of 2.
 		require.Equal(t, &map[string]int{"same": 1, "update": 2}, rc)
 
-		// Check that in the state the bucket has TestTag="b" now as refresh took effect.
-		expectBucketTag("a") // TODO this is not right!
-
-		var pretty map[string]any
-		err := json.Unmarshal(it.ExportStack(t).Deployment, &pretty)
-		require.NoError(t, err)
-
-		printed, err := json.MarshalIndent(pretty, "", "  ")
-		require.NoError(t, err)
-
-		t.Logf("DOUBLE-CHECK FINAL STATE: %s", printed)
-
-		rawTFState := mustFindRawState(t, it, "bucketmod")
-
-		t.Logf("DOUBLE-CHECK RAW TF STATE: %#v", rawTFState)
+		// Check that in the TF state the tag is "b" also.
+		addr := "module.mybucketmod.aws_s3_bucket.tf-test-bucket"
+		raw := assertTFStateResourceExists(t, it, "bucketmod", addr)
+		instance := raw.(map[string]any)["instances"].([]any)[0].(map[string]any)
+		tags := instance["attributes"].(map[string]any)["tags"]
+		assert.Equal(t, map[string]any{"TestTag": "b"}, tags)
 	} else {
-		// Check that in the state the bucket has TestTag="b" now as refresh took effect.
-		expectBucketTag("b")
-
 		autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
 	}
 }
@@ -1618,7 +1609,14 @@ func Test_LocalModule_RelativePath(t *testing.T) {
 // assertTFStateResourceExists checks if a resource exists in the TF state.
 // packageName should be the name of the package used in `pulumi package add`
 // resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
-func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packageName string, resourceAddress string) {
+//
+// returns the raw TF state for the resource
+func assertTFStateResourceExists(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	packageName string,
+	resourceAddress string,
+) any {
 	tfStateRaw := mustFindRawState(t, pt, packageName)
 	tfState, isMap := tfStateRaw.(map[string]any)
 	require.True(t, isMap)
@@ -1632,7 +1630,7 @@ func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packag
 
 	resources, ok := state["resources"].([]any)
 	require.Truef(t, ok, "TF state must contain 'resources': %v", state)
-	contains := slices.ContainsFunc(resources, func(res any) bool {
+	isMatching := func(res any) bool {
 		resMap, ok := res.(map[string]any)
 		require.Truef(t, ok, "resources must be a map")
 		module, ok := resMap["module"].(string)
@@ -1643,8 +1641,10 @@ func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packag
 		require.Truef(t, ok, "name key must exist")
 		fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
 		return fullName == resourceAddress
-	})
-	require.Truef(t, contains, "TF state must contain resource %s", resourceAddress)
+	}
+	require.Truef(t, slices.ContainsFunc(resources, isMatching),
+		"TF state must contain resource %s", resourceAddress)
+	return resources[slices.IndexFunc(resources, isMatching)]
 }
 
 // mustFindDeploymentResourceByType finds a resource in the deployment by its type.
