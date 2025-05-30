@@ -1232,10 +1232,7 @@ func TestRefresh(t *testing.T) {
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeleted(t *testing.T) {
 	t.Parallel()
-
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-	}
+	tw := newTestWriter(t)
 
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
@@ -1250,32 +1247,49 @@ func TestRefreshDeleted(t *testing.T) {
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
 
-	// First provision a bucket.
+	t.Logf("## pulumi up: expect provision a bucket with tag=a")
 	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
+	it.Up(t, optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
 	stateA := it.ExportStack(t)
 
-	// Then destroy the stack so that the bucket is removed from the cloud.
-	it.Destroy(t)
+	addr := "module.mybucketmod.aws_s3_bucket.tf-test-bucket"
+	assertTFStateResourceExists(t, it, "bucketmod", addr)
 
-	// Now reset Pulumi state so Pului thinks that the bucket exists.
+	t.Logf("## pulumi destroy: remove the bucket from the cloud")
+	it.Destroy(t, optdestroy.ProgressStreams(tw), optdestroy.ErrorProgressStreams(tw))
+
+	t.Logf("## pulumi stack import: reset the state the bucket is presumed to exist")
 	it.ImportStack(t, stateA)
 
-	// Now perform a refresh.
-	refreshResult := it.Refresh(t)
-	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
+	t.Logf("## pulumi refresh: expect to detect that the resource is gone and reconstruct it")
+	refreshResult := it.Refresh(t,
+		optrefresh.Diff(),
+		optrefresh.ProgressStreams(tw),
+		optrefresh.ErrorProgressStreams(tw),
+		optrefresh.DebugLogging(debugOpts),
+	)
 
 	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"delete": 1, "same": 3}).Equal(t, rc)
+	assert.Equal(t, &map[string]int{"delete": 1, "same": conditionalCount(3, 2)}, rc)
 
+	// Check that bucket view-state no longer exists in the Pulumi statefile.
 	stateR := it.ExportStack(t)
-
 	var deployment apitype.DeploymentV3
 	err = json.Unmarshal(stateR.Deployment, &deployment)
 	require.NoError(t, err)
 
+	assert.Equal(t, conditionalCount(4, 3), len(deployment.Resources)) // how many should this be?
 	bucketFound := 0
 	for _, r := range deployment.Resources {
 		if r.Type == "bucketmod:tf:aws_s3_bucket" {
@@ -1283,6 +1297,10 @@ func TestRefreshDeleted(t *testing.T) {
 		}
 	}
 	require.Equal(t, 0, bucketFound)
+
+	// Check that the bucket state no longer exists in the TF state file.
+	_, ok := findTFStateResource(t, it, "bucketmod", addr)
+	require.Falsef(t, ok, "%q resource should have been removed from the TF state", addr)
 }
 
 // Verify that when there is no drift, refresh works without any changes.
@@ -1603,17 +1621,12 @@ func Test_LocalModule_RelativePath(t *testing.T) {
 	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
 }
 
-// assertTFStateResourceExists checks if a resource exists in the TF state.
-// packageName should be the name of the package used in `pulumi package add`
-// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
-//
-// returns the raw TF state for the resource
-func assertTFStateResourceExists(
+func findTFStateResource(
 	t *testing.T,
 	pt *pulumitest.PulumiTest,
 	packageName string,
 	resourceAddress string,
-) any {
+) (any, bool) {
 	tfStateRaw := mustFindRawState(t, pt, packageName)
 	tfState, isMap := tfStateRaw.(map[string]any)
 	require.True(t, isMap)
@@ -1637,11 +1650,31 @@ func assertTFStateResourceExists(
 		name, ok := resMap["name"].(string)
 		require.Truef(t, ok, "name key must exist")
 		fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
+
+		t.Logf("??? Checking %q", fullName)
 		return fullName == resourceAddress
 	}
-	require.Truef(t, slices.ContainsFunc(resources, isMatching),
-		"TF state must contain resource %s", resourceAddress)
-	return resources[slices.IndexFunc(resources, isMatching)]
+	if slices.ContainsFunc(resources, isMatching) {
+		return resources[slices.IndexFunc(resources, isMatching)], true
+
+	}
+	return nil, false
+}
+
+// assertTFStateResourceExists checks if a resource exists in the TF state.
+// packageName should be the name of the package used in `pulumi package add`
+// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
+//
+// returns the raw TF state for the resource
+func assertTFStateResourceExists(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	packageName string,
+	resourceAddress string,
+) any {
+	rstate, ok := findTFStateResource(t, pt, packageName, resourceAddress)
+	require.Truef(t, ok, "TF state must contain resource %s", resourceAddress)
+	return rstate
 }
 
 // mustFindDeploymentResourceByType finds a resource in the deployment by its type.
