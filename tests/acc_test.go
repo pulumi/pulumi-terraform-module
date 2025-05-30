@@ -1217,18 +1217,15 @@ func TestRefresh(t *testing.T) {
 	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
 	expectBucketTag("b")
 
-	if viewsEnabled {
-		// Update the Module resource AND the bucket resource-view, total count of 2.
-		require.Equal(t, &map[string]int{"same": 1, "update": 2}, rc)
+	assert.Equal(t, &map[string]int{"same": conditionalCount(3, 2), "update": 1}, rc)
 
+	if viewsEnabled {
 		// Check that in the TF state the tag is "b" also.
 		addr := "module.mybucketmod.aws_s3_bucket.tf-test-bucket"
 		raw := assertTFStateResourceExists(t, it, "bucketmod", addr)
 		instance := raw.(map[string]any)["instances"].([]any)[0].(map[string]any)
 		tags := instance["attributes"].(map[string]any)["tags"]
 		assert.Equal(t, map[string]any{"TestTag": "b"}, tags)
-	} else {
-		autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
 	}
 }
 

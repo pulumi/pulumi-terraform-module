@@ -113,7 +113,7 @@ func viewStepsGeneric(
 	return steps
 }
 
-func viewStepOp(changeKind tfsandbox.ChangeKind, drift bool) []pulumirpc.ViewStep_Op {
+func viewStepOp(changeKind tfsandbox.ChangeKind, _ bool /*drift*/) []pulumirpc.ViewStep_Op {
 	switch changeKind {
 	case tfsandbox.NoOp:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_SAME}
