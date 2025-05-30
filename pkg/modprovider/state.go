@@ -365,7 +365,7 @@ func (h *moduleStateHandler) Read(
 		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 	}
 
-	plan, err := tf.PlanRefreshOnly(ctx, logger)
+	plan, err := tf.Plan(ctx, logger, tfsandbox.RefreshOpts{RefreshOnly: true})
 	if err != nil {
 		return nil, fmt.Errorf("Planning module refresh failed: %w", err)
 	}

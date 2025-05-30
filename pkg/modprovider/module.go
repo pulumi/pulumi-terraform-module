@@ -178,9 +178,12 @@ func (h *moduleHandler) applyModuleOperation(
 
 	logger := newResourceLogger(h.hc, urn)
 
+	// Because of RefreshBeforeUpdate, Pulumi CLI has already refreshed at this point.
+	refreshOpts := tfsandbox.RefreshOpts{NoRefresh: true}
+
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx, logger)
+	plan, err := tf.Plan(ctx, logger, refreshOpts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
@@ -196,7 +199,8 @@ func (h *moduleHandler) applyModuleOperation(
 		views = viewStepsPlan(packageName, plan)
 		moduleOutputs = plan.Outputs()
 	} else {
-		tfState, err := tf.Apply(ctx, logger) // TODO[pulumi/pulumi-terraform-module#341] reuse the plan
+		// TODO[pulumi/pulumi-terraform-module#341] reuse the plan
+		tfState, err := tf.Apply(ctx, logger, refreshOpts)
 		if tfState != nil {
 			msg := fmt.Sprintf("tf.Apply produced the following state: %s", tfState.PrettyPrint())
 			logger.Log(ctx, tfsandbox.Debug, msg)
@@ -323,8 +327,9 @@ func (h *moduleHandler) Create(
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
 	return &pulumirpc.CreateResponse{
-		Id:         moduleStateResourceID,
-		Properties: props,
+		Id:                  moduleStateResourceID,
+		Properties:          props,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
@@ -388,7 +393,8 @@ func (h *moduleHandler) Update(
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties should not fail")
 
 	return &pulumirpc.UpdateResponse{
-		Properties: props,
+		Properties:          props,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
@@ -515,7 +521,7 @@ func (h *moduleHandler) Read(
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
 	}
 
-	plan, err := tf.PlanRefreshOnly(ctx, logger)
+	plan, err := tf.Plan(ctx, logger, tfsandbox.RefreshOpts{RefreshOnly: true})
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error planning refresh: %v", err))
 		return nil, err
@@ -550,10 +556,19 @@ func (h *moduleHandler) Read(
 		return nil, err
 	}
 
+	// inputs never change on refresh
+	freshInputs := moduleInputs
+
+	freshInputsStruct, err := plugin.MarshalProperties(freshInputs, h.marshalOpts())
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.ReadResponse{
-		Id:         moduleResourceID,
-		Properties: properties,
-		Inputs:     req.GetInputs(), // inputs never change on refresh
+		Id:                  moduleResourceID,
+		Properties:          properties,
+		Inputs:              freshInputsStruct,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
