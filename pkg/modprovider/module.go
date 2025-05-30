@@ -435,6 +435,10 @@ func (h *moduleHandler) Delete(
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
 	}
 
+	// TODO[pulumi/pulumi-terraform-module#247] once the engine is ready to receive view steps multiple times, the
+	// code here should be able to plan the destroy and send the view-steps right after planning, and then send
+	// udpated view-steps after the actual destroy operation finishes. This should improve user latency to first
+	// seeing the changes.
 	stateBeforeDestroy, err := tf.Show(ctx, logger)
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running tofu show before delete: %v", err))

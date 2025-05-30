@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -182,6 +183,11 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		upResult := pt.Up(t)
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
 		assert.Equal(t, &map[string]int{"same": conditionalCount(5, 4)}, upResult.Summary.ResourceChanges)
+	})
+
+	t.Run("pulumi destroy", func(t *testing.T) {
+		tw := newTestWriter(t)
+		pt.Destroy(t, optdestroy.ErrorProgressStreams(tw), optdestroy.ProgressStreams(tw))
 	})
 }
 
