@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package modprovider
+package status
 
 import (
 	"bytes"
@@ -29,23 +29,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
-
-type resourceStatusClientPool interface {
-	Acquire(ctx context.Context, logger tfsandbox.Logger, address string) (resourceStatusClientLease, error)
-}
-
-type resourceStatusClientLease interface {
-	pulumirpc.ResourceStatusClient
-	Release()
-}
 
 type resourceStatusClientPoolImpl struct {
 	mutex sync.Mutex
 
 	// The pool of resource status clients indexed by address.
 	pool map[string]*puddle.Pool[resourceStatusHandle]
+
+	opts PoolOpts
 }
 
 type resourceStatusHandle struct {
@@ -53,7 +46,7 @@ type resourceStatusHandle struct {
 	conn   *grpc.ClientConn
 }
 
-var _ resourceStatusClientPool = (*resourceStatusClientPoolImpl)(nil)
+var _ Pool = (*resourceStatusClientPoolImpl)(nil)
 
 func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 	address string,
@@ -70,7 +63,7 @@ func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 	}
 
 	pool, err := puddle.NewPool(&puddle.Config[resourceStatusHandle]{
-		MaxSize: 1,
+		MaxSize: int32(p.opts.MaxConnectionsPerAddress), //nolint:gosec
 		Constructor: func(context.Context) (resourceStatusHandle, error) {
 			opts := grpc.WithTransportCredentials(insecure.NewCredentials())
 			conn, err := grpc.NewClient(address, opts)
@@ -98,9 +91,9 @@ func (p *resourceStatusClientPoolImpl) getOrCreatePool(
 
 func (p *resourceStatusClientPoolImpl) Acquire(
 	ctx context.Context,
-	logger tfsandbox.Logger,
+	logger pulumix.Logger,
 	address string,
-) (resourceStatusClientLease, error) {
+) (Lease, error) {
 	pool, err := p.getOrCreatePool(address)
 	if err != nil {
 		return nil, err
@@ -131,13 +124,12 @@ func (r *resourceStatusClientLeaseImpl) Release() {
 	r.release()
 }
 
-var _ resourceStatusClientLease = (*resourceStatusClientLeaseImpl)(nil)
+var _ Lease = (*resourceStatusClientLeaseImpl)(nil)
 
 type resourceStatusClientWithLogging struct {
 	pulumirpc.ResourceStatusClient
 
-	// Note: this interface probably should not live in tfsandbox but is generically useful.
-	logger tfsandbox.Logger
+	logger pulumix.Logger
 }
 
 func (c *resourceStatusClientWithLogging) PublishViewSteps(
@@ -155,12 +147,12 @@ func (c *resourceStatusClientWithLogging) PublishViewSteps(
 		contract.AssertNoErrorf(err, "json.Indent failed on ViewStep")
 		fmt.Fprintf(&logMsg, "\n")
 	}
-	c.logger.Log(ctx, tfsandbox.Debug, logMsg.String())
+	c.logger.Log(ctx, pulumix.Debug, logMsg.String())
 	response, err := c.ResourceStatusClient.PublishViewSteps(ctx, in, opts...)
 	if err != nil {
-		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) failed: %v", in.Token, err))
+		c.logger.Log(ctx, pulumix.Debug, fmt.Sprintf("PublishViewSteps(token=%q) failed: %v", in.Token, err))
 	} else {
-		c.logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("PublishViewSteps(token=%q) finished sending %d steps",
+		c.logger.Log(ctx, pulumix.Debug, fmt.Sprintf("PublishViewSteps(token=%q) finished sending %d steps",
 			in.Token, len(in.Steps)))
 	}
 	return response, err

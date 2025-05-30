@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
+	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix/status"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -45,14 +46,14 @@ const (
 type moduleHandler struct {
 	hc                *provider.HostClient
 	auxProviderServer *auxprovider.Server
-	statusPool        resourceStatusClientPool
+	statusPool        status.Pool
 }
 
 func newModuleHandler(hc *provider.HostClient, as *auxprovider.Server) *moduleHandler {
 	return &moduleHandler{
 		hc:                hc,
 		auxProviderServer: as,
-		statusPool:        &resourceStatusClientPoolImpl{},
+		statusPool:        status.NewPool(status.PoolOpts{}),
 	}
 }
 
@@ -369,6 +370,7 @@ func (h *moduleHandler) Update(
 		packageName,
 		req.GetPreview(),
 	)
+	// TODO[pulumi/pulumi-terraform-module#342] partial error handling needs to modify this.
 	if err != nil {
 		return nil, err
 	}

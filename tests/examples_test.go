@@ -153,11 +153,6 @@ func Test_AlbExample(t *testing.T) {
 			"steps": []apitype.OpType{apitype.OpType("update")},
 		}}).Equal(t, resourceDiffs)
 	} else {
-		// There are some issues currently with views and update plans, making detailed asserts unreliable.
-		// Instead we run preview directly and check the result.
-		//
-		// TODO[pulumi/pulumi-terraform-module#332]: views do not currently detect drift, so the result is an
-		// empty preview here. This may change to an Update plan once the issue with drift detection is fixed.
 		previewResult := integrationTest.Preview(t,
 			optpreview.Diff(),
 			optpreview.ErrorProgressStreams(tw),
