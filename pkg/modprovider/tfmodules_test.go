@@ -352,14 +352,15 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 func testUsingExectutor(t *testing.T, code func(string)) {
 	awaitRootElement := sync.WaitGroup{}
 	awaitRootElement.Add(1)
-	t.Run("using_executor_terraform", func(*testing.T) {
-		defer awaitRootElement.Done()
-		code("terraform")
-	})
 
 	t.Run("using_executor_opentufo", func(*testing.T) {
-		awaitRootElement.Wait()
+		defer awaitRootElement.Done()
 		code("opentofu")
+	})
+
+	t.Run("using_executor_terraform", func(*testing.T) {
+		awaitRootElement.Wait()
+		code("terraform")
 	})
 }
 
