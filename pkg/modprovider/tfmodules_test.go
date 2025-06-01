@@ -48,7 +48,8 @@ func TestExtractModuleContentWorks(t *testing.T) {
 		logger := &testLogger{}
 		source := TFModuleSource("terraform-aws-modules/vpc/aws")
 		version := TFModuleVersion("5.18.1")
-		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, srv, executor)
+		modDir := tfsandbox.ModuleWorkdir(source, version)
+		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, modDir, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
 
 		awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
