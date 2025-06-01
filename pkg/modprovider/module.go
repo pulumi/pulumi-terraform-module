@@ -104,12 +104,13 @@ func (h *moduleHandler) prepSandbox(
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
-) (*tfsandbox.Tofu, error) {
+	executor string,
+) (*tfsandbox.ModuleRuntime, error) {
 	logger := newResourceLogger(h.hc, urn)
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, wd, h.auxProviderServer, executor)
 	if err != nil {
-		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}
 
 	// Important: the name of the module instance in TF must be at least unique enough to
@@ -130,7 +131,7 @@ func (h *moduleHandler) prepSandbox(
 		moduleVersion, tf.WorkingDir(),
 		moduleInputs, outputSpecs, providersConfig)
 	if err != nil {
-		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, fmt.Errorf("seed file generation failed: %w", err)
 	}
 
 	if oldOutputs != nil {
@@ -143,7 +144,7 @@ func (h *moduleHandler) prepSandbox(
 
 	err = tf.Init(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("Init failed: %w", err)
+		return nil, fmt.Errorf("init failed: %w", err)
 	}
 
 	return tf, nil
@@ -161,6 +162,7 @@ func (h *moduleHandler) applyModuleOperation(
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
 	preview bool,
+	executor string,
 ) (resource.PropertyMap, []*pulumirpc.ViewStep, error) {
 	tf, err := h.prepSandbox(
 		ctx,
@@ -171,6 +173,7 @@ func (h *moduleHandler) applyModuleOperation(
 		moduleSource,
 		moduleVersion,
 		providersConfig,
+		executor,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
@@ -249,7 +252,7 @@ func (h *moduleHandler) initializationError(outputs resource.PropertyMap, reason
 // Pulls the TF state and formats module outputs with the special __ meta-properties.
 func (h *moduleHandler) outputs(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	tfState *tfsandbox.State,
 ) (resource.PropertyMap, error) {
 	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
@@ -273,6 +276,7 @@ func (h *moduleHandler) Create(
 	providersConfig map[string]resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
+	executor string,
 ) (*pulumirpc.CreateResponse, error) {
 	urn := urn.URN(req.GetUrn())
 	logger := newResourceLogger(h.hc, urn)
@@ -301,6 +305,7 @@ func (h *moduleHandler) Create(
 		inferredModule,
 		packageName,
 		req.GetPreview(),
+		executor,
 	)
 
 	// Publish views even if applyErr != nil as is the case of partial failures.
@@ -336,6 +341,7 @@ func (h *moduleHandler) Update(
 	providersConfig map[string]resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
 	packageName packageName,
+	executor string,
 ) (*pulumirpc.UpdateResponse, error) {
 	urn := urn.URN(req.GetUrn())
 	logger := newResourceLogger(h.hc, urn)
@@ -369,6 +375,7 @@ func (h *moduleHandler) Update(
 		inferredModule,
 		packageName,
 		req.GetPreview(),
+		executor,
 	)
 	// TODO[pulumi/pulumi-terraform-module#342] partial error handling needs to modify this.
 	if err != nil {
@@ -401,6 +408,7 @@ func (h *moduleHandler) Delete(
 	moduleVersion TFModuleVersion,
 	inferredModule *InferredModuleSchema,
 	providersConfig map[string]resource.PropertyMap,
+	executor string,
 ) (*emptypb.Empty, error) {
 	urn := urn.URN(req.GetUrn())
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
@@ -430,6 +438,7 @@ func (h *moduleHandler) Delete(
 		moduleSource,
 		moduleVersion,
 		providersConfig,
+		executor,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
@@ -477,6 +486,7 @@ func (h *moduleHandler) Read(
 	moduleVersion TFModuleVersion,
 	inferredModule *InferredModuleSchema,
 	providersConfig map[string]resource.PropertyMap,
+	executor string,
 ) (*pulumirpc.ReadResponse, error) {
 	if req.Inputs == nil {
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
@@ -510,6 +520,7 @@ func (h *moduleHandler) Read(
 		moduleSource,
 		moduleVersion,
 		providersConfig,
+		executor,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)

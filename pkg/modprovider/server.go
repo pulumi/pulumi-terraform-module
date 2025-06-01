@@ -643,7 +643,7 @@ func (s *server) Create(
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Create(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-				s.inferredModuleSchema, s.packageName)
+				s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
 		}
@@ -668,7 +668,7 @@ func (s *server) Update(
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Update(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-				s.inferredModuleSchema, s.packageName)
+				s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Update]: type %q is not supported yet", req.GetType())
 		}
@@ -694,7 +694,7 @@ func (s *server) Delete(
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Delete(ctx, req, s.packageName,
 				s.params.TFModuleSource, s.params.TFModuleVersion,
-				s.inferredModuleSchema, providersConfig)
+				s.inferredModuleSchema, providersConfig, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())
 		}
@@ -734,7 +734,7 @@ func (s *server) Read(
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Read(ctx, req, s.packageName,
 				s.params.TFModuleSource, s.params.TFModuleVersion,
-				s.inferredModuleSchema, providersConfig)
+				s.inferredModuleSchema, providersConfig, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
 		}

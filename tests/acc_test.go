@@ -482,20 +482,20 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 		t.Run("pulumi up", func(t *testing.T) {
 			skipLocalRunsWithoutCreds(t)
-	
+
 			res := pt.Up(t)
 			t.Logf("%s", res.StdOut+res.StdErr)
-	
+
 			expectedResourceCount := conditionalCount(7, 6)
-	
+
 			require.Equal(t, res.Summary.ResourceChanges, &map[string]int{
 				"create": expectedResourceCount,
 			})
-	
+
 			tfStateRaw := mustFindRawState(t, pt, "vpc")
 			tfState, isMap := tfStateRaw.(map[string]any)
 			require.Truef(t, isMap, "state property value must be map-like")
-	
+
 			//nolint:lll
 			// secret signature https://github.com/pulumi/pulumi/blob/4e3ca419c9dc3175399fc24e2fa43f7d9a71a624/developer-docs/architecture/deployment-schema.md?plain=1#L483-L487
 			assert.Containsf(t, tfState, "4dabf18193072939515e22adb298388d",
@@ -517,11 +517,18 @@ func TestS3BucketModSecret(t *testing.T) {
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
 	testUsingTerraformAndOpentofu(t, func() {
-
-		integrationTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+		integrationTest := newPulumiTest(t, testProgram, localPath)
 
 		// Get a prefix for resource names
 		prefix := generateTestResourcePrefix()
+
+		// Set prefix via config
+		integrationTest.SetConfig(t, "prefix", prefix)
+
+		// Generate package
+		//nolint:all
+		pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+		integrationTest.Up(t)
 
 		encrConf := mustFindDeploymentResourceByType(t,
 			integrationTest,
@@ -1102,35 +1109,35 @@ func TestDiffDetail(t *testing.T) {
 		// Up
 		diffDetailTest.Up(t)
 
-	// Preview
-	var debugOpts debug.LoggingOptions
+		// Preview
+		var debugOpts debug.LoggingOptions
 
-	// To enable debug logging in this test, un-comment:
-	// logLevel := uint(13)
-	// debugOpts = debug.LoggingOptions{
-	// 	LogLevel:      &logLevel,
-	// 	LogToStdErr:   true,
-	// 	FlowToPlugins: true,
-	// 	Debug:         true,
-	// }
+		// To enable debug logging in this test, un-comment:
+		// logLevel := uint(13)
+		// debugOpts = debug.LoggingOptions{
+		// 	LogLevel:      &logLevel,
+		// 	LogToStdErr:   true,
+		// 	FlowToPlugins: true,
+		// 	Debug:         true,
+		// }
 
-	result := diffDetailTest.Preview(t,
-		optpreview.Diff(),
-		optpreview.ErrorProgressStreams(w),
-		optpreview.ProgressStreams(w),
-		optpreview.DebugLogging(debugOpts))
+		result := diffDetailTest.Preview(t,
+			optpreview.Diff(),
+			optpreview.ErrorProgressStreams(w),
+			optpreview.ProgressStreams(w),
+			optpreview.DebugLogging(debugOpts))
 
-	assert.Equal(t, map[apitype.OpType]int{
-		apitype.OpType("delete"): 1,
-		apitype.OpType("same"):   conditionalCount(4, 3),
-		apitype.OpType("update"): 1,
-	}, result.ChangeSummary)
+		assert.Equal(t, map[apitype.OpType]int{
+			apitype.OpType("delete"): 1,
+			apitype.OpType("same"):   conditionalCount(4, 3),
+			apitype.OpType("update"): 1,
+		}, result.ChangeSummary)
 
-	// Expected CLI to render a diff on removing server_side_encryption_configuration input from the module.
-	assert.Contains(t, result.StdOut, "- server_side_encryption_configuration:")
+		// Expected CLI to render a diff on removing server_side_encryption_configuration input from the module.
+		assert.Contains(t, result.StdOut, "- server_side_encryption_configuration:")
 
-	// Also expected an entry for deleting the encryption config resource.
-	assert.Contains(t, result.StdOut, "- bucket:tf:aws_s3_bucket_server_side_encryption_configuration: (delete)")
+		// Also expected an entry for deleting the encryption config resource.
+		assert.Contains(t, result.StdOut, "- bucket:tf:aws_s3_bucket_server_side_encryption_configuration: (delete)")
 	})
 }
 
@@ -1444,15 +1451,16 @@ func Test_Dependencies(t *testing.T) {
 	randModProg := filepath.Join("testdata", "programs", "ts", "dep-tester")
 
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
-	
-
-	pt := pulumitest.NewPulumiTest(t, randModProg, localPath)
+	pt := newPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
 	packageName := randmod
 
 	// pulumi package add <provider-path> <randmod-path> <package-name>
 	pulumiPackageAdd(t, pt, localProviderBinPath, randMod, packageName)
+
+	upOutput := pt.Up(t)
+	t.Logf("pulumi up said: %s\n", upOutput.StdOut+upOutput.StdErr)
 
 	deploy := pt.ExportStack(t)
 	fixupRandomizedStackURNs(&deploy)
@@ -1470,55 +1478,54 @@ func Test_Dependencies(t *testing.T) {
 		}
 
 		if r.URN.Type() == "randmod:index:Module" {
-				slices.Sort(r.Dependencies)
+			slices.Sort(r.Dependencies)
 
-					// The Component depends on the union of things passed in dependsOn by the user and things
-					// flowing through the input dependencies.
-					autogold.Expect([]urn.URN{
-						urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
-						urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
-					}).Equal(t, r.Dependencies)
-					autogold.Expect(map[resource.PropertyKey][]urn.URN{}).Equal(t, r.PropertyDependencies)
-				}
+			// The Component depends on the union of things passed in dependsOn by the user and things
+			// flowing through the input dependencies.
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
+			}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{}).Equal(t, r.PropertyDependencies)
+		}
 
-				if r.URN.Type() == "randmod:index:ModuleState" {
-					// If dependencies are implemented correctly, this resource must depend on resource
-					// dependencies that are flowing through the module inputs such as the "seed" resource.
+		if r.URN.Type() == "randmod:index:ModuleState" {
+			// If dependencies are implemented correctly, this resource must depend on resource
+			// dependencies that are flowing through the module inputs such as the "seed" resource.
 
-					//nolint:lll
-					autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
-					autogold.Expect(map[resource.PropertyKey][]urn.URN{
-						resource.PropertyKey("__module"): {},
-						//nolint:lll
-						resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
-					}).Equal(t, r.PropertyDependencies)
-				}
+			//nolint:lll
+			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("__module"): {},
+				//nolint:lll
+				resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
+			}).Equal(t, r.PropertyDependencies)
+		}
 
-				if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
-					// If dependencies are implemented correctly, this resource must depend on the ModuleState
-					// resource, which in turn depends on the "seed" resource.
+		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
+			// If dependencies are implemented correctly, this resource must depend on the ModuleState
+			// resource, which in turn depends on the "seed" resource.
 
-					slices.Sort(r.Dependencies)
+			slices.Sort(r.Dependencies)
 
-					//nolint:lll
-					autogold.Expect([]urn.URN{
-						urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
-						urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
-					}).Equal(t, r.Dependencies)
+			//nolint:lll
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+			}).Equal(t, r.Dependencies)
 
-					for _, v := range r.PropertyDependencies {
-						slices.Sort(v)
-					}
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
 
-					autogold.Expect(map[resource.PropertyKey][]urn.URN{
-						resource.PropertyKey("max"): {
-							urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
-							urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
-						},
-						resource.PropertyKey("min"):  {},
-						resource.PropertyKey("seed"): {},
-					}).Equal(t, r.PropertyDependencies)
-				}
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("max"): {
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+				},
+				resource.PropertyKey("min"):  {},
+				resource.PropertyKey("seed"): {},
+			}).Equal(t, r.PropertyDependencies)
 		}
 	}
 
@@ -1530,38 +1537,38 @@ func Test_Dependencies(t *testing.T) {
 
 		// The module resource myrandmod must depend on seed and extra resources.
 		if r.URN.Type() == "randmod:index:Module" && r.URN.Name() == "myrandmod" {
-				slices.Sort(r.Dependencies)
-				autogold.Expect([]urn.URN{
-					urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
-					urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
-				}).Equal(t, r.Dependencies)
+			slices.Sort(r.Dependencies)
+			autogold.Expect([]urn.URN{
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
+				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
+			}).Equal(t, r.Dependencies)
 
-				for _, v := range r.PropertyDependencies {
-					slices.Sort(v)
-				}
-				autogold.Expect(map[resource.PropertyKey][]urn.URN{
-					resource.PropertyKey("maxlen"): {},
-					//nolint:lll
-					resource.PropertyKey("randseed"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
-				}).Equal(t, r.PropertyDependencies)
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("maxlen"): {},
+				//nolint:lll
+				resource.PropertyKey("randseed"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
+			}).Equal(t, r.PropertyDependencies)
 		}
 
 		// The dependent resource must depend on the myrandmod module resource.
 		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
-				slices.Sort(r.Dependencies)
-				//nolint:lll
-				autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod")}).Equal(t, r.Dependencies)
+			slices.Sort(r.Dependencies)
+			//nolint:lll
+			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod")}).Equal(t, r.Dependencies)
 
-				for _, v := range r.PropertyDependencies {
-					slices.Sort(v)
-				}
-				autogold.Expect(map[resource.PropertyKey][]urn.URN{
-					resource.PropertyKey("max"): {
-						urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
-					},
-					resource.PropertyKey("min"):  {},
-					resource.PropertyKey("seed"): {},
-				}).Equal(t, r.PropertyDependencies)
+			for _, v := range r.PropertyDependencies {
+				slices.Sort(v)
+			}
+			autogold.Expect(map[resource.PropertyKey][]urn.URN{
+				resource.PropertyKey("max"): {
+					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
+				},
+				resource.PropertyKey("min"):  {},
+				resource.PropertyKey("seed"): {},
+			}).Equal(t, r.PropertyDependencies)
 		}
 	}
 }
