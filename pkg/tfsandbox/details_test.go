@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -392,6 +393,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 		name            string
 		stateResource   tfjson.StateResource
 		expected        resource.PropertyMap
+		expectedValue   autogold.Value
 		sensitiveValues json.RawMessage
 	}{
 		{
@@ -521,13 +523,31 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 				},
 			}),
 		},
+		{
+			name:            "Do not secret-mark an explicit sensitive null value",
+			sensitiveValues: []byte(`{"sensitive_content": true}`),
+			stateResource: tfjson.StateResource{
+				Type:    "local_file",
+				Address: "module.test-lambda.local_file.archive_plan[0]",
+				AttributeValues: map[string]any{
+					"sensitive_content": nil,
+				},
+			},
+			//nolint:lll
+			expectedValue: autogold.Expect(resource.PropertyMap{resource.PropertyKey("sensitive_content"): resource.PropertyValue{}}),
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.stateResource.SensitiveValues = tc.sensitiveValues
 			actual := extractPropertyMapFromState(tc.stateResource)
-			assert.Equal(t, tc.expected, actual)
+
+			if tc.expectedValue != nil {
+				tc.expectedValue.Equal(t, actual)
+			} else {
+				assert.Equal(t, tc.expected, actual)
+			}
 		})
 	}
 }

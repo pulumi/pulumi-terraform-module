@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
+	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
@@ -156,7 +157,7 @@ func newModuleComponentResource(
 	outputSpecs := []tfsandbox.TFOutputSpec{}
 	for outputName := range inferredModule.Outputs {
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name: outputName,
+			Name: tfsandbox.DecodePulumiTopLevelKey(outputName, flags.EnableViewsPreview),
 		})
 	}
 	err = tfsandbox.CreateTFFile(tfName, tfModuleSource,
