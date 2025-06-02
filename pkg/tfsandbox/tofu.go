@@ -20,14 +20,16 @@ import (
 	"math/rand/v2"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 
+	"github.com/hashicorp/hc-install/fs"
+	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 type Tofu struct {
@@ -101,9 +103,21 @@ func NewTofu(ctx context.Context, logger Logger, workdir Workdir, auxServer *aux
 		})
 	}
 
-	execPath, err := tofuresolver.Resolve(ctx, tofuresolver.ResolveOpts{})
+	tfInfo := fs.AnyVersion{
+		Product: &product.Product{
+			Name: "terraform",
+			BinaryName: func() string {
+				if runtime.GOOS == "windows" {
+					return "terraform.exe"
+				}
+				return "terraform"
+			},
+		},
+	}
+
+	execPath, err := tfInfo.Find(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error downloading tofu: %w", err)
+		return nil, fmt.Errorf("error finding terraform executable: %w", err)
 	}
 
 	workDir, err := workdirGetOrCreate(ctx, logger, workdir)
