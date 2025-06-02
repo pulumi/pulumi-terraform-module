@@ -52,7 +52,8 @@ func TestExtractModuleContentWorks(t *testing.T) {
 		modDir := tfsandbox.ModuleWorkdir(source, version).WithExecutor(executor)
 		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, modDir, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
-
+		err = os.RemoveAll(tf.WorkingDir())
+		assert.NoError(t, err, "failed to clean working directory")
 		awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
 		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 		assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
