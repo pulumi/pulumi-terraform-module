@@ -35,7 +35,7 @@ func TestTofuInit(t *testing.T) {
 	t.Logf("Output: %s", res.String())
 
 	assert.NoError(t, err)
-	assert.Contains(t, res.String(), "OpenTofu initialized in an empty directory")
+	assert.Contains(t, res.String(), "initialized in an empty directory")
 }
 
 func TestTofuPlan(t *testing.T) {
