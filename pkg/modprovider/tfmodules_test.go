@@ -18,7 +18,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
-	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
 type testLogger struct {
@@ -43,47 +41,28 @@ func (l *testLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, msg 
 	l.logs = append(l.logs, string(level)+": "+msg)
 }
 
-func TestExtractModuleContentWorksOpenTofu(t *testing.T) {
-	ctx := context.Background()
-
-	srv := newTestAuxProviderServer(t)
-	logger := &testLogger{}
-	source := TFModuleSource("terraform-aws-modules/vpc/aws")
-	version := TFModuleVersion("5.18.1")
-	modDir := tfsandbox.ModuleWorkdir(source, version).WithExecutor("tofu")
-	tf, err := tfsandbox.NewTofu(ctx, logger, modDir, srv, tofuresolver.ResolveOpts{})
-	assert.NoError(t, err, "failed to pick module runtime!")
-	awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
-	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
-	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
-	for _, log := range logger.logs {
-		t.Logf("Log: %s", log)
-	}
-
-}
-
-func TestExtractModuleContentWorksTerraform(t *testing.T) {
-	ctx := context.Background()
-
-	srv := newTestAuxProviderServer(t)
-	logger := &testLogger{}
-	source := TFModuleSource("terraform-aws-modules/vpc/aws")
-	version := TFModuleVersion("5.18.1")
-	modDir := tfsandbox.ModuleWorkdir(source, version).WithExecutor("terraform")
-	tf, err := tfsandbox.NewTerraform(ctx, logger, modDir, srv)
-	assert.NoError(t, err, "failed to pick module runtime")
-	awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
-	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
-	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
-	for _, log := range logger.logs {
-		t.Logf("Log: %s", log)
-	}
+func TestExtractModuleContentWorks(t *testing.T) {
+	testUsingExecutor(t, func(executor string) {
+		ctx := context.Background()
+		srv := newTestAuxProviderServer(t)
+		logger := &testLogger{}
+		source := TFModuleSource("terraform-aws-modules/vpc/aws")
+		version := TFModuleVersion("5.18.1")
+		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, srv, executor)
+		assert.NoError(t, err, "failed to pick module runtime")
+		awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
+		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+		assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
+		for _, log := range logger.logs {
+			t.Logf("Log: %s", log)
+		}
+	})
 }
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("terraform-aws-modules")
-	testUsingExectutor(t, func(executor string) {
+	testUsingExecutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
 		source := TFModuleSource("terraform-aws-modules/vpc/aws")
 		version := TFModuleVersion("5.19.0")
@@ -249,7 +228,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 	packageName := packageName("vpc")
 	version := TFModuleVersion("5.21.0")
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
-	testUsingExectutor(t, func(executor string) {
+	testUsingExecutor(t, func(executor string) {
 		testServer := newTestAuxProviderServer(t)
 		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, testServer, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
@@ -314,7 +293,7 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
 
-	testUsingExectutor(t, func(executor string) {
+	testUsingExecutor(t, func(executor string) {
 		logger := tfsandbox.DiscardLogger
 		testServer := newTestAuxProviderServer(t)
 		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, testServer, executor)
@@ -330,7 +309,7 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	packageName := packageName("demoWebsite")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
 
-	testUsingExectutor(t, func(executor string) {
+	testUsingExecutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
 		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
@@ -367,17 +346,20 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	})
 }
 
-func testUsingExectutor(t *testing.T, code func(string)) {
-	awaitRootElement := sync.WaitGroup{}
-	awaitRootElement.Add(1)
+func testUsingExecutor(t *testing.T, code func(string)) {
+	executor := os.Getenv("PULUMI_TERRAFORM_MODULE_EXECUTOR")
+	if executor != "" {
+		// for running tests in CI for different executors,
+		t.Logf("Using executor: %s", executor)
+		code(executor)
+		return
+	}
 
 	t.Run("using_executor_opentufo", func(*testing.T) {
-		defer awaitRootElement.Done()
 		code("opentofu")
 	})
 
 	t.Run("using_executor_terraform", func(*testing.T) {
-		awaitRootElement.Wait()
 		code("terraform")
 	})
 }
@@ -387,7 +369,7 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 	packageName := packageName("consulCluster")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
 
-	testUsingExectutor(t, func(executor string) {
+	testUsingExecutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
 		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
 		assert.NoError(t, err, "failed to pick module runtime")
@@ -425,7 +407,7 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 }
 
 func TestResolveModuleSources(t *testing.T) {
-	testUsingExectutor(t, func(executor string) {
+	testUsingExecutor(t, func(executor string) {
 		srv := newTestAuxProviderServer(t)
 		tf, err := tfsandbox.PickModuleRuntime(context.Background(), tfsandbox.DiscardLogger, nil, srv, executor)
 		require.NoError(t, err, "failed to pick module runtime")
