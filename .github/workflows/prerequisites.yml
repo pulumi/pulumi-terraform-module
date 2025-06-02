@@ -41,7 +41,7 @@ env:
 jobs:
   prerequisites:
     name: prerequisites
-    runs-on: ubuntu-latest
+    runs-on: pulumi-ubuntu-8core
     outputs:
       version: ${{ steps.provider-version.outputs.version }}
     steps:

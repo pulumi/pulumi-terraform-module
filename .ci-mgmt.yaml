@@ -21,3 +21,9 @@ actions:
       uses: opentofu/setup-opentofu@v1
       with:
         tofu_wrapper: false
+
+runner:
+  default: pulumi-ubuntu-8core
+  prerequisites: pulumi-ubuntu-8core
+  publish: pulumi-ubuntu-8core
+  # buildSdk: pulumi-ubuntu-8core
