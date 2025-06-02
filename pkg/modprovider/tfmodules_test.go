@@ -41,136 +41,155 @@ func (l *testLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, msg 
 	l.logs = append(l.logs, string(level)+": "+msg)
 }
 
+func newTestRuntime(t *testing.T, executor string) *tfsandbox.ModuleRuntime {
+	srv := newTestAuxProviderServer(t)
+
+	tofu, err := tfsandbox.PickModuleRuntime(context.Background(), tfsandbox.DiscardLogger, nil, srv, executor)
+	require.NoError(t, err, "failed to pick module runtime")
+	return tofu
+}
+
 func TestExtractModuleContentWorks(t *testing.T) {
-	testUsingExecutor(t, func(executor string) {
-		ctx := context.Background()
-		srv := newTestAuxProviderServer(t)
-		logger := &testLogger{}
-		source := TFModuleSource("terraform-aws-modules/vpc/aws")
-		version := TFModuleVersion("5.18.1")
-		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, srv, executor)
-		assert.NoError(t, err, "failed to pick module runtime")
-		awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
-		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
-		assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
-		for _, log := range logger.logs {
-			t.Logf("Log: %s", log)
-		}
-	})
+	executors := getExecutorsFromEnv()
+
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
+			ctx := context.Background()
+			logger := &testLogger{}
+			source := TFModuleSource("terraform-aws-modules/vpc/aws")
+			version := TFModuleVersion("5.18.1")
+			tf := newTestRuntime(t, executor)
+			awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
+			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+			assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
+			for _, log := range logger.logs {
+				t.Logf("Log: %s", log)
+			}
+		})
+	}
+}
+
+func getExecutorsFromEnv() []string {
+	executor := os.Getenv("PULUMI_TERRAFORM_MODULE_EXECUTOR")
+	if executor != "" {
+		return []string{executor}
+	}
+	return []string{"opentofu", "terraform"}
 }
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("terraform-aws-modules")
-	testUsingExecutor(t, func(executor string) {
-		srv := newTestAuxProviderServer(t)
-		source := TFModuleSource("terraform-aws-modules/vpc/aws")
-		version := TFModuleVersion("5.19.0")
-		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
-		assert.NoError(t, err, "failed to pick module runtime")
-		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
-		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
-		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
-		// verify a sample of the inputs with different inferred types
-		expectedSampleInputs := map[string]*schema.PropertySpec{
-			"cidr": {
-				Description: "(Optional) The IPv4 CIDR block for the VPC. CIDR can be" +
-					" explicitly set or it can be derived from IPAM using `ipv4_netmask_length` & `ipv4_ipam_pool_id`",
-				Secret:   false,
-				TypeSpec: stringType,
-			},
-			"create_database_subnet_route_table": {
-				Description: "Controls if separate route table for database should be created",
-				Secret:      false,
-				TypeSpec:    boolType,
-			},
-			"azs": {
-				Description: "A list of availability zones names or ids in the region",
-				Secret:      false,
-				TypeSpec:    arrayType(stringType),
-			},
-			"customer_gateway_tags": {
-				Description: "Additional tags for the Customer Gateway",
-				Secret:      false,
-				TypeSpec:    mapType(stringType),
-			},
-			"vpc_block_public_access_exclusions": {
-				Description: "A map of VPC block public access exclusions",
-				Secret:      false,
-				TypeSpec:    mapType(anyType),
-			},
-			"customer_gateways": {
-				Description: "Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)",
-				Secret:      false,
-				TypeSpec:    mapType(mapType(anyType)),
-			},
-			"database_inbound_acl_rules": {
-				Description: "Database subnets inbound network ACL rules",
-				Secret:      false,
-				TypeSpec:    arrayType(mapType(stringType)),
-			},
-		}
+	executors := getExecutorsFromEnv()
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
+			source := TFModuleSource("terraform-aws-modules/vpc/aws")
+			version := TFModuleVersion("5.19.0")
+			tf := newTestRuntime(t, executor)
+			awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
+			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+			assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
+			// verify a sample of the inputs with different inferred types
+			expectedSampleInputs := map[string]*schema.PropertySpec{
+				"cidr": {
+					Description: "(Optional) The IPv4 CIDR block for the VPC. CIDR can be" +
+						" explicitly set or it can be derived from IPAM using `ipv4_netmask_length` & `ipv4_ipam_pool_id`",
+					Secret:   false,
+					TypeSpec: stringType,
+				},
+				"create_database_subnet_route_table": {
+					Description: "Controls if separate route table for database should be created",
+					Secret:      false,
+					TypeSpec:    boolType,
+				},
+				"azs": {
+					Description: "A list of availability zones names or ids in the region",
+					Secret:      false,
+					TypeSpec:    arrayType(stringType),
+				},
+				"customer_gateway_tags": {
+					Description: "Additional tags for the Customer Gateway",
+					Secret:      false,
+					TypeSpec:    mapType(stringType),
+				},
+				"vpc_block_public_access_exclusions": {
+					Description: "A map of VPC block public access exclusions",
+					Secret:      false,
+					TypeSpec:    mapType(anyType),
+				},
+				"customer_gateways": {
+					Description: "Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)",
+					Secret:      false,
+					TypeSpec:    mapType(mapType(anyType)),
+				},
+				"database_inbound_acl_rules": {
+					Description: "Database subnets inbound network ACL rules",
+					Secret:      false,
+					TypeSpec:    arrayType(mapType(stringType)),
+				},
+			}
 
-		for name, expected := range expectedSampleInputs {
-			actual, ok := awsVpcSchema.Inputs[resource.PropertyKey(name)]
-			assert.True(t, ok, "input %s is missing from the schema", name)
-			assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
-			assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
-			assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
-		}
+			for name, expected := range expectedSampleInputs {
+				actual, ok := awsVpcSchema.Inputs[resource.PropertyKey(name)]
+				assert.True(t, ok, "input %s is missing from the schema", name)
+				assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+				assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
+				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+			}
 
-		// verify a sample of the outputs with different inferred types
-		expectedSampleOutputs := map[string]*schema.PropertySpec{
-			"vpc_id": {
-				Description: "The ID of the VPC",
-				Secret:      false,
-				TypeSpec:    stringType,
-			},
-			// from expression compact(aws_vpc_ipv4_cidr_block_association.this[*].cidr_block)
-			"vpc_secondary_cidr_blocks": {
-				Description: "List of secondary CIDR blocks of the VPC",
-				Secret:      false,
-				TypeSpec:    arrayType(stringType),
-			},
-			// from expression aws_subnet.public[*].id
-			"public_subnets": {
-				Description: "List of IDs of public subnets",
-				Secret:      false,
-				TypeSpec:    arrayType(stringType),
-			},
-			// from conditional expression
-			// length(aws_route_table.database[*].id) > 0
-			//     ? aws_route_table.database[*].id
-			//     : aws_route_table.private[*].id
-			"database_route_table_ids": {
-				Description: "List of IDs of database route tables",
-				Secret:      false,
-				TypeSpec:    arrayType(stringType),
-			},
-			// from expression [for k, v in aws_customer_gateway.this : v.id]
-			"cgw_ids": {
-				Description: "List of IDs of Customer Gateway",
-				Secret:      false,
-				TypeSpec:    arrayType(stringType),
-			},
-			// from expression var.flow_log_destination_type
-			// which is a variable defined in the module
-			// we take the same type as that variable
-			"vpc_flow_log_destination_type": {
-				Description: "The type of the destination for VPC Flow Logs",
-				Secret:      false,
-				TypeSpec:    awsVpcSchema.Inputs["flow_log_destination_type"].TypeSpec,
-			},
-		}
+			// verify a sample of the outputs with different inferred types
+			expectedSampleOutputs := map[string]*schema.PropertySpec{
+				"vpc_id": {
+					Description: "The ID of the VPC",
+					Secret:      false,
+					TypeSpec:    stringType,
+				},
+				// from expression compact(aws_vpc_ipv4_cidr_block_association.this[*].cidr_block)
+				"vpc_secondary_cidr_blocks": {
+					Description: "List of secondary CIDR blocks of the VPC",
+					Secret:      false,
+					TypeSpec:    arrayType(stringType),
+				},
+				// from expression aws_subnet.public[*].id
+				"public_subnets": {
+					Description: "List of IDs of public subnets",
+					Secret:      false,
+					TypeSpec:    arrayType(stringType),
+				},
+				// from conditional expression
+				// length(aws_route_table.database[*].id) > 0
+				//     ? aws_route_table.database[*].id
+				//     : aws_route_table.private[*].id
+				"database_route_table_ids": {
+					Description: "List of IDs of database route tables",
+					Secret:      false,
+					TypeSpec:    arrayType(stringType),
+				},
+				// from expression [for k, v in aws_customer_gateway.this : v.id]
+				"cgw_ids": {
+					Description: "List of IDs of Customer Gateway",
+					Secret:      false,
+					TypeSpec:    arrayType(stringType),
+				},
+				// from expression var.flow_log_destination_type
+				// which is a variable defined in the module
+				// we take the same type as that variable
+				"vpc_flow_log_destination_type": {
+					Description: "The type of the destination for VPC Flow Logs",
+					Secret:      false,
+					TypeSpec:    awsVpcSchema.Inputs["flow_log_destination_type"].TypeSpec,
+				},
+			}
 
-		for name, expected := range expectedSampleOutputs {
-			actual, ok := awsVpcSchema.Outputs[resource.PropertyKey(name)]
-			assert.True(t, ok, "output %s is missing from the schema", name)
-			assert.Equal(t, expected.Description, actual.Description, "output %s description is incorrect", name)
-			assert.Equal(t, expected.Secret, actual.Secret, "output %s secret is incorrect", name)
-			assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "output %s type is incorrect", name)
-		}
-	})
+			for name, expected := range expectedSampleOutputs {
+				actual, ok := awsVpcSchema.Outputs[resource.PropertyKey(name)]
+				assert.True(t, ok, "output %s is missing from the schema", name)
+				assert.Equal(t, expected.Description, actual.Description, "output %s description is incorrect", name)
+				assert.Equal(t, expected.Secret, actual.Secret, "output %s secret is incorrect", name)
+				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "output %s type is incorrect", name)
+			}
+		})
+	}
 }
 
 func TestParsingModuleSchemaOverrides(t *testing.T) {
@@ -228,63 +247,64 @@ func TestApplyModuleOverrides(t *testing.T) {
 	packageName := packageName("vpc")
 	version := TFModuleVersion("5.21.0")
 	source := TFModuleSource("terraform-aws-modules/vpc/aws")
-	testUsingExecutor(t, func(executor string) {
-		testServer := newTestAuxProviderServer(t)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, testServer, executor)
-		assert.NoError(t, err, "failed to pick module runtime")
-		awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
-		assert.NoError(t, err, "failed to infer module schema for aws vpc module")
-		assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
-		// We cannot infer which outputs are required or not so everything is optional, initially.
-		assert.Empty(t, awsVpcSchema.NonNilOutputs, "required outputs is empty")
+	executors := getExecutorsFromEnv()
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
+			tf := newTestRuntime(t, executor)
+			awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
+			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+			assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
+			// We cannot infer which outputs are required or not so everything is optional, initially.
+			assert.Empty(t, awsVpcSchema.NonNilOutputs, "required outputs is empty")
 
-		t.Run("required outputs are updated", func(t *testing.T) {
-			moduleOverrides := []*ModuleSchemaOverride{
-				{
-					Source:         string(source),
-					MaximumVersion: "6.0.0",
-					PartialSchema: &InferredModuleSchema{
-						NonNilOutputs: []resource.PropertyKey{"vpc_id"},
+			t.Run("required outputs are updated", func(t *testing.T) {
+				moduleOverrides := []*ModuleSchemaOverride{
+					{
+						Source:         string(source),
+						MaximumVersion: "6.0.0",
+						PartialSchema: &InferredModuleSchema{
+							NonNilOutputs: []resource.PropertyKey{"vpc_id"},
+						},
 					},
-				},
-			}
+				}
 
-			partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
-			assert.True(t, ok, "module schema overrides should be found")
-			overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
-			assert.NotNil(t, overridenSchema, "overridden module schema is nil")
-			assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be required")
-		})
+				partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
+				assert.True(t, ok, "module schema overrides should be found")
+				overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
+				assert.NotNil(t, overridenSchema, "overridden module schema is nil")
+				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be required")
+			})
 
-		t.Run("specific fields can be updated", func(t *testing.T) {
-			moduleOverrides := []*ModuleSchemaOverride{
-				{
-					Source:         string(source),
-					MaximumVersion: "6.0.0",
-					PartialSchema: &InferredModuleSchema{
-						Outputs: map[resource.PropertyKey]*schema.PropertySpec{
-							"vpc_id": {
-								Description: "The new ID field of the VPC",
-								Secret:      true,
+			t.Run("specific fields can be updated", func(t *testing.T) {
+				moduleOverrides := []*ModuleSchemaOverride{
+					{
+						Source:         string(source),
+						MaximumVersion: "6.0.0",
+						PartialSchema: &InferredModuleSchema{
+							Outputs: map[resource.PropertyKey]*schema.PropertySpec{
+								"vpc_id": {
+									Description: "The new ID field of the VPC",
+									Secret:      true,
+								},
 							},
 						},
 					},
-				},
-			}
+				}
 
-			partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
-			assert.True(t, ok, "module schema overrides should be found")
-			overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
-			assert.NotNil(t, overridenSchema, "overridden module schema is nil")
-			assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
+				partialAwsVpcSchemaOverride, ok := hasBuiltinModuleSchemaOverrides(source, version, moduleOverrides)
+				assert.True(t, ok, "module schema overrides should be found")
+				overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
+				assert.NotNil(t, overridenSchema, "overridden module schema is nil")
+				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
 
-			vpcID := overridenSchema.Outputs["vpc_id"]
-			assert.Equal(t, "The new ID field of the VPC", vpcID.Description, "vpc_id description should be updated")
-			assert.True(t, vpcID.Secret, "vpc_id should be secret")
-			assert.Equal(t, "string", vpcID.TypeSpec.Type, "vpc_id type should not be changed")
-			assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
+				vpcID := overridenSchema.Outputs["vpc_id"]
+				assert.Equal(t, "The new ID field of the VPC", vpcID.Description, "vpc_id description should be updated")
+				assert.True(t, vpcID.Secret, "vpc_id should be secret")
+				assert.Equal(t, "string", vpcID.TypeSpec.Type, "vpc_id type should not be changed")
+				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
+			})
 		})
-	})
+	}
 }
 
 func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
@@ -292,16 +312,17 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
-
-	testUsingExecutor(t, func(executor string) {
-		logger := tfsandbox.DiscardLogger
-		testServer := newTestAuxProviderServer(t)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, logger, nil, testServer, executor)
-		assert.NoError(t, err, "failed to pick module runtime")
-		mod, err := extractModuleContent(ctx, tf, TFModuleSource(p), "", logger)
-		require.NoError(t, err)
-		require.NotNil(t, mod, "module contents should not be nil")
-	})
+	executors := getExecutorsFromEnv()
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
+			logger := &testLogger{}
+			tf := newTestRuntime(t, executor)
+			assert.NoError(t, err, "failed to pick module runtime")
+			mod, err := extractModuleContent(ctx, tf, TFModuleSource(p), "", logger)
+			require.NoError(t, err)
+			require.NotNil(t, mod, "module contents should not be nil")
+		})
+	}
 }
 
 func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
@@ -309,178 +330,161 @@ func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	packageName := packageName("demoWebsite")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
 
-	testUsingExecutor(t, func(executor string) {
-		srv := newTestAuxProviderServer(t)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
-		assert.NoError(t, err, "failed to pick module runtime")
+	executors := getExecutorsFromEnv()
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
 
-		demoSchema, err := InferModuleSchema(ctx,
-			tf,
-			packageName,
-			"github.com/yemisprojects/s3_website_module_demo",
-			version)
+			tf := newTestRuntime(t, executor)
+			demoSchema, err := InferModuleSchema(ctx,
+				tf,
+				packageName,
+				"github.com/yemisprojects/s3_website_module_demo",
+				version)
 
-		assert.NoError(t, err, "failed to infer module schema for github module")
-		assert.NotNil(t, demoSchema, "inferred module schema for aws vpc module is nil")
-		// verify a sample of the inputs with different inferred types
-		expectedSampleInputs := map[string]*schema.PropertySpec{
-			"bucket_name": {
-				Description: "Name of S3 bucket for the website",
-				Secret:      false,
-				TypeSpec:    stringType,
-			},
-			"environment": {
-				Description: "Environment bucket resides in",
-				Secret:      false,
-				TypeSpec:    stringType,
-			},
-		}
+			assert.NoError(t, err, "failed to infer module schema for github module")
+			assert.NotNil(t, demoSchema, "inferred module schema for aws vpc module is nil")
+			// verify a sample of the inputs with different inferred types
+			expectedSampleInputs := map[string]*schema.PropertySpec{
+				"bucket_name": {
+					Description: "Name of S3 bucket for the website",
+					Secret:      false,
+					TypeSpec:    stringType,
+				},
+				"environment": {
+					Description: "Environment bucket resides in",
+					Secret:      false,
+					TypeSpec:    stringType,
+				},
+			}
 
-		for name, expected := range expectedSampleInputs {
-			actual, ok := demoSchema.Inputs[resource.PropertyKey(name)]
-			assert.True(t, ok, "input %s is missing from the schema", name)
-			assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
-			assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
-			assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
-		}
-	})
-}
-
-func testUsingExecutor(t *testing.T, code func(string)) {
-	executor := os.Getenv("PULUMI_TERRAFORM_MODULE_EXECUTOR")
-	if executor != "" {
-		// for running tests in CI for different executors,
-		t.Logf("Using executor: %s", executor)
-		code(executor)
-		return
+			for name, expected := range expectedSampleInputs {
+				actual, ok := demoSchema.Inputs[resource.PropertyKey(name)]
+				assert.True(t, ok, "input %s is missing from the schema", name)
+				assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+				assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
+				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+			}
+		})
 	}
-
-	t.Run("using_executor_opentufo", func(*testing.T) {
-		code("opentofu")
-	})
-
-	t.Run("using_executor_terraform", func(*testing.T) {
-		code("terraform")
-	})
 }
 
 func TestInferModuleSchemaFromGitHubSourceWithSubModule(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("consulCluster")
 	version := TFModuleVersion("") // GitHub-sourced modules don't take a version
+	executors := getExecutorsFromEnv()
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
+			tf := newTestRuntime(t, executor)
+			consulClusterSchema, err := InferModuleSchema(ctx,
+				tf,
+				packageName,
+				"github.com/hashicorp/terraform-aws-consul//modules/consul-cluster",
+				version)
 
-	testUsingExecutor(t, func(executor string) {
-		srv := newTestAuxProviderServer(t)
-		tf, err := tfsandbox.PickModuleRuntime(ctx, tfsandbox.DiscardLogger, nil, srv, executor)
-		assert.NoError(t, err, "failed to pick module runtime")
-		consulClusterSchema, err := InferModuleSchema(ctx,
-			tf,
-			packageName,
-			"github.com/hashicorp/terraform-aws-consul//modules/consul-cluster",
-			version)
+			assert.NoError(t, err, "failed to infer module schema for github submodule")
+			assert.NotNil(t, consulClusterSchema, "inferred module schema for aws consul cluster submodule is nil")
+			// verify a sample of the inputs with different inferred types
+			expectedSampleInputs := map[string]*schema.PropertySpec{
+				"ami_id": {
+					Description: "The ID of the AMI to run in this cluster. " +
+						"Should be an AMI that had Consul installed and configured by the install-consul module.",
+					Secret:   false,
+					TypeSpec: stringType,
+				},
+				"spot_price": {
+					Description: "The maximum hourly price to pay for EC2 Spot Instances.",
+					Secret:      false,
+					TypeSpec:    numberType,
+				},
+			}
 
-		assert.NoError(t, err, "failed to infer module schema for github submodule")
-		assert.NotNil(t, consulClusterSchema, "inferred module schema for aws consul cluster submodule is nil")
-		// verify a sample of the inputs with different inferred types
-		expectedSampleInputs := map[string]*schema.PropertySpec{
-			"ami_id": {
-				Description: "The ID of the AMI to run in this cluster. " +
-					"Should be an AMI that had Consul installed and configured by the install-consul module.",
-				Secret:   false,
-				TypeSpec: stringType,
-			},
-			"spot_price": {
-				Description: "The maximum hourly price to pay for EC2 Spot Instances.",
-				Secret:      false,
-				TypeSpec:    numberType,
-			},
-		}
-
-		for name, expected := range expectedSampleInputs {
-			actual, ok := consulClusterSchema.Inputs[resource.PropertyKey(name)]
-			assert.True(t, ok, "input %s is missing from the schema", name)
-			assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
-			assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
-			assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
-		}
-	})
+			for name, expected := range expectedSampleInputs {
+				actual, ok := consulClusterSchema.Inputs[resource.PropertyKey(name)]
+				assert.True(t, ok, "input %s is missing from the schema", name)
+				assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+				assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
+				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+			}
+		})
+	}
 }
 
 func TestResolveModuleSources(t *testing.T) {
-	testUsingExecutor(t, func(executor string) {
-		srv := newTestAuxProviderServer(t)
-		tf, err := tfsandbox.PickModuleRuntime(context.Background(), tfsandbox.DiscardLogger, nil, srv, executor)
-		require.NoError(t, err, "failed to pick module runtime")
+	executors := getExecutorsFromEnv()
+	for _, executor := range executors {
+		t.Run("executor="+executor, func(t *testing.T) {
+			tf := newTestRuntime(t, executor)
+			t.Run("local path-based module source", func(t *testing.T) {
+				ctx := context.Background()
+				src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
+				p, err := filepath.Abs(src)
+				require.NoError(t, err)
+				d, err := resolveModuleSources(ctx, tf, TFModuleSource(p), "", tfsandbox.DiscardLogger)
+				require.NoError(t, err)
 
-		t.Run("local path-based module source", func(t *testing.T) {
-			ctx := context.Background()
-			src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
-			p, err := filepath.Abs(src)
-			require.NoError(t, err)
-			d, err := resolveModuleSources(ctx, tf, TFModuleSource(p), "", tfsandbox.DiscardLogger)
-			require.NoError(t, err)
+				bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
+				require.NoError(t, err)
 
-			bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
-			require.NoError(t, err)
+				t.Logf("variables.tf: %s", bytes)
 
-			t.Logf("variables.tf: %s", bytes)
+				assert.Contains(t, string(bytes), "maxlen")
+			})
 
-			assert.Contains(t, string(bytes), "maxlen")
+			// This test will hit the network to download a well-known module from a registry.
+			t.Run("registry module source", func(t *testing.T) {
+				ctx := context.Background()
+				s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
+				v := TFModuleVersion("4.5.0")
+				d, err := resolveModuleSources(ctx, tf, s, v, tfsandbox.DiscardLogger)
+				require.NoError(t, err)
+
+				bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
+				require.NoError(t, err)
+
+				t.Logf("variables.tf: %s", bytes)
+				assert.Contains(t, string(bytes), "putin_khuylo")
+			})
+
+			// Make a network call to resolve the source for a remote module source on GitHub.
+			t.Run("remote module source github", func(t *testing.T) {
+				ctx := context.Background()
+				moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
+				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
+				require.NoError(t, err)
+
+				bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
+				require.NoError(t, err)
+
+				t.Logf("variables.tf: %s", bytes)
+				assert.Contains(t, string(bytes), "index_document")
+			})
+
+			t.Run("remote module source with version in source path", func(t *testing.T) {
+				ctx := context.Background()
+				moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
+				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
+				require.NoError(t, err)
+
+				bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
+				require.NoError(t, err)
+
+				t.Logf("variables.tf: %s", bytes)
+				assert.Contains(t, string(bytes), "index_document")
+			})
+
+			t.Run("remote module source with git path prefix", func(t *testing.T) {
+				ctx := context.Background()
+				moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
+				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
+				require.NoError(t, err)
+
+				bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
+				require.NoError(t, err)
+
+				t.Logf("variables.tf: %s", bytes)
+				assert.Contains(t, string(bytes), "index_document")
+			})
 		})
-
-		// This test will hit the network to download a well-known module from a registry.
-		t.Run("registry module source", func(t *testing.T) {
-			ctx := context.Background()
-			s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
-			v := TFModuleVersion("4.5.0")
-			d, err := resolveModuleSources(ctx, tf, s, v, tfsandbox.DiscardLogger)
-			require.NoError(t, err)
-
-			bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
-			require.NoError(t, err)
-
-			t.Logf("variables.tf: %s", bytes)
-			assert.Contains(t, string(bytes), "putin_khuylo")
-		})
-
-		// Make a network call to resolve the source for a remote module source on GitHub.
-		t.Run("remote module source github", func(t *testing.T) {
-			ctx := context.Background()
-			moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
-			workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
-			require.NoError(t, err)
-
-			bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
-			require.NoError(t, err)
-
-			t.Logf("variables.tf: %s", bytes)
-			assert.Contains(t, string(bytes), "index_document")
-		})
-
-		t.Run("remote module source with version in source path", func(t *testing.T) {
-			ctx := context.Background()
-			moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-			workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
-			require.NoError(t, err)
-
-			bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
-			require.NoError(t, err)
-
-			t.Logf("variables.tf: %s", bytes)
-			assert.Contains(t, string(bytes), "index_document")
-		})
-
-		t.Run("remote module source with git path prefix", func(t *testing.T) {
-			ctx := context.Background()
-			moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-			workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
-			require.NoError(t, err)
-
-			bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
-			require.NoError(t, err)
-
-			t.Logf("variables.tf: %s", bytes)
-			assert.Contains(t, string(bytes), "index_document")
-		})
-	})
+	}
 }
