@@ -52,12 +52,7 @@ func TestExtractModuleContentWorksOpenTofu(t *testing.T) {
 	version := TFModuleVersion("5.18.1")
 	modDir := tfsandbox.ModuleWorkdir(source, version).WithExecutor("tofu")
 	tf, err := tfsandbox.NewTofu(ctx, logger, modDir, srv, tofuresolver.ResolveOpts{})
-	assert.NoError(t, err, "failed to pick module runtime")
-	if dirExists(filepath.Join(tf.WorkingDir(), ".terraform")) {
-		err = os.RemoveAll(filepath.Join(tf.WorkingDir(), ".terraform"))
-		assert.NoError(t, err, "failed to clean working directory")
-	}
-
+	assert.NoError(t, err, "failed to pick module runtime!")
 	awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
@@ -77,18 +72,12 @@ func TestExtractModuleContentWorksTerraform(t *testing.T) {
 	modDir := tfsandbox.ModuleWorkdir(source, version).WithExecutor("terraform")
 	tf, err := tfsandbox.NewTerraform(ctx, logger, modDir, srv)
 	assert.NoError(t, err, "failed to pick module runtime")
-	if dirExists(filepath.Join(tf.WorkingDir(), ".terraform")) {
-		err = os.RemoveAll(filepath.Join(tf.WorkingDir(), ".terraform"))
-		assert.NoError(t, err, "failed to clean working directory")
-	}
-
 	awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
 	for _, log := range logger.logs {
 		t.Logf("Log: %s", log)
 	}
-
 }
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
