@@ -29,19 +29,40 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
-//func TestExtractModuleContentWorks(t *testing.T) {
-//	ctx := context.Background()
-//	tf := newTestTofu(t)
-//	awsVpc, err := extractModuleContent(ctx, tf, "terraform-aws-modules/vpc/aws", "5.18.1",
-//		tfsandbox.DiscardLogger)
-//	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
-//	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
-//}
+func TestExtractModuleContentWorks(t *testing.T) {
+	ctx := context.Background()
+	srv := newTestAuxProviderServer(t)
+	source := TFModuleSource("terraform-aws-modules/vpc/aws")
+	version := TFModuleVersion("5.18.1")
+	dir := []string{"TestExtractModuleContentWorks"}
+	for _, d := range tfsandbox.ModuleWorkdir(source, version) {
+		dir = append(dir, d)
+	}
+	tf, err := tfsandbox.NewTofu(ctx, newTestLogger(t), dir, srv)
+	require.NoError(t, err, "failed to create new tofu instance")
+	t.Cleanup(func() {
+		os.RemoveAll(tf.WorkingDir())
+	})
+	awsVpc, err := extractModuleContent(ctx, tf, source, version, newTestLogger(t))
+	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+	assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
+}
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
 	ctx := context.Background()
+	srv := newTestAuxProviderServer(t)
 	packageName := packageName("terraform-aws-modules")
-	tf := newTestTofu(t)
+	source := TFModuleSource("terraform-aws-modules/vpc/aws")
+	version := TFModuleVersion("5.19.0")
+	dir := []string{"TestInferringModuleSchemaWorks"}
+	for _, d := range tfsandbox.ModuleWorkdir(source, version) {
+		dir = append(dir, d)
+	}
+	tf, err := tfsandbox.NewTofu(ctx, newTestLogger(t), dir, srv)
+	require.NoError(t, err, "failed to create new tofu instance")
+	t.Cleanup(func() {
+		os.RemoveAll(tf.WorkingDir())
+	})
 	awsVpcSchema, err := InferModuleSchema(ctx, tf, packageName, "terraform-aws-modules/vpc/aws", "5.18.1")
 	assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 	assert.NotNil(t, awsVpcSchema, "inferred module schema for aws vpc module is nil")
@@ -67,11 +88,6 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 			Description: "Additional tags for the Customer Gateway",
 			Secret:      false,
 			TypeSpec:    mapType(stringType),
-		},
-		"vpc_block_public_access_exclusions": {
-			Description: "A map of VPC block public access exclusions",
-			Secret:      false,
-			TypeSpec:    mapType(anyType),
 		},
 		"customer_gateways": {
 			Description: "Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)",
