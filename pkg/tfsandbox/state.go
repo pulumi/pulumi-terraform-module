@@ -31,7 +31,7 @@ const (
 // PullStateAndLockFile reads the state and lock file from the Tofu working directory.
 // If the lock file is not present, it returns nil for the lock file and no error.
 // It's possible for modules to not have any providers which would mean no lock file
-func (t *Tofu) PullStateAndLockFile(_ context.Context) (state json.RawMessage, lockFile []byte, err error) {
+func (t *ModuleRuntime) PullStateAndLockFile(_ context.Context) (state json.RawMessage, lockFile []byte, err error) {
 	state, err = t.pullState(context.Background())
 	if err != nil {
 		return nil, nil, err
@@ -44,7 +44,7 @@ func (t *Tofu) PullStateAndLockFile(_ context.Context) (state json.RawMessage, l
 }
 
 // PushStateAndLockFile writes the state and lock file to the Tofu working directory.
-func (t *Tofu) PushStateAndLockFile(_ context.Context, state json.RawMessage, lock []byte) error {
+func (t *ModuleRuntime) PushStateAndLockFile(_ context.Context, state json.RawMessage, lock []byte) error {
 	if err := t.pushState(context.Background(), state); err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (t *Tofu) PushStateAndLockFile(_ context.Context, state json.RawMessage, lo
 	return nil
 }
 
-func (t *Tofu) pullState(_ context.Context) (json.RawMessage, error) {
+func (t *ModuleRuntime) pullState(_ context.Context) (json.RawMessage, error) {
 	// If for some reason this needs to work in contexts with a non-default state provider, or
 	// take advantage of built-in locking, then tofu state pull command can be used instead.
 	path := filepath.Join(t.WorkingDir(), defaultStateFile)
@@ -69,7 +69,7 @@ func (t *Tofu) pullState(_ context.Context) (json.RawMessage, error) {
 	}
 }
 
-func (t *Tofu) pushState(_ context.Context, data json.RawMessage) error {
+func (t *ModuleRuntime) pushState(_ context.Context, data json.RawMessage) error {
 	// If for some reason this needs to work in contexts with a non-default state provider, or
 	// take advantage of built-in locking, then tofu state push command can be used instead.
 	path := filepath.Join(t.WorkingDir(), defaultStateFile)
@@ -79,7 +79,7 @@ func (t *Tofu) pushState(_ context.Context, data json.RawMessage) error {
 	return nil
 }
 
-func (t *Tofu) pullLockFile(_ context.Context) ([]byte, error) {
+func (t *ModuleRuntime) pullLockFile(_ context.Context) ([]byte, error) {
 	path := filepath.Join(t.WorkingDir(), defaultLockFile)
 	bytes, err := os.ReadFile(path)
 	switch {
@@ -93,7 +93,7 @@ func (t *Tofu) pullLockFile(_ context.Context) ([]byte, error) {
 	}
 }
 
-func (t *Tofu) pushLockFile(_ context.Context, data []byte) error {
+func (t *ModuleRuntime) pushLockFile(_ context.Context, data []byte) error {
 	if data == nil {
 		return nil
 	}

@@ -8,7 +8,7 @@ import (
 // Run tofu init to initialize a new directory.
 //
 // TODO[pulumi/pulumi-terraform-module#67] speed up this slow operation.
-func (t *Tofu) Init(ctx context.Context, log Logger) error {
+func (t *ModuleRuntime) Init(ctx context.Context, log Logger) error {
 	logWriter := newJSONLogPipe(ctx, log)
 	defer logWriter.Close()
 

@@ -40,7 +40,7 @@ func TestUnknownsInCreatePlanBySchemaTypeSecrets(t *testing.T) {
 
 	awsProviderVersion := "5.99.1"
 
-	init := func(awsProviderVersion string) *tfsandbox.Tofu {
+	init := func(awsProviderVersion string) *tfsandbox.ModuleRuntime {
 		ctx := context.Background()
 		tofu := newTestTofu(t)
 		tfFile := requiredProviders(awsProviderVersion) + `

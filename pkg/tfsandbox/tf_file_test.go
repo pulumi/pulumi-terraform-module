@@ -580,7 +580,7 @@ func Test_decode(t *testing.T) {
 //
 // There is a limitation in tfexec that tofu.tf.Validate does not accept the reattach config yet. Therefore we cannot
 // validate files with unknowns relying on the reattach config. Skipping for now.
-func assertValidateSuccess(t *testing.T, tofu *Tofu, requireReattach bool) {
+func assertValidateSuccess(t *testing.T, tofu *ModuleRuntime, requireReattach bool) {
 	t.Helper()
 
 	if requireReattach {

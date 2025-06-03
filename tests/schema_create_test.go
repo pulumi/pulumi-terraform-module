@@ -40,7 +40,7 @@ func TestUnknownsInCreatePlanBySchemaType(t *testing.T) {
 
 	awsProviderVersion := "5.99.1"
 
-	init := func(awsProviderVersion string) *tfsandbox.Tofu {
+	init := func(awsProviderVersion string) *tfsandbox.ModuleRuntime {
 		ctx := context.Background()
 		tofu := newTestTofu(t)
 		tfFile := requiredProviders(awsProviderVersion) + `
@@ -657,7 +657,7 @@ func requiredProviders(awsProviderVersion string) string {
                 `, awsProviderVersion)
 }
 
-func runPlan(t *testing.T, tofu *tfsandbox.Tofu, tfFile string) *tfsandbox.Plan {
+func runPlan(t *testing.T, tofu *tfsandbox.ModuleRuntime, tfFile string) *tfsandbox.Plan {
 	err := os.WriteFile(
 		path.Join(tofu.WorkingDir(), "local_module", "main.tf"),
 		[]byte(tfFile),

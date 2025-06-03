@@ -10,7 +10,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
 )
 
-func newTestTofu(t *testing.T) *Tofu {
+func newTestTofu(t *testing.T) *ModuleRuntime {
 	srv := newTestAuxProviderServer(t)
 
 	tofu, err := NewTofu(context.Background(), DiscardLogger, nil, srv)

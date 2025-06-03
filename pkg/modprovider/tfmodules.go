@@ -315,7 +315,7 @@ func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Ver
 
 func InferModuleSchema(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	packageName packageName,
 	mod TFModuleSource,
 	ver TFModuleVersion,
@@ -325,7 +325,7 @@ func InferModuleSchema(
 
 func inferModuleSchema(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	packageName packageName,
 	mod TFModuleSource,
 	tfModuleVersion TFModuleVersion,
@@ -540,7 +540,7 @@ func combineInferredModuleSchema(
 
 func extractModuleContent(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	source TFModuleSource,
 	version TFModuleVersion,
 	logger tfsandbox.Logger,
@@ -614,7 +614,7 @@ func findResolvedModuleDir(mj *modulesJSON, key string) (string, error) {
 
 func resolveModuleSources(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	source tfsandbox.TFModuleSource,
 	version tfsandbox.TFModuleVersion, //optional
 	logger tfsandbox.Logger,

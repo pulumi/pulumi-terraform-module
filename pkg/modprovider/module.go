@@ -104,7 +104,7 @@ func (h *moduleHandler) prepSandbox(
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
-) (*tfsandbox.Tofu, error) {
+) (*tfsandbox.ModuleRuntime, error) {
 	logger := newResourceLogger(h.hc, urn)
 	wd := tfsandbox.ModuleInstanceWorkdir(urn)
 	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
@@ -249,7 +249,7 @@ func (h *moduleHandler) initializationError(outputs resource.PropertyMap, reason
 // Pulls the TF state and formats module outputs with the special __ meta-properties.
 func (h *moduleHandler) outputs(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	tfState *tfsandbox.State,
 ) (resource.PropertyMap, error) {
 	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
