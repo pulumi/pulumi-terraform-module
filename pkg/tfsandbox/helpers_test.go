@@ -12,6 +12,7 @@ import (
 
 func newTestTofu(t *testing.T) *ModuleRuntime {
 	srv := newTestAuxProviderServer(t)
+	//lockFile := filepath.Join(os.TempDir(), "tf_test"+string(rand.Intn(1000000))+".lock")
 
 	tofu, err := NewTofu(context.Background(), DiscardLogger, nil, srv)
 	require.NoError(t, err)
