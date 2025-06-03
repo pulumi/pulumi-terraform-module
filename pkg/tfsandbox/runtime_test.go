@@ -17,7 +17,6 @@ package tfsandbox
 import (
 	"bytes"
 	"context"
-	"os"
 	"path"
 	"testing"
 
@@ -141,12 +140,4 @@ func TestPickModuleRuntime(t *testing.T) {
 	assert.NotNil(t, tfPath)
 	assert.Equal(t, tf.executable, tfPath.executable)
 	assert.Contains(t, tfPath.Description(), "module runtime from executable "+tf.executable)
-
-	t.Cleanup(func() {
-		os.RemoveAll(opentofu.WorkingDir())
-		os.RemoveAll(tofu.WorkingDir())
-		os.RemoveAll(specificTofu.WorkingDir())
-		os.RemoveAll(tf.WorkingDir())
-		os.RemoveAll(tfPath.WorkingDir())
-	})
 }
