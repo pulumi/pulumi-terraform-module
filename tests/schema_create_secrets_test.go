@@ -35,7 +35,6 @@ import (
 // because we don't need to recheck everything those tests check, we can just check the
 // pieces that are relevant to secrets.
 func TestUnknownsInCreatePlanBySchemaTypeSecrets(t *testing.T) {
-	t.Parallel()
 	skipLocalRunsWithoutCreds(t)
 
 	awsProviderVersion := "5.99.1"
