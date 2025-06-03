@@ -100,6 +100,7 @@ jobs:
           - 7
 
   # Temporarily adding a job to test against PULUMI_ENABLE_VIEWS_PREVIEW: true
+  # temp
   test-views:
     permissions:
       contents: read
