@@ -9,43 +9,71 @@
       "version": "4.5.0"
     }
   },
+  "output": {
+    "internal_output_is_secret_s3_bucket_arn": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_arn)))}"
+    },
+    "internal_output_is_secret_s3_bucket_bucket_domain_name": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_bucket_domain_name)))}"
+    },
+    "internal_output_is_secret_s3_bucket_bucket_regional_domain_name": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_bucket_regional_domain_name)))}"
+    },
+    "internal_output_is_secret_s3_bucket_hosted_zone_id": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_hosted_zone_id)))}"
+    },
+    "internal_output_is_secret_s3_bucket_id": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_id)))}"
+    },
+    "internal_output_is_secret_s3_bucket_lifecycle_configuration_rules": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_lifecycle_configuration_rules)))}"
+    },
+    "internal_output_is_secret_s3_bucket_policy": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_policy)))}"
+    },
+    "internal_output_is_secret_s3_bucket_region": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_region)))}"
+    },
+    "internal_output_is_secret_s3_bucket_website_domain": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_website_domain)))}"
+    },
+    "internal_output_is_secret_s3_bucket_website_endpoint": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test-bucket.s3_bucket_website_endpoint)))}"
+    },
+    "s3_bucket_arn": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_arn)))}"
+    },
+    "s3_bucket_bucket_domain_name": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_bucket_domain_name)))}"
+    },
+    "s3_bucket_bucket_regional_domain_name": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_bucket_regional_domain_name)))}"
+    },
+    "s3_bucket_hosted_zone_id": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_hosted_zone_id)))}"
+    },
+    "s3_bucket_id": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_id)))}"
+    },
+    "s3_bucket_lifecycle_configuration_rules": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_lifecycle_configuration_rules)))}"
+    },
+    "s3_bucket_policy": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_policy)))}"
+    },
+    "s3_bucket_region": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_region)))}"
+    },
+    "s3_bucket_website_domain": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_website_domain)))}"
+    },
+    "s3_bucket_website_endpoint": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test-bucket.s3_bucket_website_endpoint)))}"
+    }
+  },
   "provider": {
     "aws": {
       "region": "us-west-2"
-    }
-  },
-  "resource": {
-    "terraform_data": {
-      "internal_output_s3_bucket_arn": {
-        "input": "${module.test-bucket.s3_bucket_arn}"
-      },
-      "internal_output_s3_bucket_bucket_domain_name": {
-        "input": "${module.test-bucket.s3_bucket_bucket_domain_name}"
-      },
-      "internal_output_s3_bucket_bucket_regional_domain_name": {
-        "input": "${module.test-bucket.s3_bucket_bucket_regional_domain_name}"
-      },
-      "internal_output_s3_bucket_hosted_zone_id": {
-        "input": "${module.test-bucket.s3_bucket_hosted_zone_id}"
-      },
-      "internal_output_s3_bucket_id": {
-        "input": "${module.test-bucket.s3_bucket_id}"
-      },
-      "internal_output_s3_bucket_lifecycle_configuration_rules": {
-        "input": "${module.test-bucket.s3_bucket_lifecycle_configuration_rules}"
-      },
-      "internal_output_s3_bucket_policy": {
-        "input": "${module.test-bucket.s3_bucket_policy}"
-      },
-      "internal_output_s3_bucket_region": {
-        "input": "${module.test-bucket.s3_bucket_region}"
-      },
-      "internal_output_s3_bucket_website_domain": {
-        "input": "${module.test-bucket.s3_bucket_website_domain}"
-      },
-      "internal_output_s3_bucket_website_endpoint": {
-        "input": "${module.test-bucket.s3_bucket_website_endpoint}"
-      }
     }
   }
 }
