@@ -1095,7 +1095,6 @@ func TestE2eYAML(t *testing.T) {
 }
 
 func TestDiffDetail(t *testing.T) {
-	t.Parallel()
 	w := newTestWriter(t)
 
 	// Set up a test Bucket
@@ -1157,8 +1156,6 @@ func TestDiffDetail(t *testing.T) {
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefresh(t *testing.T) {
-	t.Parallel()
-
 	if viewsEnabled {
 		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 	}
@@ -1227,8 +1224,6 @@ func TestRefresh(t *testing.T) {
 
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeleted(t *testing.T) {
-	t.Parallel()
-
 	if viewsEnabled {
 		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 	}
@@ -1288,8 +1283,6 @@ func TestRefreshDeleted(t *testing.T) {
 
 // Verify that when there is no drift, refresh works without any changes.
 func TestRefreshNoChanges(t *testing.T) {
-	t.Parallel()
-
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	testWriter := newTestWriter(t)
 
