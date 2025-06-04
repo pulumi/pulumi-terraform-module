@@ -1118,6 +1118,9 @@ func TestDiffDetailTerraform(t *testing.T) {
 	// Up
 	diffDetailTest.Up(t)
 
+	// Change program to remove the module input `server_side_encryption_configuration`
+	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
+
 	// Preview
 	var debugOpts debug.LoggingOptions
 
@@ -1173,6 +1176,9 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 
 	// Up
 	diffDetailTest.Up(t)
+
+	// Change program to remove the module input `server_side_encryption_configuration`
+	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
 
 	// Preview
 	var debugOpts debug.LoggingOptions
