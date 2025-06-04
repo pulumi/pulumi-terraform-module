@@ -24,6 +24,19 @@ func newTestTofu(t *testing.T) *ModuleRuntime {
 	return tofu
 }
 
+func newTestTerraform(t *testing.T) *ModuleRuntime {
+	srv := newTestAuxProviderServer(t)
+
+	tf, err := NewTerraform(context.Background(), DiscardLogger, nil, srv)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		os.RemoveAll(tf.WorkingDir())
+	})
+
+	return tf
+}
+
 func newTestAuxProviderServer(t *testing.T) *auxprovider.Server {
 	srv, err := auxprovider.Serve()
 	require.NoError(t, err)
