@@ -470,7 +470,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 	for _, executor := range []string{"terraform", "tofu"} {
 		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
-			pt := pulumitest.NewPulumiTest(t, testDir,
+			pt := newPulumiTest(t, testDir,
 				opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)),
 				opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor),
 				opttest.SkipInstall())
@@ -1450,13 +1450,13 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	// logLevel := uint(13)
-	// debugOpts = debug.LoggingOptions{
-	// 	LogLevel:      &logLevel,
-	// 	LogToStdErr:   true,
-	// 	FlowToPlugins: true,
-	// 	Debug:         true,
-	// }
+	logLevel := uint(13)
+	debugOpts = debug.LoggingOptions{
+		LogLevel:      &logLevel,
+		LogToStdErr:   true,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
@@ -1465,7 +1465,7 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	it := newPulumiTest(t, testProgram, localPath)
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
 
@@ -1512,7 +1512,7 @@ func TestRefreshNoChangesOpenTofu(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath,
+	it := newPulumiTest(t, testProgram, localPath,
 		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
 
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
@@ -1782,7 +1782,7 @@ func Test_Dependencies(t *testing.T) {
 }
 
 // Test that passing local modules as local paths ../foo or ./foo works as expected.
-func Test_LocalModule_RelativePath(t *testing.T) {
+func Test_LocalModule_RelativePath_Terraform(t *testing.T) {
 	t.Parallel()
 
 	localProviderBinPath := ensureCompiledProvider(t)
@@ -1794,22 +1794,44 @@ func Test_LocalModule_RelativePath(t *testing.T) {
 	anyProgram := filepath.Join("testdata", "programs", "ts", "randmod-program")
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
-	for _, executor := range []string{"terraform", "opentofu"} {
-		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
-			pt := pulumitest.NewPulumiTest(t, anyProgram, localPath,
-				opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
-			pt.CopyToTempDir(t)
+	pt := newPulumiTest(t, anyProgram, localPath)
+	pt.CopyToTempDir(t)
 
-			err = os.CopyFS(filepath.Join(pt.WorkingDir(), "randmod"), os.DirFS(randMod))
-			require.NoError(t, err)
+	err = os.CopyFS(filepath.Join(pt.WorkingDir(), "randmod"), os.DirFS(randMod))
+	require.NoError(t, err)
 
-			// pulumi package add <provider-path> <randmod-path> <package-name>
-			pulumiPackageAdd(t, pt, localProviderBinPath, "./randmod", "randmod")
+	// pulumi package add <provider-path> <randmod-path> <package-name>
+	pulumiPackageAdd(t, pt, localProviderBinPath, "./randmod", "randmod")
 
-			previewResult := pt.Preview(t)
-			t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
-		})
-	}
+	previewResult := pt.Preview(t)
+	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
+}
+
+// Test that passing local modules as local paths ../foo or ./foo works as expected.
+func Test_LocalModule_RelativePath_OpenTofu(t *testing.T) {
+	t.Parallel()
+
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	// Module written to support the test.
+	randMod, err := filepath.Abs(filepath.Join("testdata", "modules", randmod))
+	require.NoError(t, err)
+
+	anyProgram := filepath.Join("testdata", "programs", "ts", "randmod-program")
+	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
+
+	pt := newPulumiTest(t, anyProgram, localPath,
+		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
+	pt.CopyToTempDir(t)
+
+	err = os.CopyFS(filepath.Join(pt.WorkingDir(), "randmod"), os.DirFS(randMod))
+	require.NoError(t, err)
+
+	// pulumi package add <provider-path> <randmod-path> <package-name>
+	pulumiPackageAdd(t, pt, localProviderBinPath, "./randmod", "randmod")
+
+	previewResult := pt.Preview(t)
+	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
 }
 
 // assertTFStateResourceExists checks if a resource exists in the TF state.
