@@ -1450,13 +1450,13 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	logLevel := uint(13)
-	debugOpts = debug.LoggingOptions{
-		LogLevel:      &logLevel,
-		LogToStdErr:   true,
-		FlowToPlugins: true,
-		Debug:         true,
-	}
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
