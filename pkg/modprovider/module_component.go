@@ -130,7 +130,7 @@ func newModuleComponentResource(
 		}
 	}()
 
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
+	wd := tfsandbox.ModuleInstanceWorkdir(urn).WithExecutor(moduleExecutor)
 	logger := newComponentLogger(ctx.Log, &component)
 
 	// decide whether to use opentofu or terraform

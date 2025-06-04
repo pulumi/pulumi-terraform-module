@@ -283,7 +283,7 @@ func (h *moduleHandler) Create(
 
 	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("acquiring status client failed in Create: %w", err)
 	}
 	defer statusClient.Release()
 
@@ -358,7 +358,7 @@ func (h *moduleHandler) Update(
 
 	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("acquiring status client failed in Update: %w", err)
 	}
 	defer statusClient.Release()
 
@@ -415,7 +415,7 @@ func (h *moduleHandler) Delete(
 
 	statusClient, err := h.statusPool.Acquire(ctx, logger, req.ResourceStatusAddress)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("acquiring status client failed in Delete: %w", err)
 	}
 	defer statusClient.Release()
 
@@ -441,7 +441,7 @@ func (h *moduleHandler) Delete(
 		executor,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
+		return nil, fmt.Errorf("failed preparing tofu sandbox: %w", err)
 	}
 
 	// TODO[pulumi/pulumi-terraform-module#247] once the engine is ready to receive view steps multiple times, the
