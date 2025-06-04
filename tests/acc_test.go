@@ -599,7 +599,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 	for _, executor := range []string{"terraform", "tofu"} {
 		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
 
-			integrationTest := pulumitest.NewPulumiTest(t, testProgram,
+			integrationTest := newPulumiTest(t, testProgram,
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
 				opttest.Env("PULUMI_TERRAFORM_MODULE_WAIT_TIMEOUT", "5m"),
 				opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
@@ -1103,7 +1103,7 @@ func TestDiffDetailTerraform(t *testing.T) {
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
-	diffDetailTest := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	diffDetailTest := newPulumiTest(t, testProgram, localPath)
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
