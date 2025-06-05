@@ -12,6 +12,18 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
+type testLogger struct {
+	logs []string
+}
+
+func (l *testLogger) Log(_ context.Context, level tfsandbox.LogLevel, msg string) {
+	l.logs = append(l.logs, string(level)+": "+msg)
+}
+
+func (l *testLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, msg string) {
+	l.logs = append(l.logs, string(level)+": "+msg)
+}
+
 //nolint:unused
 func newTestTofu(t *testing.T) *tfsandbox.ModuleRuntime {
 	srv := newTestAuxProviderServer(t)

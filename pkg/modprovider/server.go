@@ -337,9 +337,7 @@ func (s *server) Configure(
 
 	if config.HasValue(resource.PropertyKey(moduleExecutorVariableName)) {
 		if executor, ok := config[moduleExecutorVariableName]; ok && executor.IsString() {
-			// remove quotes from the string value in case it was JSON-encoded
-			value := strings.ReplaceAll(executor.StringValue(), "\"", "")
-			s.moduleExecutor = value
+			s.moduleExecutor = executor.StringValue()
 		}
 	} else {
 		// if the user didn't specify the executor variable

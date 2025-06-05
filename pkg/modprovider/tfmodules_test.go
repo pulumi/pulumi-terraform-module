@@ -29,18 +29,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
-type testLogger struct {
-	logs []string
-}
-
-func (l *testLogger) Log(_ context.Context, level tfsandbox.LogLevel, msg string) {
-	l.logs = append(l.logs, string(level)+": "+msg)
-}
-
-func (l *testLogger) LogStatus(_ context.Context, level tfsandbox.LogLevel, msg string) {
-	l.logs = append(l.logs, string(level)+": "+msg)
-}
-
 func newTestRuntime(t *testing.T, executor string) *tfsandbox.ModuleRuntime {
 	srv := newTestAuxProviderServer(t)
 
