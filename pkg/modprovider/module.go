@@ -97,7 +97,6 @@ func (h *moduleHandler) Diff(
 		return nil, err
 	}
 
-	// TODO[pulumi/pulumi-terraform-module#332] detect and correct drift
 	if !oldInputs.DeepEquals(newInputs) {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
