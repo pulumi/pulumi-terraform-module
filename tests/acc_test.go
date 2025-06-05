@@ -1276,6 +1276,8 @@ func TestRefreshTerraform(t *testing.T) {
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefreshOpenTofu(t *testing.T) {
+	t.Skip("TODO[pulumi/pulumi-terraform-module#364] test hanging")
+
 	if viewsEnabled {
 		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 	}
@@ -1290,7 +1292,7 @@ func TestRefreshOpenTofu(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath,
+	it := newPulumiTest(t, testProgram, localPath,
 		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
 
 	expectBucketTag := func(tagvalue string) {
@@ -1497,6 +1499,7 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 
 // Verify that when there is no drift, refresh works without any changes.
 func TestRefreshNoChangesOpenTofu(t *testing.T) {
+	t.Skip("TODO[pulumi/pulumi-terraform-module#364] test hanging")
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	testWriter := newTestWriter(t)
 
