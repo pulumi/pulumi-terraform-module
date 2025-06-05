@@ -9,6 +9,7 @@ aws: true
 modulePath: .
 env:
   AWS_REGION: "us-west-2"
+  PULUMI_ENABLE_VIEWS_PREVIEW: true
 
 actions:
   preTest:
