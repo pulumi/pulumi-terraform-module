@@ -1161,9 +1161,12 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 }
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
-func TestRefreshTerraform(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
+func checkRefresh(t *testing.T, executor string) {
+	if executor != "" {
+		t.Setenv("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor)
+	}
 
+	tw := newTestWriter(t)
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	ctx := context.Background()
 
@@ -1174,7 +1177,11 @@ func TestRefreshTerraform(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	it := newPulumiTest(t, testProgram, localPath)
+	options := []opttest.Option{localPath}
+	if executor != "" {
+		options = append(options, opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
+	}
+	it := newPulumiTest(t, testProgram, options...)
 
 	expectBucketTag := func(tagvalue string) {
 		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
@@ -1185,19 +1192,20 @@ func TestRefreshTerraform(t *testing.T) {
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
 
-	// First provision a bucket with TestTag=a and remember this state.
+	t.Logf("# pulumi up with tagvalue=a to provision initial state")
 	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
+	it.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
 	stateA := it.ExportStack(t)
 
+	t.Logf("# pulumi up with tagvalue=b to provision drifted state")
 	// Then provision the bucket with TestTag=b so the bucket in the cloud is tagged with b.
 	it.SetConfig(t, "tagvalue", "b")
-	it.Up(t)
+	it.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
 	outMapB, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
 	autogold.Expect(map[string]any{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
 
-	// Now reset Pulumi state so it expects the bucket to have tag "a".
+	t.Logf("# pulumi stack import --file state-a.json to reset to initial state")
 	it.ImportStack(t, stateA)
 	expectBucketTag("a")
 
@@ -1212,13 +1220,14 @@ func TestRefreshTerraform(t *testing.T) {
 	// 	Debug:         true,
 	// }
 
-	// Now perform a refresh.
-	refreshResult := it.Refresh(t, optrefresh.DebugLogging(debugOpts))
-	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
+	t.Logf("# pulumi refresh to remediate drift")
+	refreshResult := it.Refresh(t,
+		optrefresh.DebugLogging(debugOpts),
+		optrefresh.ErrorProgressStreams(tw),
+		optrefresh.ProgressStreams(tw),
+	)
 	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
+	autogold.Expect(&map[string]int{"same": 1, "update": 2}).Equal(t, rc)
 
 	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
 	expectBucketTag("b")
@@ -1229,78 +1238,15 @@ func TestRefreshTerraform(t *testing.T) {
 	// TODO[github.com/pulumi/pulumi#2710] Refresh does not update stack outputs
 	outMap, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
-	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+	autogold.Expect(map[string]any{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
 }
 
-// Verify that pulumi refresh detects drift and reflects it in the state.
-func TestRefreshOpenTofu(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
+func TestRefreshTerraform(t *testing.T) {
+	checkRefresh(t, "")
+}
 
-	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
-	ctx := context.Background()
-
-	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
-	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
-	require.NoError(t, err)
-
-	localBin := ensureCompiledProvider(t)
-	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-
-	it := newPulumiTest(t, testProgram, localPath,
-		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
-
-	expectBucketTag := func(tagvalue string) {
-		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
-		tags := bucket.Inputs["tags"]
-		require.Equal(t, map[string]any{"TestTag": tagvalue}, tags)
-	}
-
-	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
-	it.SetConfig(t, "prefix", generateTestResourcePrefix())
-
-	// First provision a bucket with TestTag=a and remember this state.
-	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
-	stateA := it.ExportStack(t)
-
-	// Then provision the bucket with TestTag=b so the bucket in the cloud is tagged with b.
-	it.SetConfig(t, "tagvalue", "b")
-	it.Up(t)
-	outMapB, err := it.CurrentStack().Outputs(ctx)
-	require.NoError(t, err)
-	autogold.Expect(map[string]any{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
-
-	// Now reset Pulumi state so it expects the bucket to have tag "a".
-	it.ImportStack(t, stateA)
-	expectBucketTag("a")
-
-	var debugOpts debug.LoggingOptions
-	// logLevel := uint(13)
-	// debugOpts = debug.LoggingOptions{
-	// 	LogLevel:      &logLevel,
-	// 	LogToStdErr:   true,
-	// 	FlowToPlugins: true,
-	// 	Debug:         true,
-	// }
-
-	// Now perform a refresh.
-	refreshResult := it.Refresh(t, optrefresh.DebugLogging(debugOpts))
-	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
-	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"same": 3, "update": 1}).Equal(t, rc)
-
-	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
-	expectBucketTag("b")
-
-	// Side note: logically we should be getting "b" from the refreshed state. However Pulumi
-	// currently cannot refresh stack outputs when resources are changing.
-	//
-	// TODO[github.com/pulumi/pulumi#2710] Refresh does not update stack outputs
-	outMap, err := it.CurrentStack().Outputs(ctx)
-	require.NoError(t, err)
-	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+func TestRefreshTofu(t *testing.T) {
+	checkRefresh(t, "tofu")
 }
 
 // This variation of TestRefresh checks that normal pulumi preview and pulumi up detect and correct drift even when
