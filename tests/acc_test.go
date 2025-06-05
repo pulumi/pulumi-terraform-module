@@ -1303,6 +1303,95 @@ func TestRefreshOpenTofu(t *testing.T) {
 	autogold.Expect(map[string]interface{}{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
 }
 
+// This variation of TestRefresh checks that normal pulumi preview and pulumi up detect and correct drift even when
+// refresh is not explicitly called or requested, to mimic Terraform default behavior on this.
+func TestRefreshImplicitly(t *testing.T) {
+	t.Parallel()
+	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+	tw := newTestWriter(t)
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
+	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
+	require.NoError(t, err)
+
+	localBin := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
+	it := newPulumiTest(t, testProgram, localPath)
+
+	expectBucketTag := func(tagvalue string) {
+		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
+		tags := bucket.Inputs["tags"]
+		assert.Equalf(t, map[string]any{"TestTag": tagvalue}, tags, "incorrect Pulumi bucket view-state")
+
+		addr := "module.mybucketmod.aws_s3_bucket.tf-test-bucket"
+		raw := assertTFStateResourceExists(t, it, "bucketmod", addr)
+		instance := raw.(map[string]any)["instances"].([]any)[0].(map[string]any)
+		tfTags := instance["attributes"].(map[string]any)["tags"]
+		assert.Equal(t, map[string]any{"TestTag": tagvalue}, tfTags, "incorrect Terraform bucket state")
+	}
+
+	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
+	it.SetConfig(t, "prefix", generateTestResourcePrefix())
+
+	// First provision a bucket with TestTag=a and remember this state.
+	it.SetConfig(t, "tagvalue", "a")
+
+	t.Logf("## pulumi up: create with tagvalue=a")
+	it.Up(t, optup.Diff(), optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
+
+	stateA := it.ExportStack(t)
+
+	// Then provision the bucket with TestTag=b so the bucket in the cloud is tagged with b.
+	it.SetConfig(t, "tagvalue", "b")
+
+	t.Logf("## pulumi up: update to set tagvalue=b")
+	it.Up(t, optup.Diff(), optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
+	expectBucketTag("b")
+
+	// Reset the expected value to "a" and trick Pulumi by re-setting the state to "a" as well.
+	it.SetConfig(t, "tagvalue", "a")
+	it.ImportStack(t, stateA)
+	expectBucketTag("a")
+
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
+	t.Logf("## pulumi preview: expect to detect drift and display it")
+	previewResult := it.Preview(t,
+		optpreview.Diff(),
+		optpreview.ProgressStreams(tw),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.DebugLogging(debugOpts),
+	)
+
+	// Preview should not have modified the bucket view-state, so tag should still be "a".
+	expectBucketTag("a")
+
+	//nolint:lll
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 2}).Equal(t, previewResult.ChangeSummary)
+
+	t.Logf("## pulumi up: expect to detect the drift and correct it")
+	upResult := it.Up(t,
+		optup.Diff(),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+		optup.DebugLogging(debugOpts),
+	)
+
+	autogold.Expect(&map[string]int{"same": 1, "update": 2}).Equal(t, upResult.Summary.ResourceChanges)
+
+	// The state of the bucket should indicate "a" since it was reconciled to the desired state.
+	expectBucketTag("a")
+}
+
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeletedTerraform(t *testing.T) {
 	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
@@ -1739,10 +1828,11 @@ func Test_LocalModule_RelativePath_OpenTofu(t *testing.T) {
 	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
 }
 
-// assertTFStateResourceExists checks if a resource exists in the TF state.
-// packageName should be the name of the package used in `pulumi package add`
-// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
-func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packageName string, resourceAddress string) {
+func findTFStateResources(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	packageName string,
+) []any {
 	tfStateRaw := mustFindRawState(t, pt, packageName)
 	tfState, isMap := tfStateRaw.(map[string]any)
 	require.True(t, isMap)
@@ -1756,19 +1846,61 @@ func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packag
 
 	resources, ok := state["resources"].([]any)
 	require.Truef(t, ok, "TF state must contain 'resources': %v", state)
-	contains := slices.ContainsFunc(resources, func(res any) bool {
-		resMap, ok := res.(map[string]any)
-		require.Truef(t, ok, "resources must be a map")
-		module, ok := resMap["module"].(string)
-		require.Truef(t, ok, "module key must exist")
-		typ, ok := resMap["type"].(string)
-		require.Truef(t, ok, "type key must exist")
-		name, ok := resMap["name"].(string)
-		require.Truef(t, ok, "name key must exist")
-		fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
-		return fullName == resourceAddress
-	})
-	require.Truef(t, contains, "TF state must contain resource %s", resourceAddress)
+	return resources
+}
+
+func getTFResourceAddr(t *testing.T, res any) string {
+	resMap, ok := res.(map[string]any)
+	require.Truef(t, ok, "resources must be a map")
+	module, ok := resMap["module"].(string)
+	require.Truef(t, ok, "module key must exist")
+	typ, ok := resMap["type"].(string)
+	require.Truef(t, ok, "type key must exist")
+	name, ok := resMap["name"].(string)
+	require.Truef(t, ok, "name key must exist")
+	fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
+	return fullName
+}
+
+func findTFStateResource(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	packageName string,
+	resourceAddress string,
+) (any, bool) {
+	resources := findTFStateResources(t, pt, packageName)
+	isMatching := func(res any) bool {
+		return getTFResourceAddr(t, res) == resourceAddress
+	}
+	if slices.ContainsFunc(resources, isMatching) {
+		return resources[slices.IndexFunc(resources, isMatching)], true
+	}
+	return nil, false
+}
+
+// assertTFStateResourceExists checks if a resource exists in the TF state.
+// packageName should be the name of the package used in `pulumi package add`
+// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
+//
+// returns the raw TF state for the resource
+func assertTFStateResourceExists(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	packageName string,
+	resourceAddress string,
+) any {
+	rstate, ok := findTFStateResource(t, pt, packageName, resourceAddress)
+	if !ok {
+		addresses := []string{}
+		resources := findTFStateResources(t, pt, packageName)
+		for _, r := range resources {
+			addresses = append(addresses, getTFResourceAddr(t, r))
+		}
+		assert.Truef(t, ok, "TF state must contain resource %s. Available resources:\n%s",
+			resourceAddress,
+			strings.Join(addresses, "\n"))
+	}
+	return rstate
 }
 
 // mustFindDeploymentResourceByType finds a resource in the deployment by its type.
