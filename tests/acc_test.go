@@ -1824,44 +1824,6 @@ func mustFindRawState(t *testing.T, pt *pulumitest.PulumiTest, packageName strin
 	return tfStateRaw
 }
 
-// runPreviewWithPlanDiff runs a pulumi preview that creates a plan file
-// and returns a map of resource diffs for the resources that have changes based on the plan
-func runPreviewWithPlanDiff(
-	t *testing.T,
-	pt *pulumitest.PulumiTest,
-	excludeResources ...string,
-) map[string]interface{} {
-	t.Helper()
-
-	root := pt.CurrentStack().Workspace().WorkDir()
-	planPath := filepath.Join(root, "pulumiPlan.out")
-	pt.Preview(t, optpreview.Diff(), optpreview.Plan(planPath))
-	planContents, err := os.ReadFile(planPath)
-	assert.NoError(t, err)
-
-	var plan apitype.DeploymentPlanV1
-	err = json.Unmarshal(planContents, &plan)
-	assert.NoError(t, err)
-
-	resourceDiffs := map[string]interface{}{}
-	for urn, resourcePlan := range plan.ResourcePlans {
-		if slices.Contains(excludeResources, urn.Name()) {
-			continue
-		}
-		if !slices.Contains(resourcePlan.Steps, apitype.OpSame) {
-			var diff apitype.PlanDiffV1
-			if resourcePlan.Goal != nil {
-				diff = resourcePlan.Goal.InputDiff
-			}
-			resourceDiffs[urn.Name()] = map[string]interface{}{
-				"diff":  diff,
-				"steps": resourcePlan.Steps,
-			}
-		}
-	}
-	return resourceDiffs
-}
-
 func getRoot(t pulumitest.PT) string {
 	wd, err := os.Getwd()
 	if err != nil {
