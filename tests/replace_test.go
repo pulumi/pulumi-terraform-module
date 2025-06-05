@@ -308,35 +308,11 @@ func Test_replace_drift_deleted(t *testing.T) {
 	// Preview should not have  modified TF state, the drifted resource should still exist.
 	assertTFStateResourceExists(t, pt, packageName, "module.rmod.local_file.hello")
 
-	if viewsEnabled {
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("create"): 1,
-			apitype.OpType("same"):   1,
-			apitype.OpType("update"): 1,
-		}).Equal(t, previewResult.ChangeSummary)
-	}
-
-	// Not trusting update plans yet with views for this additional check.
-	if !viewsEnabled {
-		// In this situation delete-replaced is unnecessary but will be a no-op in this provider.
-		delta := runPreviewWithPlanDiff(t, pt)
-		autogold.Expect(map[string]interface{}{"module.rmod.local_file.hello": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-				"content_base64sha256": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"content_base64sha512": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"content_md5":          "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"content_sha1":         "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"content_sha256":       "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"content_sha512":       "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"id":                   "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			}},
-			"steps": []apitype.OpType{
-				apitype.OpType("create-replacement"),
-				apitype.OpType("replace"),
-				apitype.OpType("delete-replaced"),
-			},
-		}}).Equal(t, delta)
-	}
+	autogold.Expect(map[apitype.OpType]int{
+		apitype.OpType("create"): 1,
+		apitype.OpType("same"):   1,
+		apitype.OpType("update"): 1,
+	}).Equal(t, previewResult.ChangeSummary)
 
 	t.Logf("## pulumi up: fix the drift by re-creating the missing resource")
 	upResult := pt.Up(t,
@@ -346,16 +322,14 @@ func Test_replace_drift_deleted(t *testing.T) {
 		//optup.DebugLogging(debugOpts),
 	)
 
-	if viewsEnabled {
-		t.Logf("GRPC logging")
-		for _, entry := range pt.GrpcLog(t).Entries {
-			bytes, err := json.MarshalIndent(entry, "", "  ")
-			require.NoError(t, err)
-			t.Logf("%s", string(bytes))
-		}
-
-		autogold.Expect(&map[string]int{"same": 3}).Equal(t, upResult.Summary.ResourceChanges)
+	t.Logf("GRPC logging")
+	for _, entry := range pt.GrpcLog(t).Entries {
+		bytes, err := json.MarshalIndent(entry, "", "  ")
+		require.NoError(t, err)
+		t.Logf("%s", string(bytes))
 	}
+
+	autogold.Expect(&map[string]int{"same": 3}).Equal(t, upResult.Summary.ResourceChanges)
 
 	// The resource representing the file should exist in TF state as well.
 	assertTFStateResourceExists(t, pt, packageName, "module.rmod.local_file.hello")
