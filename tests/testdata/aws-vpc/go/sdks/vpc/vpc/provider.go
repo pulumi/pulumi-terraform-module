@@ -22,6 +22,11 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
+	if args.Executor == nil {
+		if d := internal.GetEnvOrDefault("", nil, "PULUMI_TERRAFORM_MODULE_EXECUTOR"); d != nil {
+			args.Executor = pulumi.StringPtr(d.(string))
+		}
+	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	ref, err := internal.PkgGetPackageRef(ctx)
 	if err != nil {
@@ -38,12 +43,16 @@ func NewProvider(ctx *pulumi.Context,
 type providerArgs struct {
 	// provider configuration for aws
 	Aws map[string]interface{} `pulumi:"aws"`
+	// Sets the executor used to run the module.
+	Executor *string `pulumi:"executor"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
 	// provider configuration for aws
 	Aws pulumi.MapInput
+	// Sets the executor used to run the module.
+	Executor pulumi.StringPtrInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

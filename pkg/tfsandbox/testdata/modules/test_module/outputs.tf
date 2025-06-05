@@ -3,7 +3,7 @@ output "output1" {
 }
 
 output "sensitive_output" {
-  value     = terraform_data.example.output
+  value     = sensitive(terraform_data.example.output)
   sensitive = true
 }
 

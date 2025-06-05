@@ -35,12 +35,11 @@ import (
 // because we don't need to recheck everything those tests check, we can just check the
 // pieces that are relevant to secrets.
 func TestUnknownsInCreatePlanBySchemaTypeSecrets(t *testing.T) {
-	t.Parallel()
 	skipLocalRunsWithoutCreds(t)
 
 	awsProviderVersion := "5.99.1"
 
-	init := func(awsProviderVersion string) *tfsandbox.Tofu {
+	init := func(awsProviderVersion string) *tfsandbox.ModuleRuntime {
 		ctx := context.Background()
 		tofu := newTestTofu(t)
 		tfFile := requiredProviders(awsProviderVersion) + `
@@ -65,7 +64,6 @@ module "local" {
 	}
 
 	t.Run("SDKV2_TypeList", func(t *testing.T) {
-		t.Parallel()
 
 		tofu := init(awsProviderVersion)
 
@@ -115,7 +113,6 @@ resource "aws_s3_bucket" "this" {
 	})
 
 	t.Run("SDKV2_TypeSet", func(t *testing.T) {
-		t.Parallel()
 
 		tofu := init(awsProviderVersion)
 
@@ -182,7 +179,6 @@ resource "aws_s3_bucket" "this" {
 	})
 
 	t.Run("SDKV2_TypeMap", func(t *testing.T) {
-		t.Parallel()
 
 		tofu := init(awsProviderVersion)
 
@@ -228,7 +224,6 @@ resource "aws_s3_bucket_metric" "this" {
 	})
 
 	t.Run("PF_ListNestedBlock", func(t *testing.T) {
-		t.Parallel()
 
 		awsProviderVersion := "5.99.0" // error on 5.99.1
 

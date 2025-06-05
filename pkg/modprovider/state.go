@@ -252,19 +252,20 @@ func (h *moduleStateHandler) Delete(
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
+	moduleExecutor string,
 ) (*emptypb.Empty, error) {
 	oldState := moduleState{}
 	oldState.Unmarshal(req.GetProperties())
 
 	urn := h.mustParseModURN(req.OldInputs)
 
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
+	wd := tfsandbox.ModuleInstanceWorkdir(moduleExecutor, urn)
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, wd, h.auxProviderServer, moduleExecutor)
 	if err != nil {
-		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}
 
 	tfName := getModuleName(urn)
@@ -293,17 +294,17 @@ func (h *moduleStateHandler) Delete(
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, fmt.Errorf("seed file generation failed: %w", err)
 	}
 
 	err = tf.PushStateAndLockFile(ctx, oldState.rawState, oldState.rawLockFile)
 	if err != nil {
-		return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
+		return nil, fmt.Errorf("pushStateAndLockFile failed: %w", err)
 	}
 
 	err = tf.Init(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("Init failed: %w", err)
+		return nil, fmt.Errorf("init failed: %w", err)
 	}
 
 	err = tf.Destroy(ctx, logger)
@@ -320,6 +321,7 @@ func (h *moduleStateHandler) Read(
 	req *pulumirpc.ReadRequest,
 	moduleSource TFModuleSource,
 	moduleVersion TFModuleVersion,
+	moduleExecutor string,
 ) (*pulumirpc.ReadResponse, error) {
 	if req.Inputs == nil {
 		return nil, fmt.Errorf("Read() is currently only supported for pulumi refresh")
@@ -337,13 +339,13 @@ func (h *moduleStateHandler) Read(
 
 	modUrn := h.mustParseModURN(req.Inputs)
 	tfName := getModuleName(modUrn)
-	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
+	wd := tfsandbox.ModuleInstanceWorkdir(moduleExecutor, modUrn)
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, wd, h.auxProviderServer)
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, wd, h.auxProviderServer, moduleExecutor)
 	if err != nil {
-		return nil, fmt.Errorf("Sandbox construction failed: %w", err)
+		return nil, fmt.Errorf("sandbox construction failed: %w", err)
 	}
 
 	// when refreshing, we do not require outputs to be exposed
@@ -354,7 +356,7 @@ func (h *moduleStateHandler) Read(
 		map[string]resource.PropertyMap{}, /*providersConfig*/
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Seed file generation failed: %w", err)
+		return nil, fmt.Errorf("seed file generation failed: %w", err)
 	}
 
 	oldState := moduleState{}
@@ -367,7 +369,7 @@ func (h *moduleStateHandler) Read(
 
 	plan, err := tf.PlanRefreshOnly(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("Planning module refresh failed: %w", err)
+		return nil, fmt.Errorf("planning module refresh failed: %w", err)
 	}
 
 	// Child resources will need the plan to figure out their diffs.
@@ -376,7 +378,7 @@ func (h *moduleStateHandler) Read(
 	// Now actually apply the refresh.
 	state, err := tf.Refresh(ctx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("Module refresh failed: %w", err)
+		return nil, fmt.Errorf("module refresh failed: %w", err)
 	}
 
 	// Child resources need to access the state in their Read() implementation.

@@ -30,88 +30,97 @@ import (
 
 func TestState(t *testing.T) {
 	ctx := context.Background()
+	for _, executor := range []string{"terraform", "tofu"} {
+		t.Run("executor="+executor, func(t *testing.T) {
+			var tf *ModuleRuntime
+			if executor == "terraform" {
+				tf = newTestTerraform(t)
+			} else {
+				tf = newTestTofu(t)
+			}
 
-	tofu := newTestTofu(t)
-	t.Logf("WorkingDir: %s", tofu.WorkingDir())
+			t.Logf("WorkingDir: %s", tf.WorkingDir())
 
-	outputs := []TFOutputSpec{
-		{Name: "output1"},
-		{Name: "sensitive_output"},
-		{Name: "statically_known"},
+			outputs := []TFOutputSpec{
+				{Name: "output1"},
+				{Name: "sensitive_output"},
+				{Name: "statically_known"},
+			}
+
+			providersConfig := map[string]resource.PropertyMap{}
+			ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
+			err := CreateTFFile("test", ms, "", tf.WorkingDir(),
+				resource.NewPropertyMapFromMap(map[string]interface{}{
+					"inputVar": "test",
+				}), outputs, providersConfig)
+			require.NoError(t, err, "error creating tf file")
+
+			err = tf.Init(ctx, DiscardLogger)
+			require.NoError(t, err, "error running init")
+
+			initialPlan, err := tf.Plan(ctx, DiscardLogger)
+			require.NoError(t, err, "error running plan (before apply)")
+			require.NotNil(t, initialPlan, "expected a non-nil plan")
+
+			plannedOutputs := initialPlan.Outputs()
+			require.Equal(t, resource.PropertyMap{
+				resource.PropertyKey("output1"):          unknown(),
+				resource.PropertyKey("sensitive_output"): unknown(),
+				resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
+			}, plannedOutputs)
+
+			state, err := tf.Apply(ctx, DiscardLogger)
+			require.NoError(t, err, "error running apply")
+
+			moduleOutputs := state.Outputs()
+			// output value is the same as the input
+			expectedOutputValue := resource.NewStringProperty("test")
+			require.Equal(t, resource.PropertyMap{
+				resource.PropertyKey("output1"):          expectedOutputValue,
+				resource.PropertyKey("sensitive_output"): resource.MakeSecret(expectedOutputValue),
+				resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
+			}, moduleOutputs)
+
+			rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
+			require.NoError(t, err, "error pulling state")
+
+			type stateModel struct {
+				Resources []any `json:"resources"`
+			}
+
+			var rawStateParsed stateModel
+			err = json.Unmarshal(rawState, &rawStateParsed)
+			require.NoError(t, err)
+
+			resourceCount := 0
+			state.VisitResourceStates(func(_ *ResourceState) {
+				resourceCount++
+			})
+
+			t.Logf("Found %d resources in state", resourceCount)
+
+			require.Equal(t, resourceCount, len(rawStateParsed.Resources))
+
+			// Now modify the state and run a plan.
+
+			newState := bytes.ReplaceAll(rawState, []byte(`"test"`), []byte(`"test2"`))
+			err = tf.PushStateAndLockFile(ctx, newState, rawLockFile)
+			require.NoError(t, err, "error pushing tofu state")
+
+			plan, err := tf.Plan(ctx, DiscardLogger)
+			require.NoError(t, err, "error replanning")
+
+			hasUpdates := false
+			plan.VisitResourcePlans(func(rp *ResourcePlan) {
+				if rp.ChangeKind() == Update {
+					hasUpdates = true
+					t.Logf("Planning to update %s", rp.Address())
+				}
+			})
+
+			require.True(t, hasUpdates, "expected the plan after the state edit to have updates")
+		})
 	}
-
-	providersConfig := map[string]resource.PropertyMap{}
-	ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
-	err := CreateTFFile("test", ms, "", tofu.WorkingDir(),
-		resource.NewPropertyMapFromMap(map[string]interface{}{
-			"inputVar": "test",
-		}), outputs, providersConfig)
-	require.NoError(t, err, "error creating tf file")
-
-	err = tofu.Init(ctx, DiscardLogger)
-	require.NoError(t, err, "error running tofu init")
-
-	initialPlan, err := tofu.Plan(ctx, DiscardLogger)
-	require.NoError(t, err, "error running tofu plan (before apply)")
-	require.NotNil(t, initialPlan, "expected a non-nil plan")
-
-	plannedOutputs := initialPlan.Outputs()
-	require.Equal(t, resource.PropertyMap{
-		resource.PropertyKey("output1"):          unknown(),
-		resource.PropertyKey("sensitive_output"): unknown(),
-		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
-	}, plannedOutputs)
-
-	state, err := tofu.Apply(ctx, DiscardLogger)
-	require.NoError(t, err, "error running tofu apply")
-
-	moduleOutputs := state.Outputs()
-	// output value is the same as the input
-	expectedOutputValue := resource.NewStringProperty("test")
-	require.Equal(t, resource.PropertyMap{
-		resource.PropertyKey("output1"):          expectedOutputValue,
-		resource.PropertyKey("sensitive_output"): resource.MakeSecret(expectedOutputValue),
-		resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
-	}, moduleOutputs)
-
-	rawState, rawLockFile, err := tofu.PullStateAndLockFile(ctx)
-	require.NoError(t, err, "error pulling tofu state")
-
-	type stateModel struct {
-		Resources []any `json:"resources"`
-	}
-
-	var rawStateParsed stateModel
-	err = json.Unmarshal(rawState, &rawStateParsed)
-	require.NoError(t, err)
-
-	resourceCount := 0
-	state.VisitResourceStates(func(_ *ResourceState) {
-		resourceCount++
-	})
-
-	t.Logf("Found %d resources in state", resourceCount)
-
-	require.Equal(t, resourceCount, len(rawStateParsed.Resources))
-
-	// Now modify the state and run a plan.
-
-	newState := bytes.ReplaceAll(rawState, []byte(`"test"`), []byte(`"test2"`))
-	err = tofu.PushStateAndLockFile(ctx, newState, rawLockFile)
-	require.NoError(t, err, "error pushing tofu state")
-
-	plan, err := tofu.Plan(ctx, DiscardLogger)
-	require.NoError(t, err, "error replanning")
-
-	hasUpdates := false
-	plan.VisitResourcePlans(func(rp *ResourcePlan) {
-		if rp.ChangeKind() == Update {
-			hasUpdates = true
-			t.Logf("Planning to update %s", rp.Address())
-		}
-	})
-
-	require.True(t, hasUpdates, "expected the plan after the state edit to have updates")
 }
 
 func TestStateMatchesPlan(t *testing.T) {

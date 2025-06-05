@@ -108,6 +108,24 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		}
 	}
 
+	moduleExecutorVariable := schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type: "string",
+		},
+
+		Description: "Sets the executor used to run the module.",
+		Default:     "",
+		DefaultInfo: &schema.DefaultSpec{
+			Environment: []string{moduleExecutorEnvironmentVariable},
+		},
+	}
+
+	if inferredModule.ProvidersConfig.Variables == nil {
+		inferredModule.ProvidersConfig.Variables = map[string]schema.PropertySpec{}
+	}
+
+	inferredModule.ProvidersConfig.Variables[moduleExecutorVariableName] = moduleExecutorVariable
+
 	packageSpec := &schema.PackageSpec{
 		Name:    string(packageName),
 		Version: string(pkgVer),

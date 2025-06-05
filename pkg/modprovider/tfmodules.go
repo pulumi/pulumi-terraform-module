@@ -315,7 +315,7 @@ func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Ver
 
 func InferModuleSchema(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	packageName packageName,
 	mod TFModuleSource,
 	ver TFModuleVersion,
@@ -325,7 +325,7 @@ func InferModuleSchema(
 
 func inferModuleSchema(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	packageName packageName,
 	mod TFModuleSource,
 	tfModuleVersion TFModuleVersion,
@@ -540,14 +540,14 @@ func combineInferredModuleSchema(
 
 func extractModuleContent(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	source TFModuleSource,
 	version TFModuleVersion,
 	logger tfsandbox.Logger,
 ) (*configs.Module, error) {
 	modDir, err := resolveModuleSources(ctx, tf, source, version, logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve module sources: %w", err)
 	}
 
 	parser := configs.NewParser(nil)
@@ -614,7 +614,7 @@ func findResolvedModuleDir(mj *modulesJSON, key string) (string, error) {
 
 func resolveModuleSources(
 	ctx context.Context,
-	tf *tfsandbox.Tofu,
+	tf *tfsandbox.ModuleRuntime,
 	source tfsandbox.TFModuleSource,
 	version tfsandbox.TFModuleVersion, //optional
 	logger tfsandbox.Logger,
@@ -626,12 +626,12 @@ func resolveModuleSources(
 	providerConfig := map[string]resource.PropertyMap{}
 	err := tfsandbox.CreateTFFile(key, source, version, tf.WorkingDir(), inputs, outputs, providerConfig)
 	if err != nil {
-		return "", fmt.Errorf("tofu file creation failed: %w", err)
+		return "", fmt.Errorf("terraform file creation failed: %w", err)
 	}
 
 	// init will resolve module sources and create .terraform/modules folder
 	if err := tf.Init(ctx, logger); err != nil {
-		return "", fmt.Errorf("tofu init failure: %w", err)
+		return "", fmt.Errorf("init failure (%s): %w", tf.Description(), err)
 	}
 
 	mjPath := filepath.Join(tf.WorkingDir(), ".terraform", "modules", "modules.json")

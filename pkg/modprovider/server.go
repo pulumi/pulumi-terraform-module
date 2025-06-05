@@ -89,6 +89,12 @@ type server struct {
 	// there are no Output values inside this map. In the current implementation this is OK as the data is only
 	// used to produce Terraform files to feed to opentofu and lacks the capability to track these dependencies.
 	providerConfig resource.PropertyMap
+	// moduleExecutor is the executable that will be used to run the module.
+	// by default this is terraform, using the CLI available in the PATH.
+	// the user could also provide a path to a binary to use instead of the default.
+	// for example, moduleExecutor could be set to "opentofu" to use the opentofu CLI.
+	// in which case we will try to find the opentofu binary in the PATH or download it if it is not available.
+	moduleExecutor string
 
 	auxProviderServer *auxprovider.Server
 
@@ -117,7 +123,6 @@ func (s *server) Parameterize(
 	logger := newResourceLogger(s.hostClient, "")
 
 	workdir := tfsandbox.ModuleWorkdir(pargs.TFModuleSource, pargs.TFModuleVersion)
-
 	// Since multiple provider instances may be racing to infer a schema of the same module, use OS-level locking.
 	lockFile := filepath.Join(os.TempDir(), "pulumi-terraform-module-"+strings.Join(workdir, "-")+".lock")
 	logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("Acquiring schema inference FileMutex: %s", lockFile))
@@ -132,10 +137,17 @@ func (s *server) Parameterize(
 		contract.AssertNoErrorf(err, "Failed to Unlock a NewFileMutex")
 	}()
 
-	tf, err := tfsandbox.NewTofu(ctx, logger, workdir, s.auxProviderServer)
-	if err != nil {
-		return nil, fmt.Errorf("tofu sandbox construction failure: %w", err)
+	executor := s.moduleExecutor
+	if executor == "" {
+		executor = os.Getenv(moduleExecutorEnvironmentVariable)
 	}
+
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, workdir, s.auxProviderServer, executor)
+	if err != nil {
+		return nil, fmt.Errorf("sandbox construction failure: %w", err)
+	}
+
+	logger.LogStatus(ctx, tfsandbox.Debug, fmt.Sprintf("Using %s for schema inference", tf.Description()))
 
 	inferredModuleSchema, err := inferModuleSchema(ctx, tf, s.packageName,
 		pargs.TFModuleSource, pargs.TFModuleVersion, logger)
@@ -281,7 +293,7 @@ func (s *server) GetSchema(
 	_ *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
 	if s.params == nil {
-		return nil, fmt.Errorf("Expected Parameterize() call before a GetSchema() call to set parameters")
+		return nil, fmt.Errorf("expected Parameterize() call before a GetSchema() call to set parameters")
 	}
 	spec, err := pulumiSchemaForModule(s.params, s.inferredModuleSchema)
 	if err != nil {
@@ -322,6 +334,16 @@ func (s *server) Configure(
 	}
 
 	s.providerConfig = config
+
+	if config.HasValue(resource.PropertyKey(moduleExecutorVariableName)) {
+		if executor, ok := config[moduleExecutorVariableName]; ok && executor.IsString() {
+			s.moduleExecutor = executor.StringValue()
+		}
+	} else {
+		// if the user didn't specify the executor variable
+		// then we check the environment variable
+		s.moduleExecutor = os.Getenv(moduleExecutorEnvironmentVariable)
+	}
 
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
@@ -402,8 +424,10 @@ func (s *server) acquirePackageReference(
 func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.PropertyMap {
 	providersConfig := make(map[string]resource.PropertyMap)
 	for propertyKey, originalSerializedConfig := range config {
-		if string(propertyKey) == "version" || string(propertyKey) == "pluginDownloadURL" {
-			// skip the version and pluginDownloadURL properties
+		if string(propertyKey) == "version" ||
+			string(propertyKey) == "pluginDownloadURL" ||
+			string(propertyKey) == moduleExecutorVariableName {
+			// skip properties that are not provider configurations
 			continue
 		}
 
@@ -487,6 +511,7 @@ func (s *server) Construct(
 				packageRef,
 				s.providerSelfURN,
 				providersConfig,
+				s.moduleExecutor,
 				resourceOptions,
 			)
 
@@ -503,7 +528,7 @@ func (s *server) Construct(
 			}
 			return constructResult, nil
 		default:
-			return nil, fmt.Errorf("Unsupported type: %q, expecting %q", typ, ctok)
+			return nil, fmt.Errorf("unsupported typ=%q expecting %q", typ, ctok)
 		}
 	})
 }
@@ -623,7 +648,7 @@ func (s *server) Create(
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Create(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-				s.inferredModuleSchema, s.packageName)
+				s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
 		}
@@ -648,7 +673,7 @@ func (s *server) Update(
 		case req.GetType() == string(moduleTypeToken(s.packageName)):
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Update(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-				s.inferredModuleSchema, s.packageName)
+				s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Update]: type %q is not supported yet", req.GetType())
 		}
@@ -674,7 +699,7 @@ func (s *server) Delete(
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Delete(ctx, req, s.packageName,
 				s.params.TFModuleSource, s.params.TFModuleVersion,
-				s.inferredModuleSchema, providersConfig)
+				s.inferredModuleSchema, providersConfig, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())
 		}
@@ -683,7 +708,11 @@ func (s *server) Delete(
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
-		return s.moduleStateHandler.Delete(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig)
+		return s.moduleStateHandler.Delete(ctx, req,
+			s.params.TFModuleSource,
+			s.params.TFModuleVersion,
+			providersConfig,
+			s.moduleExecutor)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Delete(ctx, req)
 	default:
@@ -710,7 +739,7 @@ func (s *server) Read(
 			providersConfig := cleanProvidersConfig(s.providerConfig)
 			return s.moduleHandler.Read(ctx, req, s.packageName,
 				s.params.TFModuleSource, s.params.TFModuleVersion,
-				s.inferredModuleSchema, providersConfig)
+				s.inferredModuleSchema, providersConfig, s.moduleExecutor)
 		default:
 			return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
 		}
@@ -718,7 +747,7 @@ func (s *server) Read(
 
 	switch {
 	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion)
+		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, s.moduleExecutor)
 	case isChildResourceType(req.GetType()):
 		return s.childHandler.Read(ctx, req)
 	default:

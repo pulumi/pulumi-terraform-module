@@ -21,17 +21,19 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Location hint for the working directory for Tofu operations.
+// Location hint for the working directory for Terraform/Tofu operations.
 type Workdir []string
 
 // This workdir dedicated to given module URN.
-func ModuleInstanceWorkdir(modUrn urn.URN) Workdir {
-	return Workdir([]string{"by-urn", url.PathEscape(string(modUrn))})
+func ModuleInstanceWorkdir(executor string, modUrn urn.URN) Workdir {
+	workdir := Workdir([]string{"by-urn", url.PathEscape(string(modUrn))})
+	return workdir.WithExecutor(executor)
 }
 
 // This workdir will be used for generic operations such as module schema inference.
@@ -42,6 +44,26 @@ func ModuleWorkdir(source TFModuleSource, version TFModuleVersion) Workdir {
 		return Workdir([]string{"by-module-source-and-version", s, v})
 	}
 	return Workdir([]string{"by-module-source", s})
+}
+
+// Prepend the executor name to the workdir path.
+func (w Workdir) WithExecutor(executor string) Workdir {
+	if executor == "" {
+		// If no executor is specified, we return the workdir as is.
+		return w
+	}
+
+	if fileExists(executor) {
+		// If the executor is a file, we use its base name as the path component.
+		ext := filepath.Ext(executor)
+		executor = strings.TrimSuffix(filepath.Base(executor), ext)
+	}
+
+	path := []string{executor}
+	for _, part := range w {
+		path = append(path, part)
+	}
+	return Workdir(path)
 }
 
 // Get or create a folder under $TMPDIR matching the current Pulumi project and stack.
@@ -60,7 +82,7 @@ func workdirGetOrCreate(ctx context.Context, logger Logger, workdir Workdir) (st
 
 	logger.Log(ctx, Debug, fmt.Sprintf("Creating working directory: %s", path))
 	if err := os.MkdirAll(path, 0700); err != nil {
-		return "", fmt.Errorf("Error creating workdir %q: %v", path, err)
+		return "", fmt.Errorf("error creating workdir %q: %v", path, err)
 	}
 
 	return path, nil
@@ -95,7 +117,7 @@ func workdirClean(workdir string) error {
 		filepath.Join(workdir, defaultPlanFile),
 	} {
 		if err := os.RemoveAll(p); err != nil {
-			errs = append(errs, fmt.Errorf("Error cleaning %q: %w", p, err))
+			errs = append(errs, fmt.Errorf("error cleaning %q: %w", p, err))
 		}
 	}
 

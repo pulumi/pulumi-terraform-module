@@ -66,8 +66,10 @@ jobs:
         tofu_wrapper: false
     - name: Build provider binary
       run: make provider
-    - name: Unit-test provider code
-      run: make test_provider
+    - name: Unit-test provider code with opentofu
+      run: PULUMI_TERRAFORM_MODULE_EXECUTOR=opentofu make test_provider
+    - name: Unit-test provider code with terraform
+      run: PULUMI_TERRAFORM_MODULE_EXECUTOR=terraform make test_provider
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
       env:
