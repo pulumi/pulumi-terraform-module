@@ -1410,9 +1410,12 @@ func TestRefreshDeletedTofu(t *testing.T) {
 }
 
 // Verify that when there is no drift, refresh works without any changes.
-func TestRefreshNoChangesTerraform(t *testing.T) {
+func checkRefreshNoChanges(t *testing.T, executor string) {
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
-	testWriter := newTestWriter(t)
+	tw := newTestWriter(t)
+	if executor != "" {
+		t.Setenv("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor)
+	}
 
 	var debugOpts debug.LoggingOptions
 
@@ -1432,22 +1435,26 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	it := newPulumiTest(t, testProgram, localPath)
+	options := []opttest.Option{localPath}
+	if executor != "" {
+		options = append(options, opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
+	}
+	it := newPulumiTest(t, testProgram, options...)
+
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
 
-	// First provision a bucket.
+	t.Logf("# pulumi up with initial state of bucket with tagvalue=a")
 	it.SetConfig(t, "tagvalue", "a")
 	it.Up(t,
-		optup.ProgressStreams(testWriter),
-		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
 		optup.DebugLogging(debugOpts))
 
-	// Now perform a refresh.
-	t.Logf("pulumi refresh")
+	t.Logf("# pulumi refresh should detect no changes")
 	refreshResult := it.Refresh(t,
-		optrefresh.ProgressStreams(testWriter),
-		optrefresh.ErrorProgressStreams(testWriter),
+		optrefresh.ProgressStreams(tw),
+		optrefresh.ErrorProgressStreams(tw),
 		optrefresh.DebugLogging(debugOpts))
 
 	rc := refreshResult.Summary.ResourceChanges
@@ -1456,53 +1463,12 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 	}, rc)
 }
 
-// Verify that when there is no drift, refresh works without any changes.
-func TestRefreshNoChangesOpenTofu(t *testing.T) {
-	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
-	testWriter := newTestWriter(t)
+func TestRefreshNoChangesTerraform(t *testing.T) {
+	checkRefreshNoChanges(t, "")
+}
 
-	var debugOpts debug.LoggingOptions
-
-	// To enable debug logging in this test, un-comment:
-	// logLevel := uint(13)
-	// debugOpts = debug.LoggingOptions{
-	// 	LogLevel:      &logLevel,
-	// 	LogToStdErr:   true,
-	// 	FlowToPlugins: true,
-	// 	Debug:         true,
-	// }
-
-	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
-	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
-	require.NoError(t, err)
-
-	localBin := ensureCompiledProvider(t)
-	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-
-	it := newPulumiTest(t, testProgram, localPath,
-		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
-
-	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
-	it.SetConfig(t, "prefix", generateTestResourcePrefix())
-
-	// First provision a bucket.
-	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t,
-		optup.ProgressStreams(testWriter),
-		optup.ErrorProgressStreams(testWriter),
-		optup.DebugLogging(debugOpts))
-
-	// Now perform a refresh.
-	t.Logf("pulumi refresh")
-	refreshResult := it.Refresh(t,
-		optrefresh.ProgressStreams(testWriter),
-		optrefresh.ErrorProgressStreams(testWriter),
-		optrefresh.DebugLogging(debugOpts))
-
-	rc := refreshResult.Summary.ResourceChanges
-	assert.Equal(t, &map[string]int{
-		"same": 3,
-	}, rc)
+func TestRefreshNoChangesTofu(t *testing.T) {
+	checkRefreshNoChanges(t, "tofu")
 }
 
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
