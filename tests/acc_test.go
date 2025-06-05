@@ -1339,10 +1339,14 @@ func TestRefreshImplicitly(t *testing.T) {
 }
 
 // Verify that pulumi refresh detects deleted resources.
-func TestRefreshDeletedTerraform(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-
+func checkRefreshDeleted(t *testing.T, executor string) {
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
+
+	tw := newTestWriter(t)
+
+	if executor != "" {
+		t.Setenv("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor)
+	}
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
@@ -1351,30 +1355,37 @@ func TestRefreshDeletedTerraform(t *testing.T) {
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
 
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath)
+	options := []opttest.Option{localPath}
+	if executor != "" {
+		options = append(options, opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
+	}
+	it := newPulumiTest(t, testProgram, options...)
+
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
 	it.SetConfig(t, "prefix", generateTestResourcePrefix())
 
-	// First provision a bucket.
+	t.Logf("# pulumi up to provision bucket with tagvalue=a")
 	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
+	it.Up(t, optup.Diff(), optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
 	stateA := it.ExportStack(t)
 
-	// Then destroy the stack so that the bucket is removed from the cloud.
-	it.Destroy(t)
+	t.Logf("# pulumi destroy to remove the bucket from cloud")
+	it.Destroy(t, optdestroy.ProgressStreams(tw), optdestroy.ErrorProgressStreams(tw))
 
-	// Now reset Pulumi state so Pului thinks that the bucket exists.
+	t.Logf("# pulumi stack import to reset the state")
 	it.ImportStack(t, stateA)
 
-	// Now perform a refresh.
-	refreshResult := it.Refresh(t)
-	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
+	t.Logf("# pulumi refresh to detect that the bucket is missing and delete it from state")
+	refreshResult := it.Refresh(t,
+		optrefresh.Diff(),
+		optrefresh.ProgressStreams(tw),
+		optrefresh.ErrorProgressStreams(tw),
+	)
 
 	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"delete": 1, "same": 3}).Equal(t, rc)
+	autogold.Expect(&map[string]int{"delete": 1, "same": 1, "update": 1}).Equal(t, rc)
 
+	// Check that the bucket view-state is removed from the statefile.
 	stateR := it.ExportStack(t)
 
 	var deployment apitype.DeploymentV3
@@ -1390,58 +1401,12 @@ func TestRefreshDeletedTerraform(t *testing.T) {
 	require.Equal(t, 0, bucketFound)
 }
 
-// Verify that pulumi refresh detects deleted resources.
-func TestRefreshDeletedOpenTofu(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
+func TestRefreshDeletedTerraform(t *testing.T) {
+	checkRefreshDeleted(t, "")
+}
 
-	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
-
-	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
-	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
-	require.NoError(t, err)
-
-	localBin := ensureCompiledProvider(t)
-	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-
-	it := pulumitest.NewPulumiTest(t, testProgram, localPath,
-		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
-
-	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
-	it.SetConfig(t, "prefix", generateTestResourcePrefix())
-
-	// First provision a bucket.
-	it.SetConfig(t, "tagvalue", "a")
-	it.Up(t)
-	stateA := it.ExportStack(t)
-
-	// Then destroy the stack so that the bucket is removed from the cloud.
-	it.Destroy(t)
-
-	// Now reset Pulumi state so Pului thinks that the bucket exists.
-	it.ImportStack(t, stateA)
-
-	// Now perform a refresh.
-	refreshResult := it.Refresh(t)
-	t.Logf("pulumi refresh")
-	t.Logf("%s", refreshResult.StdErr)
-	t.Logf("%s", refreshResult.StdOut)
-
-	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"delete": 1, "same": 3}).Equal(t, rc)
-
-	stateR := it.ExportStack(t)
-
-	var deployment apitype.DeploymentV3
-	err = json.Unmarshal(stateR.Deployment, &deployment)
-	require.NoError(t, err)
-
-	bucketFound := 0
-	for _, r := range deployment.Resources {
-		if r.Type == "bucketmod:tf:aws_s3_bucket" {
-			bucketFound++
-		}
-	}
-	require.Equal(t, 0, bucketFound)
+func TestRefreshDeletedTofu(t *testing.T) {
+	checkRefreshDeleted(t, "tofu")
 }
 
 // Verify that when there is no drift, refresh works without any changes.
