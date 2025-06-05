@@ -45,8 +45,9 @@ func (t *ModuleRuntime) Description() string {
 	return t.description
 }
 
-func (t *ModuleRuntime) applyOptions() []tfexec.ApplyOption {
+func (t *ModuleRuntime) applyOptions(opt ...tfexec.ApplyOption) []tfexec.ApplyOption {
 	opts := []tfexec.ApplyOption{}
+	opts = append(opts, opt...)
 	if t.reattach != nil {
 		opts = append(opts, tfexec.Reattach(*t.reattach))
 	}
