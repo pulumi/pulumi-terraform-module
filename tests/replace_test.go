@@ -245,6 +245,7 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 // plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
 // approximately renders this as a replacement, where the deletion of the resource is a no-op.
 func Test_replace_drift_deleted(t *testing.T) {
+	t.Skip("TODO engine snapshot integrity error")
 	t.Parallel()
 
 	tw := newTestWriter(t)
