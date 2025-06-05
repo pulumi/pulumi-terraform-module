@@ -25,10 +25,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -37,48 +33,32 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
-	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
-	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
 func StartServer(hostClient *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-	planStore := planStore{}
-
 	auxProviderServer, err := auxprovider.Serve()
 	if err != nil {
 		return nil, err
 	}
 
-	moduleStateHandler := newModuleStateHandler(hostClient, &planStore, auxProviderServer)
-
 	srv := &server{
-		planStore:          &planStore,
-		hostClient:         hostClient,
-		stateStore:         moduleStateHandler,
-		moduleHandler:      newModuleHandler(hostClient, auxProviderServer),
-		moduleStateHandler: moduleStateHandler,
-		childHandler:       newChildHandler(&planStore),
-		auxProviderServer:  auxProviderServer,
+		hostClient:        hostClient,
+		moduleHandler:     newModuleHandler(hostClient, auxProviderServer),
+		auxProviderServer: auxProviderServer,
 	}
 	return srv, nil
 }
 
 type server struct {
 	pulumirpc.UnimplementedResourceProviderServer
-	planStore            *planStore
 	params               *ParameterizeArgs
 	hostClient           *provider.HostClient
-	stateStore           moduleStateStore
 	moduleHandler        *moduleHandler
-	moduleStateHandler   *moduleStateHandler
-	childHandler         *childHandler
 	packageName          packageName
 	packageVersion       packageVersion
 	componentTypeName    componentTypeName
@@ -353,55 +333,6 @@ func (s *server) Configure(
 	}, nil
 }
 
-// acquirePackageReference registers the parameterized package in the engine and returns
-// a self reference. This reference is then used when registering child resources in the module
-// that we are wrapping. This is necessary so that the engine understands that child resources created
-// from the terraform module are part of this package, hence the self reference.
-func (s *server) acquirePackageReference(
-	ctx context.Context,
-	monitorAddress string,
-) (string, error) {
-	if s.params == nil {
-		return "", fmt.Errorf("expected package parameters to be set before acquiring package reference")
-	}
-
-	if s.packageVersion == "" {
-		return "", fmt.Errorf("expected package version to be non-empty before acquiring package reference")
-	}
-
-	conn, err := grpc.NewClient(
-		monitorAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		rpcutil.GrpcChannelOptions(),
-	)
-	if err != nil {
-		return "", fmt.Errorf("connect to resource monitor: %w", err)
-	}
-	defer conn.Close()
-
-	monitor := pulumirpc.NewResourceMonitorClient(conn)
-	parameters, err := json.Marshal(s.params)
-	if err != nil {
-		return "", fmt.Errorf("json.Marshal failed to serialize parameter: %w", err)
-	}
-
-	response, err := monitor.RegisterPackage(ctx, &pulumirpc.RegisterPackageRequest{
-		Name:    Name(),
-		Version: Version(),
-		Parameterization: &pulumirpc.Parameterization{
-			Name:    string(s.packageName),
-			Version: string(s.packageVersion),
-			Value:   parameters,
-		},
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("register package: %w", err)
-	}
-
-	return response.Ref, nil
-}
-
 // cleanProvidersConfig takes config that was produced from provider inputs in the program:
 //
 //	const provider = new vpc.Provider("my-provider", {
@@ -465,92 +396,19 @@ func cleanProvidersConfig(config resource.PropertyMap) map[string]resource.Prope
 }
 
 func (s *server) Construct(
-	ctx context.Context,
+	_ context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	if flags.EnableViewsPreview {
-		return nil, fmt.Errorf("Unsupported type: %q", req.GetType())
-	}
-
-	inputProps, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepOutputValues: true,
-	})
-
-	providersConfig := cleanProvidersConfig(s.providerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Construct failed to parse inputs: %s", err)
-	}
-
-	packageRef, err := s.acquirePackageReference(ctx, req.MonitorEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("Construct failed to acquire package reference: %s", err)
-	}
-
-	return pulumiprovider.Construct(ctx, req, s.hostClient.EngineConn(), func(
-		ctx *pulumi.Context, typ, name string,
-		_ pulumiprovider.ConstructInputs,
-		resourceOptions pulumi.ResourceOption,
-	) (*pulumiprovider.ConstructResult, error) {
-		ctok := componentTypeToken(s.packageName, s.componentTypeName)
-		switch typ {
-		case string(ctok):
-			componentUrn, modStateResource, outputs, err := newModuleComponentResource(ctx,
-				s.stateStore,
-				s.planStore,
-				s.auxProviderServer,
-				s.packageName,
-				s.componentTypeName,
-				s.params.TFModuleSource,
-				s.params.TFModuleVersion,
-				name,
-				inputProps,
-				s.inferredModuleSchema,
-				packageRef,
-				s.providerSelfURN,
-				providersConfig,
-				s.moduleExecutor,
-				resourceOptions,
-			)
-
-			if err != nil {
-				return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
-			}
-
-			constructResult := &pulumiprovider.ConstructResult{
-				URN: pulumi.URN(string(*componentUrn)),
-				// Every Output needs to depend on the modStateResource.
-				State: pulumix.MapWithBroadcastDependencies(ctx.Context(), []pulumi.Resource{
-					modStateResource,
-				}, outputs),
-			}
-			return constructResult, nil
-		default:
-			return nil, fmt.Errorf("unsupported typ=%q expecting %q", typ, ctok)
-		}
-	})
+	return nil, fmt.Errorf("Unsupported type: %q", req.GetType())
 }
 
 func (s *server) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	if flags.EnableViewsPreview {
-		switch {
-		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			return s.moduleHandler.Check(ctx, req)
-		default:
-			return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
-		}
-	}
-
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Check(ctx, req)
-	case isChildResourceType(req.GetType()):
-		return s.childHandler.Check(ctx, req)
+	case req.GetType() == string(moduleTypeToken(s.packageName)):
+		return s.moduleHandler.Check(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
 	}
@@ -561,7 +419,7 @@ func (s *server) CheckConfig(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	// Temporarily duplicate the Handshake check because old Pulumi CLI versions ignored Handshake errors.
-	if flags.EnableViewsPreview && !s.pulumiCliSupportsViews {
+	if !s.pulumiCliSupportsViews {
 		return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
 			"views support. Please update Pulumi CLI to the latest version.\n\n" +
 			"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
@@ -598,20 +456,9 @@ func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	if flags.EnableViewsPreview {
-		switch {
-		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			return s.moduleHandler.Diff(ctx, req)
-		default:
-			return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
-		}
-	}
-
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Diff(ctx, req)
-	case isChildResourceType(req.GetType()):
-		return s.childHandler.Diff(ctx, req)
+	case req.GetType() == string(moduleTypeToken(s.packageName)):
+		return s.moduleHandler.Diff(ctx, req)
 	default:
 		return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
 	}
@@ -621,44 +468,30 @@ func (s *server) Handshake(
 	_ context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	if flags.EnableViewsPreview {
-		if !req.SupportsViews {
-			s.pulumiCliSupportsViews = false
-			return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
-				"views support. Please update Pulumi CLI to the latest version.\n\n" +
-				"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
-				"environment variable is set to `true` to enable resource views.")
-		}
-		s.pulumiCliSupportsViews = true
-		return &pulumirpc.ProviderHandshakeResponse{
-			AcceptSecrets:   true,
-			AcceptResources: true,
-			AcceptOutputs:   true,
-		}, nil
+	if !req.SupportsViews {
+		s.pulumiCliSupportsViews = false
+		return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
+			"views support. Please update Pulumi CLI to the latest version.\n\n" +
+			"If using a pre-release version of Pulumi CLI, ensure PULUMI_ENABLE_VIEWS_PREVIEW \n" +
+			"environment variable is set to `true` to enable resource views.")
 	}
-	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+	s.pulumiCliSupportsViews = true
+	return &pulumirpc.ProviderHandshakeResponse{
+		AcceptSecrets:   true,
+		AcceptResources: true,
+		AcceptOutputs:   true,
+	}, nil
 }
 
 func (s *server) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	if flags.EnableViewsPreview {
-		switch {
-		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			providersConfig := cleanProvidersConfig(s.providerConfig)
-			return s.moduleHandler.Create(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-				s.inferredModuleSchema, s.packageName, s.moduleExecutor)
-		default:
-			return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
-		}
-	}
-
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Create(ctx, req)
-	case isChildResourceType(req.GetType()):
-		return s.childHandler.Create(ctx, req)
+	case req.GetType() == string(moduleTypeToken(s.packageName)):
+		providersConfig := cleanProvidersConfig(s.providerConfig)
+		return s.moduleHandler.Create(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
+			s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 	default:
 		return nil, fmt.Errorf("[Create]: type %q is not supported yet", req.GetType())
 	}
@@ -668,22 +501,11 @@ func (s *server) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	if flags.EnableViewsPreview {
-		switch {
-		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			providersConfig := cleanProvidersConfig(s.providerConfig)
-			return s.moduleHandler.Update(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-				s.inferredModuleSchema, s.packageName, s.moduleExecutor)
-		default:
-			return nil, fmt.Errorf("[Update]: type %q is not supported yet", req.GetType())
-		}
-	}
-
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Update(ctx, req)
-	case isChildResourceType(req.GetType()):
-		return s.childHandler.Update(ctx, req)
+	case req.GetType() == string(moduleTypeToken(s.packageName)):
+		providersConfig := cleanProvidersConfig(s.providerConfig)
+		return s.moduleHandler.Update(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
+			s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 	default:
 		return nil, fmt.Errorf("[Update]: type %q is not supported yet", req.GetType())
 	}
@@ -693,28 +515,12 @@ func (s *server) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
-	if flags.EnableViewsPreview {
-		switch {
-		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			providersConfig := cleanProvidersConfig(s.providerConfig)
-			return s.moduleHandler.Delete(ctx, req, s.packageName,
-				s.params.TFModuleSource, s.params.TFModuleVersion,
-				s.inferredModuleSchema, providersConfig, s.moduleExecutor)
-		default:
-			return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())
-		}
-	}
-
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
+	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
-		return s.moduleStateHandler.Delete(ctx, req,
-			s.params.TFModuleSource,
-			s.params.TFModuleVersion,
-			providersConfig,
-			s.moduleExecutor)
-	case isChildResourceType(req.GetType()):
-		return s.childHandler.Delete(ctx, req)
+		return s.moduleHandler.Delete(ctx, req, s.packageName,
+			s.params.TFModuleSource, s.params.TFModuleVersion,
+			s.inferredModuleSchema, providersConfig, s.moduleExecutor)
 	default:
 		return nil, fmt.Errorf("[Delete]: type %q is not supported yet", req.GetType())
 	}
@@ -733,23 +539,12 @@ func (s *server) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
 ) (*pulumirpc.ReadResponse, error) {
-	if flags.EnableViewsPreview {
-		switch {
-		case req.GetType() == string(moduleTypeToken(s.packageName)):
-			providersConfig := cleanProvidersConfig(s.providerConfig)
-			return s.moduleHandler.Read(ctx, req, s.packageName,
-				s.params.TFModuleSource, s.params.TFModuleVersion,
-				s.inferredModuleSchema, providersConfig, s.moduleExecutor)
-		default:
-			return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
-		}
-	}
-
 	switch {
-	case req.GetType() == string(moduleStateTypeToken(s.packageName)):
-		return s.moduleStateHandler.Read(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, s.moduleExecutor)
-	case isChildResourceType(req.GetType()):
-		return s.childHandler.Read(ctx, req)
+	case req.GetType() == string(moduleTypeToken(s.packageName)):
+		providersConfig := cleanProvidersConfig(s.providerConfig)
+		return s.moduleHandler.Read(ctx, req, s.packageName,
+			s.params.TFModuleSource, s.params.TFModuleVersion,
+			s.inferredModuleSchema, providersConfig, s.moduleExecutor)
 	default:
 		return nil, fmt.Errorf("[Read]: type %q is not supported yet", req.GetType())
 	}

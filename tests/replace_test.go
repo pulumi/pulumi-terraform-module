@@ -87,33 +87,9 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    conditionalCount(2, 1),
+		apitype.OpType("same"):    1,
 		apitype.OpType("update"):  1,
 	}, diffResult.ChangeSummary)
-
-	// There are some issues currently with views and update plans, making detailed asserts unreliable.
-	if !viewsEnabled {
-		delta := runPreviewWithPlanDiff(t, pt)
-		autogold.Expect(map[string]interface{}{
-			"module.replacetestmod.random_integer.r": map[string]interface{}{
-				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-					"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"keepers": map[string]interface{}{"keeper": "beta"},
-					"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				}},
-				"steps": []apitype.OpType{
-					apitype.OpType("delete-replaced"),
-					apitype.OpType("replace"),
-					apitype.OpType("create-replacement"),
-				},
-			},
-			"replacetestmod-state": map[string]interface{}{
-				//nolint:lll
-				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
-				"steps": []apitype.OpType{apitype.OpType("update")},
-			},
-		}).Equal(t, delta)
-	}
 
 	replaceResult := pt.Up(t,
 		optup.ProgressStreams(tw),
@@ -122,7 +98,7 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 	assert.Equal(t, &map[string]int{
 		"replace": 1,
-		"same":    conditionalCount(2, 1),
+		"same":    1,
 		"update":  1,
 	}, replaceResult.Summary.ResourceChanges)
 }
@@ -175,33 +151,9 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    conditionalCount(2, 1),
+		apitype.OpType("same"):    1,
 		apitype.OpType("update"):  1,
 	}, diffResult.ChangeSummary)
-
-	// There are some issues currently with views and update plans, making detailed asserts unreliable.
-	if !viewsEnabled {
-		delta := runPreviewWithPlanDiff(t, pt)
-		autogold.Expect(map[string]interface{}{
-			"module.replacetestmod.random_integer.r": map[string]interface{}{
-				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-					"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"keepers": map[string]interface{}{"keeper": "beta"},
-					"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				}},
-				"steps": []apitype.OpType{
-					apitype.OpType("create-replacement"),
-					apitype.OpType("replace"),
-					apitype.OpType("delete-replaced"),
-				},
-			},
-			"replacetestmod-state": map[string]interface{}{
-				//nolint:lll
-				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
-				"steps": []apitype.OpType{apitype.OpType("update")},
-			},
-		}).Equal(t, delta)
-	}
 
 	upResult := pt.Up(t,
 		optup.Diff(),
@@ -212,7 +164,7 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 
 	assert.Equal(t, &map[string]int{
 		"replace": 1,
-		"same":    conditionalCount(2, 1),
+		"same":    1,
 		"update":  1,
 	}, upResult.Summary.ResourceChanges)
 }
@@ -266,49 +218,15 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 2,
-		apitype.OpType("same"):    conditionalCount(2, 1),
+		apitype.OpType("same"):    1,
 		apitype.OpType("update"):  1,
 	}, diffResult.ChangeSummary)
 
 	// Although it is unclear which Pulumi-modeled input caused a replacement, assert that the plan is still a
 	// replace for the r0 random_integer resource. This is making certain replace_triggered_by works.
-	if viewsEnabled {
-		// With views plans are not trusted yet so do regex-level validation.
-		n := strings.Count(diffResult.StdOut, "+-mod:tf:random_integer: (replace)")
-		require.Equalf(t, 2, n, "Expected two random_integer resources being replaced")
-	} else {
-		delta := runPreviewWithPlanDiff(t, pt)
-		autogold.Expect(map[string]interface{}{
-			"module.replacetestmod.random_integer.r": map[string]interface{}{
-				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-					"id":     "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"result": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				}},
-				"steps": []apitype.OpType{
-					apitype.OpType("delete-replaced"),
-					apitype.OpType("replace"),
-					apitype.OpType("create-replacement"),
-				},
-			},
-			"module.replacetestmod.random_integer.r0": map[string]interface{}{
-				"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-					"id":      "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"keepers": map[string]interface{}{"keeper": "beta"},
-					"result":  "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				}},
-				"steps": []apitype.OpType{
-					apitype.OpType("delete-replaced"),
-					apitype.OpType("replace"),
-					apitype.OpType("create-replacement"),
-				},
-			},
-			"replacetestmod-state": map[string]interface{}{
-				//nolint:lll
-				"diff":  apitype.PlanDiffV1{Updates: map[string]interface{}{"moduleInputs": map[string]interface{}{"keeper": "beta"}}},
-				"steps": []apitype.OpType{apitype.OpType("update")},
-			},
-		}).Equal(t, delta)
-	}
+	// With views plans are not trusted yet so do regex-level validation.
+	n := strings.Count(diffResult.StdOut, "+-mod:tf:random_integer: (replace)")
+	require.Equalf(t, 2, n, "Expected two random_integer resources being replaced")
 
 	t.Logf("###################################################################################")
 	t.Logf("pulumi up")
@@ -328,9 +246,7 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 func Test_replace_drift_deleted(t *testing.T) {
 	t.Parallel()
 
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#331]")
-	}
+	t.Skip("TODO[pulumi/pulumi-terraform-module#331]")
 
 	localProviderBinPath := ensureCompiledProvider(t)
 

@@ -127,39 +127,15 @@ func Test_AlbExample(t *testing.T) {
 
 	assert.Equal(t, &map[string]int{
 		// 4 ModuleState resources account for 46+4=50.
-		"create": conditionalCount(50, 46),
+		"create": 46,
 	}, upResult.Summary.ResourceChanges)
 
-	if !viewsEnabled {
-		// Due to some issues specific to TF, the first preview is non-empty but detects some drift on the
-		// lambda resource. If this gets fixed in the future the test may evolve as needed.
-		resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "module.test-lambda.null_resource.archive[0]")
-
-		// Ignore source_code_hash as it is unstable across dev machines and CI.
-		fn := "module.test-lambda.aws_lambda_function.this[0]"
-		resourceDiffs[fn].(map[string]any)["diff"].(apitype.PlanDiffV1).Updates["source_code_hash"] = "*"
-
-		autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{
-				Adds: map[string]interface{}{"layers": []interface{}{}},
-				Updates: map[string]interface{}{
-					"last_modified":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"qualified_arn":        "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"qualified_invoke_arn": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-					"source_code_hash":     "*",
-					"version":              "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				},
-			},
-			"steps": []apitype.OpType{apitype.OpType("update")},
-		}}).Equal(t, resourceDiffs)
-	} else {
-		previewResult := integrationTest.Preview(t,
-			optpreview.Diff(),
-			optpreview.ErrorProgressStreams(tw),
-			optpreview.ProgressStreams(tw),
-		)
-		autogold.Expect(map[apitype.OpType]int{
-			apitype.OpType("same"): 46},
-		).Equal(t, previewResult.ChangeSummary)
-	}
+	previewResult := integrationTest.Preview(t,
+		optpreview.Diff(),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.ProgressStreams(tw),
+	)
+	autogold.Expect(map[apitype.OpType]int{
+		apitype.OpType("same"): 46},
+	).Equal(t, previewResult.ChangeSummary)
 }
