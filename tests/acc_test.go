@@ -1251,10 +1251,13 @@ func TestRefreshTofu(t *testing.T) {
 
 // This variation of TestRefresh checks that normal pulumi preview and pulumi up detect and correct drift even when
 // refresh is not explicitly called or requested, to mimic Terraform default behavior on this.
-func TestRefreshImplicitly(t *testing.T) {
-	t.Parallel()
+func checkRefreshImplicitly(t *testing.T, executor string) {
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	tw := newTestWriter(t)
+
+	if executor != "" {
+		t.Setenv("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor)
+	}
 
 	testProgram := filepath.Join("testdata", "programs", "ts", "refresher")
 	testMod, err := filepath.Abs(filepath.Join(".", "testdata", "modules", "bucketmod"))
@@ -1262,7 +1265,12 @@ func TestRefreshImplicitly(t *testing.T) {
 
 	localBin := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localBin))
-	it := newPulumiTest(t, testProgram, localPath)
+
+	options := []opttest.Option{localPath}
+	if executor != "" {
+		options = append(options, opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
+	}
+	it := newPulumiTest(t, testProgram, options...)
 
 	expectBucketTag := func(tagvalue string) {
 		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
@@ -1336,6 +1344,14 @@ func TestRefreshImplicitly(t *testing.T) {
 
 	// The state of the bucket should indicate "a" since it was reconciled to the desired state.
 	expectBucketTag("a")
+}
+
+func TestRefreshImplicitlyTerraform(t *testing.T) {
+	checkRefreshImplicitly(t, "")
+}
+
+func TestRefreshImplicitlyTofu(t *testing.T) {
+	checkRefreshImplicitly(t, "tofu")
 }
 
 // Verify that pulumi refresh detects deleted resources.
