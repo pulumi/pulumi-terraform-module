@@ -72,7 +72,7 @@ func TestTofuPlan(t *testing.T) {
 	err = tofu.Init(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu init")
 
-	plan, err := tofu.plan(ctx, DiscardLogger)
+	plan, err := tofu.plan(ctx, DiscardLogger, RefreshOpts{})
 	assert.NoErrorf(t, err, "error running tofu plan")
 	childModules := plan.PlannedValues.RootModule.ChildModules
 	assert.Len(t, childModules, 1)
@@ -96,7 +96,7 @@ func TestTofuApply(t *testing.T) {
 	err = tofu.Init(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu init")
 
-	state, err := tofu.apply(ctx, DiscardLogger)
+	state, err := tofu.apply(ctx, DiscardLogger, RefreshOpts{})
 	assert.NoError(t, err)
 	assert.Equal(t, "module.test.terraform_data.example", state.Values.RootModule.ChildModules[0].Resources[0].Address)
 
