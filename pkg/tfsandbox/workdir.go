@@ -31,8 +31,9 @@ import (
 type Workdir []string
 
 // This workdir dedicated to given module URN.
-func ModuleInstanceWorkdir(modUrn urn.URN) Workdir {
-	return Workdir([]string{"by-urn", url.PathEscape(string(modUrn))})
+func ModuleInstanceWorkdir(executor string, modUrn urn.URN) Workdir {
+	workdir := Workdir([]string{"by-urn", url.PathEscape(string(modUrn))})
+	return workdir.WithExecutor(executor)
 }
 
 // This workdir will be used for generic operations such as module schema inference.
@@ -47,6 +48,11 @@ func ModuleWorkdir(source TFModuleSource, version TFModuleVersion) Workdir {
 
 // Prepend the executor name to the workdir path.
 func (w Workdir) WithExecutor(executor string) Workdir {
+	if executor == "" {
+		// If no executor is specified, we return the workdir as is.
+		return w
+	}
+
 	if fileExists(executor) {
 		// If the executor is a file, we use its base name as the path component.
 		ext := filepath.Ext(executor)

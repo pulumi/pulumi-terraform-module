@@ -130,7 +130,7 @@ func newModuleComponentResource(
 		}
 	}()
 
-	wd := tfsandbox.ModuleInstanceWorkdir(urn).WithExecutor(moduleExecutor)
+	wd := tfsandbox.ModuleInstanceWorkdir(moduleExecutor, urn)
 	logger := newComponentLogger(ctx.Log, &component)
 
 	// decide whether to use opentofu or terraform
@@ -145,7 +145,7 @@ func newModuleComponentResource(
 				moduleExecutor, err)
 	}
 
-	logger.Log(ctx.Context(), tfsandbox.Info, "Using "+tf.Description())
+	logger.LogStatus(ctx.Context(), tfsandbox.Debug, "Using "+tf.Description())
 
 	// Important: the name of the module instance in TF must be at least unique enough to
 	// include the Pulumi resource name to avoid Duplicate URN errors. For now we reuse the

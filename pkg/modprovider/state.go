@@ -259,7 +259,7 @@ func (h *moduleStateHandler) Delete(
 
 	urn := h.mustParseModURN(req.OldInputs)
 
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
+	wd := tfsandbox.ModuleInstanceWorkdir(moduleExecutor, urn)
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 
@@ -339,7 +339,7 @@ func (h *moduleStateHandler) Read(
 
 	modUrn := h.mustParseModURN(req.Inputs)
 	tfName := getModuleName(modUrn)
-	wd := tfsandbox.ModuleInstanceWorkdir(modUrn)
+	wd := tfsandbox.ModuleInstanceWorkdir(moduleExecutor, modUrn)
 
 	logger := newResourceLogger(h.hc, resource.URN(req.GetUrn()))
 

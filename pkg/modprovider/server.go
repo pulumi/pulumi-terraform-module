@@ -137,10 +137,17 @@ func (s *server) Parameterize(
 		contract.AssertNoErrorf(err, "Failed to Unlock a NewFileMutex")
 	}()
 
-	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, workdir, s.auxProviderServer, s.moduleExecutor)
+	executor := s.moduleExecutor
+	if executor == "" {
+		executor = os.Getenv(moduleExecutorEnvironmentVariable)
+	}
+
+	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, workdir, s.auxProviderServer, executor)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox construction failure: %w", err)
 	}
+
+	logger.LogStatus(ctx, tfsandbox.Debug, fmt.Sprintf("Using %s for schema inference", tf.Description()))
 
 	inferredModuleSchema, err := inferModuleSchema(ctx, tf, s.packageName,
 		pargs.TFModuleSource, pargs.TFModuleVersion, logger)

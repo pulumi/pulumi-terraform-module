@@ -107,7 +107,7 @@ func (h *moduleHandler) prepSandbox(
 	executor string,
 ) (*tfsandbox.ModuleRuntime, error) {
 	logger := newResourceLogger(h.hc, urn)
-	wd := tfsandbox.ModuleInstanceWorkdir(urn)
+	wd := tfsandbox.ModuleInstanceWorkdir(executor, urn)
 	tf, err := tfsandbox.PickModuleRuntime(ctx, logger, wd, h.auxProviderServer, executor)
 	if err != nil {
 		return nil, fmt.Errorf("sandbox construction failed: %w", err)
