@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-PULUMI_CLI_VERSION="dev"
+PULUMI_CLI_VERSION="3.175.0"
 DEST=".pulumi"
 
 if ! [ -x "$DEST/bin/pulumi" ]; then
