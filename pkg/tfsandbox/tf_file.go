@@ -141,8 +141,11 @@ func CreateTFFile(
 	moduleProps := map[string]interface{}{
 		"source": absoluteSource,
 	}
+
+	_, hasRef := source.ReferencedVersionInURL()
 	// local modules and github-based modules don't have a version
-	if version != "" {
+	// because setting a version is only valid for registry modules
+	if version != "" && !hasRef {
 		moduleProps["version"] = version
 	}
 
