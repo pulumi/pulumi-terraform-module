@@ -55,7 +55,9 @@ jobs:
     - name: Prepare local workspace
       run: make prepare_local_workspace
     - name: Reset Pulumi CLI to the dev version
-      run: ./scripts/install_views_pulumi_cli.sh
+      run: |
+        rm -rf ./.pulumi
+        ./scripts/install_views_pulumi_cli.sh
     - name: Download bin
       uses: ./.github/actions/download-provider
     - name: Update path
