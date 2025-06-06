@@ -32,6 +32,8 @@ import (
 func Test_RdsExample(t *testing.T) {
 	t.Parallel()
 
+	tw := newTestWriter(t)
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
@@ -51,16 +53,17 @@ func Test_RdsExample(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/rds/aws", "6.10.0", "rdsmod")
 
 	integrationTest.Up(t, optup.Diff(),
-		optup.ErrorProgressStreams(os.Stderr),
-		optup.ProgressStreams(os.Stdout),
+		optup.ErrorProgressStreams(tw),
+		optup.ProgressStreams(tw),
 	)
 
-	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
-		optpreview.ErrorProgressStreams(os.Stderr),
-		optpreview.ProgressStreams(os.Stdout),
+	// Due to some issues in the RDS resource there is going to be drift even after initial creation, which
+	// will show up as changes planned in the preview.
+	integrationTest.Preview(t,
+		optpreview.Diff(),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.ProgressStreams(tw),
 	)
-
-	integrationTest.Destroy(t)
 }
 
 func Test_EksExample(t *testing.T) {
