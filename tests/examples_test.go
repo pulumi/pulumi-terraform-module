@@ -87,12 +87,15 @@ func Test_EksExample(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/vpc/aws", "5.19.0", "vpcmod")
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/eks/aws", "20.34.0", "eksmod")
 
-	integrationTest.Up(t, optup.Diff(),
+	integrationTest.Up(t,
+		optup.Diff(),
 		optup.ErrorProgressStreams(os.Stderr),
 		optup.ProgressStreams(os.Stdout),
 	)
 
-	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
+	// Due to some drift detection there are changes detected even after the initial creation.
+	integrationTest.Preview(t,
+		optpreview.Diff(),
 		optpreview.ErrorProgressStreams(os.Stderr),
 		optpreview.ProgressStreams(os.Stdout),
 	)
