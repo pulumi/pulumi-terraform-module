@@ -668,7 +668,7 @@ func runPlan(t *testing.T, tofu *tfsandbox.ModuleRuntime, tfFile string) *tfsand
 
 	ctx := context.Background()
 
-	plan, err := tofu.Plan(ctx, newTestLogger(t))
+	plan, err := tofu.Plan(ctx, newTestLogger(t), tfsandbox.RefreshOpts{})
 	require.NoErrorf(t, err, "tofu.Plan failed")
 	return plan
 }

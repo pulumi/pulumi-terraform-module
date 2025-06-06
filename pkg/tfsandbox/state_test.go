@@ -58,7 +58,7 @@ func TestState(t *testing.T) {
 			err = tf.Init(ctx, DiscardLogger)
 			require.NoError(t, err, "error running init")
 
-			initialPlan, err := tf.Plan(ctx, DiscardLogger)
+			initialPlan, err := tf.Plan(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error running plan (before apply)")
 			require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -69,7 +69,7 @@ func TestState(t *testing.T) {
 				resource.PropertyKey("statically_known"): resource.NewStringProperty("static value"),
 			}, plannedOutputs)
 
-			state, err := tf.Apply(ctx, DiscardLogger)
+			state, err := tf.Apply(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error running apply")
 
 			moduleOutputs := state.Outputs()
@@ -107,7 +107,7 @@ func TestState(t *testing.T) {
 			err = tf.PushStateAndLockFile(ctx, newState, rawLockFile)
 			require.NoError(t, err, "error pushing tofu state")
 
-			plan, err := tf.Plan(ctx, DiscardLogger)
+			plan, err := tf.Plan(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error replanning")
 
 			hasUpdates := false
@@ -168,7 +168,7 @@ func TestStateMatchesPlan(t *testing.T) {
 			err = tofu.Init(ctx, DiscardLogger)
 			require.NoError(t, err, "error running tofu init")
 
-			initialPlan, err := tofu.Plan(ctx, DiscardLogger)
+			initialPlan, err := tofu.Plan(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error running tofu plan (before apply)")
 			require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -177,7 +177,7 @@ func TestStateMatchesPlan(t *testing.T) {
 				resource.PropertyKey("number_output"): tc.expected,
 			}, plannedOutputs)
 
-			state, err := tofu.Apply(ctx, DiscardLogger)
+			state, err := tofu.Apply(ctx, DiscardLogger, RefreshOpts{})
 			require.NoError(t, err, "error running tofu apply")
 			moduleOutputs := state.Outputs()
 			// output value is the same as the input
@@ -224,7 +224,7 @@ func TestSecretOutputs(t *testing.T) {
 
 		err = tofu.Init(ctx, logger)
 		require.NoErrorf(t, err, "error running tofu init: %s", buffer.String())
-		initialPlan, err := tofu.Plan(ctx, logger)
+		initialPlan, err := tofu.Plan(ctx, logger, RefreshOpts{})
 		require.NoErrorf(t, err, "error running tofu plan (before apply): %s", buffer.String())
 		require.NotNil(t, initialPlan, "expected a non-nil plan")
 
@@ -233,7 +233,7 @@ func TestSecretOutputs(t *testing.T) {
 			"nested_sensitive_output": resource.MakeComputed(resource.NewStringProperty("")),
 		}, plannedOutputs)
 
-		state, err := tofu.Apply(ctx, logger)
+		state, err := tofu.Apply(ctx, logger, RefreshOpts{})
 		require.NoErrorf(t, err, "error running tofu apply: %s", buffer.String())
 		moduleOutputs := state.Outputs()
 		// output value is the same as the input
