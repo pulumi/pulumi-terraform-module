@@ -131,16 +131,7 @@ func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, mess
 	if diagLevel == diag.Error && isMissingCredentialsErrorFromAWS(message) {
 		// for AWS provider, we can detect missing credentials errors and provide a more helpful message
 		// that is specific to Pulumi users.
-		modifiedCredentialsError := []string{
-			"no valid credentials source found to configure the AWS provider.",
-			"Consider supplying the required AWS credentials to the provider either via environment variables,",
-			"or by configuring the provider explicitly in the Pulumi program with an explicit provider resource.",
-			"Alternatively, you can use Pulumi ESC to set up dynamic credentials with AWS OIDC.",
-			//nolint:all
-			"Learn more: https://www.pulumi.com/registry/packages/aws/installation-configuration/#dynamically-generate-credentials-via-pulumi-esc",
-		}
-
-		message = strings.Join(modifiedCredentialsError, "\n")
+		message = awsMissingCredentialsErrorMessage
 	}
 
 	err = l.hc.Log(ctx, diagLevel, l.urn, message)
