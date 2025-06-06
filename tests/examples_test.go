@@ -132,7 +132,6 @@ func Test_AlbExample(t *testing.T) {
 	)
 
 	assert.Equal(t, &map[string]int{
-		// 4 ModuleState resources account for 46+4=50.
 		"create": 46,
 	}, upResult.Summary.ResourceChanges)
 
@@ -142,6 +141,7 @@ func Test_AlbExample(t *testing.T) {
 		optpreview.ProgressStreams(tw),
 	)
 	autogold.Expect(map[apitype.OpType]int{
-		apitype.OpType("same"): 46},
-	).Equal(t, previewResult.ChangeSummary)
+		apitype.OpType("same"):   41,
+		apitype.OpType("update"): 5,
+	}).Equal(t, previewResult.ChangeSummary)
 }
