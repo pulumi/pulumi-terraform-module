@@ -619,10 +619,10 @@ func TestE2eTs(t *testing.T) {
 		moduleName          string
 		moduleVersion       string
 		moduleNamespace     string
-		previewExpect       map[apitype.OpType]int
-		upExpect            map[string]int
-		deleteExpect        map[string]int
-		diffNoChangesExpect map[apitype.OpType]int
+		previewExpect       autogold.Value
+		upExpect            autogold.Value
+		deleteExpect        autogold.Value
+		diffNoChangesExpect autogold.Value
 	}
 
 	testcases := []testCase{
@@ -631,61 +631,36 @@ func TestE2eTs(t *testing.T) {
 			moduleName:      "terraform-aws-modules/s3-bucket/aws",
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
-			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 5,
-			},
-			upExpect: map[string]int{
-				"create": 5,
-			},
-			deleteExpect: map[string]int{
-				"delete": 5,
-			},
-			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 5,
-			},
+			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 5}),
+			upExpect:        autogold.Expect(&map[string]int{"create": 5}),
+			deleteExpect:    autogold.Expect(&map[string]int{"delete": 5}),
+			// Explanation for the N>0 updates during diffNoChangesExpect:
+			//nolint:lll
+			// replace_test.go:353: module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]: Drift detected (update)
+			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 4, apitype.OpType("update"): 1}),
 		},
 		{
 			name:            "awslambdamod",
 			moduleName:      "terraform-aws-modules/lambda/aws",
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
-			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 8,
-			},
-			upExpect: map[string]int{
-				"create": 8,
-			},
-			deleteExpect: map[string]int{
-				"delete": 8,
-			},
-			diffNoChangesExpect: func() map[apitype.OpType]int {
-				// With Views drift detection does not quite get picked up yet.
-				// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
-				// will make Pulumi refresh, so TF refreshes as well. When this is done whether
-				// the final counts match or not is less important, the user expectation is to
-				// refresh by default as TF does.
-				return map[apitype.OpType]int{
-					apitype.OpType("same"): 8,
-				}
-			}(),
+			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 8}),
+			upExpect:        autogold.Expect(&map[string]int{"create": 8}),
+			deleteExpect:    autogold.Expect(&map[string]int{"delete": 8}),
+			// Similarly some lambda resources have drift immediately after creation.
+			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 6, apitype.OpType("update"): 2}),
 		},
 		{
 			name:            "rdsmod",
 			moduleName:      "terraform-aws-modules/rds/aws",
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
-			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 10,
-			},
-			upExpect: map[string]int{
-				"create": 10,
-			},
-			deleteExpect: map[string]int{
-				"delete": 10,
-			},
-			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 10,
-			},
+			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 10}),
+			upExpect:        autogold.Expect(&map[string]int{"create": 10}),
+			deleteExpect:    autogold.Expect(&map[string]int{"delete": 10}),
+			// Similarly some RDS resources have drift immediately after creation.
+			// module.test-rds.module.db_instance.aws_db_instance.this[0]: Drift detected (update)
+			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 9, apitype.OpType("update"): 1}),
 		},
 	}
 
@@ -694,6 +669,8 @@ func TestE2eTs(t *testing.T) {
 		localProviderBinPath := ensureCompiledProvider(t)
 		skipLocalRunsWithoutCreds(t)
 		t.Run(tc.name, func(t *testing.T) {
+			tw := newTestWriter(t)
+
 			testProgram := filepath.Join("testdata", "programs", "ts", tc.name)
 			localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 			integrationTest := newPulumiTest(t, testProgram, localPath)
@@ -705,27 +682,32 @@ func TestE2eTs(t *testing.T) {
 			integrationTest.SetConfig(t, "prefix", prefix)
 
 			// Generate package
-			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName,
+				tc.moduleVersion, tc.moduleNamespace)
 
-			// Preview
-			previewResult := integrationTest.Preview(t, optpreview.Diff())
-			t.Logf("pulumi preview:\n%s", previewResult.StdOut+previewResult.StdErr)
-			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+			t.Logf("# pulumi preview - previewing creates")
+			previewResult := integrationTest.Preview(t,
+				optpreview.Diff(),
+				optpreview.ErrorProgressStreams(tw),
+				optpreview.ProgressStreams(tw))
+			tc.previewExpect.Equal(t, previewResult.ChangeSummary)
 
-			// Up
-			upResult := integrationTest.Up(t)
-			t.Logf("pulumi up:\n%s", upResult.StdOut+upResult.StdErr)
-			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+			t.Logf("# pulumi up - creating resources")
+			upResult := integrationTest.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
+			tc.upExpect.Equal(t, upResult.Summary.ResourceChanges)
 
-			// Preview expect no changes
-			previewResult = integrationTest.Preview(t, optpreview.Diff())
-			t.Logf("pulumi preview\n%s", previewResult.StdOut+previewResult.StdErr)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			t.Logf("# pulumi preview - expecting no changes except when buggy resources drift")
+			previewResult = integrationTest.Preview(t,
+				optpreview.Diff(),
+				optpreview.ErrorProgressStreams(tw),
+				optpreview.ProgressStreams(tw))
+			tc.diffNoChangesExpect.Equal(t, previewResult.ChangeSummary)
 
-			// Delete
-			destroyResult := integrationTest.Destroy(t)
-			t.Logf("pulumi destroy:\n%s", destroyResult.StdOut+destroyResult.StdErr)
-			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			t.Logf("# pulumi destroy")
+			destroyResult := integrationTest.Destroy(t,
+				optdestroy.ErrorProgressStreams(tw),
+				optdestroy.ProgressStreams(tw))
+			tc.deleteExpect.Equal(t, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
