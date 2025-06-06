@@ -52,8 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-
-	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 )
 
 const (
@@ -108,7 +106,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			optpreview.ErrorProgressStreams(tw),
 		)
 		assert.Equal(t, map[apitype.OpType]int{
-			apitype.OpType("create"): conditionalCount(5, 4),
+			apitype.OpType("create"): 4,
 		}, previewResult.ChangeSummary)
 	})
 
@@ -124,7 +122,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
 
 		assert.Equal(t, &map[string]int{
-			"create": conditionalCount(5, 4),
+			"create": 4,
 		}, upResult.Summary.ResourceChanges)
 
 		outputs, err := pt.CurrentStack().Outputs(context.Background())
@@ -147,43 +145,26 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		//nolint:lll
 		autogold.Expect(urn.URN("urn:pulumi:test::ts-randmod-program::randmod:index:Module$randmod:tf:random_integer::module.myrandmod.random_integer.priority")).Equal(t, randInt.URN)
 
-		if !viewsEnabled {
-			autogold.Expect(resource.ID("module.myrandmod.random_integer.priority")).Equal(t, randInt.ID)
-			autogold.Expect(map[string]any{
-				"__address": "module.myrandmod.random_integer.priority",
-				"__module":  "urn:pulumi:test::ts-randmod-program::randmod:index:Module::myrandmod",
-				"id":        "2",
-				"max":       10,
-				"min":       1,
-				"result":    2,
-				"seed": map[string]any{
-					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-					"plaintext":                        `"9"`,
-				},
-			}).Equal(t, randInt.Inputs)
-			autogold.Expect(map[string]any{}).Equal(t, randInt.Outputs)
-		} else {
-			autogold.Expect(resource.ID("")).Equal(t, randInt.ID)
-			autogold.Expect(map[string]interface{}{"id": "2", "max": 10, "min": 1, "result": 2, "seed": map[string]interface{}{
-				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-				"plaintext":                        `"9"`,
-			}}).Equal(t, randInt.Inputs)
+		autogold.Expect(resource.ID("")).Equal(t, randInt.ID)
+		autogold.Expect(map[string]interface{}{"id": "2", "max": 10, "min": 1, "result": 2, "seed": map[string]interface{}{
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+			"plaintext":                        `"9"`,
+		}}).Equal(t, randInt.Inputs)
 
-			autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
-		}
+		autogold.Expect(map[string]interface{}{}).Equal(t, randInt.Outputs)
 	})
 
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
 		previewResult := pt.Preview(t)
 		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
-		assert.Equal(t, map[apitype.OpType]int{apitype.OpType("same"): conditionalCount(5, 4)},
+		assert.Equal(t, map[apitype.OpType]int{apitype.OpType("same"): 4},
 			previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up should be no-op", func(t *testing.T) {
 		upResult := pt.Up(t)
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
-		assert.Equal(t, &map[string]int{"same": conditionalCount(5, 4)}, upResult.Summary.ResourceChanges)
+		assert.Equal(t, &map[string]int{"same": 4}, upResult.Summary.ResourceChanges)
 	})
 
 	t.Run("pulumi destroy", func(t *testing.T) {
@@ -241,45 +222,30 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 
 	integrationTest.SetConfig(t, "step", "2")
 
-	// TODO[pulumi/pulumi-terraform-module#343] Views do not support update plans properly yet so using a different
-	// code paths here.
-	if viewsEnabled {
-		t.Logf("viewsEnabled")
-		previewResult := integrationTest.Preview(t,
-			optpreview.Diff(),
-			optpreview.ProgressStreams(tw),
-			optpreview.ErrorProgressStreams(tw),
-			optpreview.DebugLogging(debugOpts),
-		)
-		text := previewResult.StdOut + previewResult.StdErr
+	// TODO[pulumi/pulumi-terraform-module#343] Views do not support update plans properly yet so testing
+	// preview contents against update plans is not working right.
 
-		p := regexp.MustCompile(`[+]\smemory_size\s+[:]\s+256`)
-		require.Truef(t, len(p.FindStringIndex(text)) > 0,
-			"Expected to see a + memory_size: 256 diff on the module inputs")
+	previewResult := integrationTest.Preview(t,
+		optpreview.Diff(),
+		optpreview.ProgressStreams(tw),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.DebugLogging(debugOpts),
+	)
+	text := previewResult.StdOut + previewResult.StdErr
 
-		p = regexp.MustCompile(`memory_size\s+[:]\s+128\s+=>\s+256`)
-		require.Truef(t, len(p.FindStringIndex(text)) > 0,
-			"Expected to see a memory_size: 128 => 256 diff on the view representing the function")
-	} else {
-		t.Logf("viewsEnabled = false")
-		resourceDiffs := runPreviewWithPlanDiff(t, integrationTest, "test-lambda-state")
-		autogold.Expect(map[string]interface{}{"module.test-lambda.aws_lambda_function.this[0]": map[string]interface{}{
-			"diff": apitype.PlanDiffV1{
-				Updates: map[string]interface{}{
-					"memory_size": 256,
-				},
-			},
-			"steps": []apitype.OpType{apitype.OpType("update")},
-		}}).Equal(t, resourceDiffs)
-	}
+	p := regexp.MustCompile(`[+]\smemory_size\s+[:]\s+256`)
+	require.Truef(t, len(p.FindStringIndex(text)) > 0,
+		"Expected to see a + memory_size: 256 diff on the module inputs")
+
+	p = regexp.MustCompile(`memory_size\s+[:]\s+128\s+=>\s+256`)
+	require.Truef(t, len(p.FindStringIndex(text)) > 0,
+		"Expected to see a memory_size: 128 => 256 diff on the view representing the function")
 }
 
 func TestPartialApply(t *testing.T) {
 	t.Parallel()
 
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi#19635]")
-	}
+	t.Skip("TODO[pulumi/pulumi#19635]")
 
 	var debugOpts debug.LoggingOptions
 
@@ -347,7 +313,7 @@ func TestPartialApply(t *testing.T) {
 	assert.Equal(t, map[string]int{
 		"update": 1,
 		"create": 1,
-		"same":   conditionalCount(3, 2),
+		"same":   2,
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
 }
@@ -381,14 +347,14 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 		previewResult := pt.Preview(t, optpreview.Diff())
 		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
 		assert.Equal(t, map[apitype.OpType]int{
-			apitype.OpType("create"): conditionalCount(7, 5),
+			apitype.OpType("create"): 5,
 		}, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
 		upResult := pt.Up(t)
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
-		assert.Equal(t, &map[string]int{"create": conditionalCount(7, 5)}, upResult.Summary.ResourceChanges)
+		assert.Equal(t, &map[string]int{"create": 5}, upResult.Summary.ResourceChanges)
 	})
 }
 
@@ -402,9 +368,7 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 
 	dest := func(folder string) string {
 		name := folder
-		if viewsEnabled {
-			name += "-views"
-		}
+		name += "-views"
 		d, err := filepath.Abs(filepath.Join(vpcDir, name))
 		require.NoError(t, err)
 		err = os.RemoveAll(d)
@@ -488,7 +452,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 				res := pt.Up(t)
 				t.Logf("%s", res.StdOut+res.StdErr)
 
-				expectedResourceCount := conditionalCount(7, 6)
+				expectedResourceCount := 6
 
 				require.Equal(t, res.Summary.ResourceChanges, &map[string]int{
 					"create": expectedResourceCount,
@@ -668,16 +632,16 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(6, 5),
+				apitype.OpType("create"): 5,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(6, 5),
+				"create": 5,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(6, 5),
+				"delete": 5,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): conditionalCount(6, 5),
+				apitype.OpType("same"): 5,
 			},
 		},
 		{
@@ -686,28 +650,22 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(9, 8),
+				apitype.OpType("create"): 8,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(9, 8),
+				"create": 8,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(9, 8),
+				"delete": 8,
 			},
 			diffNoChangesExpect: func() map[apitype.OpType]int {
-				if viewsEnabled {
-					// With Views drift detection does not quite get picked up yet.
-					// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
-					// will make Pulumi refresh, so TF refreshes as well. When this is done whether
-					// the final counts match or not is less important, the user expectation is to
-					// refresh by default as TF does.
-					return map[apitype.OpType]int{
-						apitype.OpType("same"): 8,
-					}
-				}
+				// With Views drift detection does not quite get picked up yet.
+				// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
+				// will make Pulumi refresh, so TF refreshes as well. When this is done whether
+				// the final counts match or not is less important, the user expectation is to
+				// refresh by default as TF does.
 				return map[apitype.OpType]int{
-					apitype.OpType("update"): 1,
-					apitype.OpType("same"):   8,
+					apitype.OpType("same"): 8,
 				}
 			}(),
 		},
@@ -717,16 +675,16 @@ func TestE2eTs(t *testing.T) {
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(11, 10),
+				apitype.OpType("create"): 10,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(11, 10),
+				"create": 10,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(11, 10),
+				"delete": 10,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): conditionalCount(11, 10),
+				apitype.OpType("same"): 10,
 			},
 		},
 	}
@@ -793,16 +751,16 @@ func TestE2eDotnet(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(5, 4),
+				apitype.OpType("create"): 4,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(5, 4),
+				"create": 4,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(5, 4),
+				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): conditionalCount(5, 4),
+				apitype.OpType("same"): 4,
 			},
 		},
 	}
@@ -850,15 +808,6 @@ func TestE2eDotnet(t *testing.T) {
 	}
 }
 
-var viewsEnabled = flags.EnableViewsPreview
-
-func conditionalCount(withoutViews, withViews int) int {
-	if viewsEnabled {
-		return withViews
-	}
-	return withoutViews
-}
-
 func TestE2ePython(t *testing.T) {
 	t.Parallel()
 
@@ -880,16 +829,16 @@ func TestE2ePython(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(5, 4),
+				apitype.OpType("create"): 4,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(5, 4),
+				"create": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): conditionalCount(5, 4),
+				apitype.OpType("same"): 4,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(5, 4),
+				"delete": 4,
 			},
 		},
 	}
@@ -961,16 +910,16 @@ func TestE2eGo(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(5, 4),
+				apitype.OpType("create"): 4,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(5, 4),
+				"create": 4,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(5, 4),
+				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): conditionalCount(5, 4),
+				apitype.OpType("same"): 4,
 			},
 		},
 	}
@@ -1038,16 +987,16 @@ func TestE2eYAML(t *testing.T) {
 			moduleVersion:   "4.5.0",
 			moduleNamespace: "bucket",
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): conditionalCount(5, 4),
+				apitype.OpType("create"): 4,
 			},
 			upExpect: map[string]int{
-				"create": conditionalCount(5, 4),
+				"create": 4,
 			},
 			deleteExpect: map[string]int{
-				"delete": conditionalCount(5, 4),
+				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): conditionalCount(5, 4),
+				apitype.OpType("same"): 4,
 			},
 		},
 	}
@@ -1141,7 +1090,7 @@ func TestDiffDetailTerraform(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("delete"): 1,
-		apitype.OpType("same"):   conditionalCount(4, 3),
+		apitype.OpType("same"):   3,
 		apitype.OpType("update"): 1,
 	}, result.ChangeSummary)
 
@@ -1200,7 +1149,7 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("delete"): 1,
-		apitype.OpType("same"):   conditionalCount(4, 3),
+		apitype.OpType("same"):   3,
 		apitype.OpType("update"): 1,
 	}, result.ChangeSummary)
 
@@ -1213,9 +1162,7 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefreshTerraform(t *testing.T) {
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-	}
+	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	ctx := context.Background()
@@ -1287,9 +1234,7 @@ func TestRefreshTerraform(t *testing.T) {
 
 // Verify that pulumi refresh detects drift and reflects it in the state.
 func TestRefreshOpenTofu(t *testing.T) {
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-	}
+	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 	ctx := context.Background()
@@ -1360,9 +1305,7 @@ func TestRefreshOpenTofu(t *testing.T) {
 
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeletedTerraform(t *testing.T) {
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-	}
+	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
@@ -1414,9 +1357,7 @@ func TestRefreshDeletedTerraform(t *testing.T) {
 
 // Verify that pulumi refresh detects deleted resources.
 func TestRefreshDeletedOpenTofu(t *testing.T) {
-	if viewsEnabled {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
-	}
+	t.Skip("TODO[pulumi/pulumi-terraform-module#332]")
 
 	skipLocalRunsWithoutCreds(t) // using aws_s3_bucket to test
 
@@ -1511,7 +1452,7 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 
 	rc := refreshResult.Summary.ResourceChanges
 	assert.Equal(t, &map[string]int{
-		"same": conditionalCount(4, 3),
+		"same": 3,
 	}, rc)
 }
 
@@ -1560,7 +1501,7 @@ func TestRefreshNoChangesOpenTofu(t *testing.T) {
 
 	rc := refreshResult.Summary.ResourceChanges
 	assert.Equal(t, &map[string]int{
-		"same": conditionalCount(4, 3),
+		"same": 3,
 	}, rc)
 }
 
@@ -1705,69 +1646,7 @@ func Test_Dependencies(t *testing.T) {
 	err = json.Unmarshal(deploy.Deployment, &deployment)
 	require.NoError(t, err)
 
-	// Tests for when view are not enabled.
 	for _, r := range deployment.Resources {
-		if viewsEnabled {
-			continue
-		}
-
-		if r.URN.Type() == "randmod:index:Module" {
-			slices.Sort(r.Dependencies)
-
-			// The Component depends on the union of things passed in dependsOn by the user and things
-			// flowing through the input dependencies.
-			autogold.Expect([]urn.URN{
-				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::extra"),
-				urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed"),
-			}).Equal(t, r.Dependencies)
-			autogold.Expect(map[resource.PropertyKey][]urn.URN{}).Equal(t, r.PropertyDependencies)
-		}
-
-		if r.URN.Type() == "randmod:index:ModuleState" {
-			// If dependencies are implemented correctly, this resource must depend on resource
-			// dependencies that are flowing through the module inputs such as the "seed" resource.
-
-			//nolint:lll
-			autogold.Expect([]urn.URN{urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")}).Equal(t, r.Dependencies)
-			autogold.Expect(map[resource.PropertyKey][]urn.URN{
-				resource.PropertyKey("__module"): {},
-				//nolint:lll
-				resource.PropertyKey("moduleInputs"): {urn.URN("urn:pulumi:test::ts-dep-tester::random:index/randomInteger:RandomInteger::seed")},
-			}).Equal(t, r.PropertyDependencies)
-		}
-
-		if r.URN.Type() == "random:index/randomInteger:RandomInteger" && r.URN.Name() == "dependent" {
-			// If dependencies are implemented correctly, this resource must depend on the ModuleState
-			// resource, which in turn depends on the "seed" resource.
-
-			slices.Sort(r.Dependencies)
-
-			//nolint:lll
-			autogold.Expect([]urn.URN{
-				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
-				urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
-			}).Equal(t, r.Dependencies)
-
-			for _, v := range r.PropertyDependencies {
-				slices.Sort(v)
-			}
-
-			autogold.Expect(map[resource.PropertyKey][]urn.URN{
-				resource.PropertyKey("max"): {
-					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module$randmod:index:ModuleState::myrandmod-state"),
-					urn.URN("urn:pulumi:test::ts-dep-tester::randmod:index:Module::myrandmod"),
-				},
-				resource.PropertyKey("min"):  {},
-				resource.PropertyKey("seed"): {},
-			}).Equal(t, r.PropertyDependencies)
-		}
-	}
-
-	// Tests for when views are enabled.
-	for _, r := range deployment.Resources {
-		if !viewsEnabled {
-			continue
-		}
 
 		// The module resource myrandmod must depend on seed and extra resources.
 		if r.URN.Type() == "randmod:index:Module" && r.URN.Name() == "myrandmod" {
@@ -1936,21 +1815,12 @@ func fixupRandomizedStackURNs(stack *apitype.UntypedDeployment) {
 func mustFindRawState(t *testing.T, pt *pulumitest.PulumiTest, packageName string) any {
 	var tfStateRaw any
 	prefix := fmt.Sprintf("%s:index:", packageName)
-	if !viewsEnabled {
-		moduleState := mustFindDeploymentResourceByType(t, pt, tokens.Type(prefix+"ModuleState"))
+	moduleRes := mustFindDeploymentResourceByType(t, pt, tokens.Type(prefix+"Module"))
 
-		s, gotTfState := moduleState.Outputs["state"]
-		require.Truef(t, gotTfState, "expected a `state` property")
-		tfStateRaw = s
+	s, gotTFState := moduleRes.Outputs["__state"]
+	require.Truef(t, gotTFState, "expected a __state property")
 
-	} else {
-		moduleRes := mustFindDeploymentResourceByType(t, pt, tokens.Type(prefix+"Module"))
-
-		s, gotTFState := moduleRes.Outputs["__state"]
-		require.Truef(t, gotTFState, "expected a __state property")
-
-		tfStateRaw = s
-	}
+	tfStateRaw = s
 	return tfStateRaw
 }
 

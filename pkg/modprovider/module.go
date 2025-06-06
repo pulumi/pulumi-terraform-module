@@ -31,7 +31,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-module/pkg/auxprovider"
-	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix/status"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
@@ -123,7 +122,7 @@ func (h *moduleHandler) prepSandbox(
 	outputSpecs := []tfsandbox.TFOutputSpec{}
 	for outputName := range inferredModule.Outputs {
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
-			Name: tfsandbox.DecodePulumiTopLevelKey(outputName, flags.EnableViewsPreview),
+			Name: tfsandbox.DecodePulumiTopLevelKey(outputName),
 		})
 	}
 

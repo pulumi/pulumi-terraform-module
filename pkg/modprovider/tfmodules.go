@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-module/pkg/flags"
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
@@ -359,7 +358,7 @@ func inferModuleSchema(
 	for variableName, variable := range module.Variables {
 		variableType := convertType(variable.Type, variableName, packageName, inferredModuleSchema.SupportingTypes)
 
-		key := tfsandbox.PulumiTopLevelKey(variableName, flags.EnableViewsPreview)
+		key := tfsandbox.PulumiTopLevelKey(variableName)
 		inferredModuleSchema.Inputs[key] = &schema.PropertySpec{
 			Description: variable.Description,
 			Secret:      variable.Sensitive,
@@ -375,13 +374,13 @@ func inferModuleSchema(
 		// TODO[pulumi/pulumi-terraform-module#70] reconsider output type inference vs config
 		var inferredType schema.TypeSpec
 		if referencedVariableName, ok := isVariableReference(output.Expr); ok {
-			k := tfsandbox.PulumiTopLevelKey(referencedVariableName, flags.EnableViewsPreview)
+			k := tfsandbox.PulumiTopLevelKey(referencedVariableName)
 			inferredType = inferredModuleSchema.Inputs[k].TypeSpec
 		} else {
 			inferredType = inferExpressionType(output.Expr)
 		}
 
-		k := tfsandbox.PulumiTopLevelKey(outputName, flags.EnableViewsPreview)
+		k := tfsandbox.PulumiTopLevelKey(outputName)
 		inferredModuleSchema.Outputs[k] = &schema.PropertySpec{
 			Description: output.Description,
 			Secret:      output.Sensitive,

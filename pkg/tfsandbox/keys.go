@@ -24,22 +24,20 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/pulumix"
 )
 
-func isValidPulumiTopLevelKey(key string, useCustomResource bool) bool {
+func isValidPulumiTopLevelKey(key string) bool {
 	switch {
-	case useCustomResource && pulumix.IsReservedCustomResourcePropertyKey(key):
-		return false
-	case !useCustomResource && pulumix.IsReservedComponentResourcePropertyKey(key):
+	case pulumix.IsReservedCustomResourcePropertyKey(key):
 		return false
 	default:
 		return true
 	}
 }
 
-func PulumiTopLevelKey(tfKey string, useCustomResource bool) resource.PropertyKey {
+func PulumiTopLevelKey(tfKey string) resource.PropertyKey {
 	switch {
-	case !isValidPulumiTopLevelKey(tfKey, useCustomResource):
+	case !isValidPulumiTopLevelKey(tfKey):
 		disamb := fmt.Sprintf("%s_", tfKey)
-		contract.Assertf(isValidPulumiTopLevelKey(disamb, useCustomResource),
+		contract.Assertf(isValidPulumiTopLevelKey(disamb),
 			"Failed to disambiguate reserved key %q as %q which is still reserved",
 			tfKey, disamb)
 		return resource.PropertyKey(disamb)
@@ -49,11 +47,11 @@ func PulumiTopLevelKey(tfKey string, useCustomResource bool) resource.PropertyKe
 }
 
 // Inverse of [pulumiTopLevelKey].
-func DecodePulumiTopLevelKey(pk resource.PropertyKey, useCustomResource bool) string {
+func DecodePulumiTopLevelKey(pk resource.PropertyKey) string {
 	s := string(pk)
 	if strings.HasSuffix(s, "_") {
 		p := s[0 : len(s)-1]
-		if !isValidPulumiTopLevelKey(p, useCustomResource) {
+		if !isValidPulumiTopLevelKey(p) {
 			return p
 		}
 	}
