@@ -721,8 +721,8 @@ func TestE2eDotnet(t *testing.T) {
 		moduleVersion       string
 		moduleNamespace     string
 		previewExpect       map[apitype.OpType]int
-		upExpect            map[string]int
-		deleteExpect        map[string]int
+		upExpect            *map[string]int
+		deleteExpect        *map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
 	}
 
@@ -735,10 +735,10 @@ func TestE2eDotnet(t *testing.T) {
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 4,
 			},
-			upExpect: map[string]int{
+			upExpect: &map[string]int{
 				"create": 4,
 			},
-			deleteExpect: map[string]int{
+			deleteExpect: &map[string]int{
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
@@ -800,8 +800,8 @@ func TestE2ePython(t *testing.T) {
 		moduleVersion       string
 		moduleNamespace     string
 		previewExpect       map[apitype.OpType]int
-		upExpect            map[string]int
-		deleteExpect        map[string]int
+		upExpect            *map[string]int
+		deleteExpect        *map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
 	}
 
@@ -814,14 +814,14 @@ func TestE2ePython(t *testing.T) {
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 4,
 			},
-			upExpect: map[string]int{
+			upExpect: &map[string]int{
 				"create": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
 				apitype.OpType("same"):   3,
 				apitype.OpType("update"): 1,
 			},
-			deleteExpect: map[string]int{
+			deleteExpect: &map[string]int{
 				"delete": 4,
 			},
 		},
@@ -882,8 +882,8 @@ func TestE2eGo(t *testing.T) {
 		moduleVersion       string
 		moduleNamespace     string
 		previewExpect       map[apitype.OpType]int
-		upExpect            map[string]int
-		deleteExpect        map[string]int
+		upExpect            *map[string]int
+		deleteExpect        *map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
 	}
 
@@ -896,10 +896,10 @@ func TestE2eGo(t *testing.T) {
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 4,
 			},
-			upExpect: map[string]int{
+			upExpect: &map[string]int{
 				"create": 4,
 			},
-			deleteExpect: map[string]int{
+			deleteExpect: &map[string]int{
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
@@ -960,8 +960,8 @@ func TestE2eYAML(t *testing.T) {
 		moduleVersion       string
 		moduleNamespace     string
 		previewExpect       map[apitype.OpType]int
-		upExpect            map[string]int
-		deleteExpect        map[string]int
+		upExpect            *map[string]int
+		deleteExpect        *map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
 	}
 
@@ -974,10 +974,10 @@ func TestE2eYAML(t *testing.T) {
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 4,
 			},
-			upExpect: map[string]int{
+			upExpect: &map[string]int{
 				"create": 4,
 			},
-			deleteExpect: map[string]int{
+			deleteExpect: &map[string]int{
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
