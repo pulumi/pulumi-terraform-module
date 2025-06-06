@@ -16,7 +16,6 @@ package tests
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -245,7 +244,6 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 // plans to re-create it and prints a 'drift detected' message. Pulumi has no concept of this exact change, but instead
 // approximately renders this as a replacement, where the deletion of the resource is a no-op.
 func Test_replace_drift_deleted(t *testing.T) {
-	t.Skip("TODO engine snapshot integrity error")
 	t.Parallel()
 
 	tw := newTestWriter(t)
@@ -323,14 +321,16 @@ func Test_replace_drift_deleted(t *testing.T) {
 		//optup.DebugLogging(debugOpts),
 	)
 
-	t.Logf("GRPC logging")
-	for _, entry := range pt.GrpcLog(t).Entries {
-		bytes, err := json.MarshalIndent(entry, "", "  ")
-		require.NoError(t, err)
-		t.Logf("%s", string(bytes))
-	}
+	// t.Logf("GRPC logging")
+	// for _, entry := range pt.GrpcLog(t).Entries {
+	// 	bytes, err := json.MarshalIndent(entry, "", "  ")
+	// 	require.NoError(t, err)
+	// 	t.Logf("%s", string(bytes))
+	// }
 
-	autogold.Expect(&map[string]int{"same": 3}).Equal(t, upResult.Summary.ResourceChanges)
+	// ~ rmod:index:Module: (update) is the one update
+	// + rmod:tf:local_file: (create) is the one create
+	autogold.Expect(&map[string]int{"create": 1, "same": 1, "update": 1}).Equal(t, upResult.Summary.ResourceChanges)
 
 	// The resource representing the file should exist in TF state as well.
 	assertTFStateResourceExists(t, pt, packageName, "module.rmod.local_file.hello")
