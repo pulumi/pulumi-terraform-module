@@ -786,7 +786,7 @@ func TestE2eDotnet(t *testing.T) {
 			require.Equal(t, tc.diffNoChangesExpect, previewResult.ChangeSummary)
 
 			destroyResult := integrationTest.Destroy(t)
-			require.Equal(t, &tc.deleteExpect, destroyResult.Summary.ResourceChanges)
+			require.Equal(t, tc.deleteExpect, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
@@ -818,7 +818,8 @@ func TestE2ePython(t *testing.T) {
 				"create": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType("same"):   3,
+				apitype.OpType("update"): 1,
 			},
 			deleteExpect: map[string]int{
 				"delete": 4,
@@ -855,19 +856,19 @@ func TestE2ePython(t *testing.T) {
 
 			previewResult := integrationTest.Preview(t, optpreview.Diff())
 			t.Logf("preview: %s", previewResult.StdOut+previewResult.StdErr)
-			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.previewExpect, previewResult.ChangeSummary)
 
 			upResult := integrationTest.Up(t)
 			t.Logf("up: %s", upResult.StdOut+previewResult.StdErr)
-			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+			require.Equal(t, tc.upExpect, upResult.Summary.ResourceChanges)
 
 			previewResult = integrationTest.Preview(t, optpreview.Diff())
 			t.Logf("preview: %s", previewResult.StdOut+previewResult.StdErr)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.diffNoChangesExpect, previewResult.ChangeSummary)
 
 			destroyResult := integrationTest.Destroy(t)
 			t.Logf("destroy: %s", destroyResult.StdOut+previewResult.StdErr)
-			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			require.Equal(t, tc.deleteExpect, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
@@ -902,7 +903,8 @@ func TestE2eGo(t *testing.T) {
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType("same"):   3,
+				apitype.OpType("update"): 1,
 			},
 		},
 	}
@@ -934,16 +936,16 @@ func TestE2eGo(t *testing.T) {
 				tc.moduleVersion,
 				tc.moduleNamespace)
 			previewResult := e2eTest.Preview(t)
-			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.previewExpect, previewResult.ChangeSummary)
 
 			upResult := e2eTest.Up(t)
-			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+			require.Equal(t, tc.upExpect, upResult.Summary.ResourceChanges)
 
 			previewResult = e2eTest.Preview(t)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.diffNoChangesExpect, previewResult.ChangeSummary)
 
 			destroyResult := e2eTest.Destroy(t)
-			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			require.Equal(t, tc.deleteExpect, destroyResult.Summary.ResourceChanges)
 
 		})
 	}
@@ -979,7 +981,8 @@ func TestE2eYAML(t *testing.T) {
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType("same"):   3,
+				apitype.OpType("update"): 1,
 			},
 		},
 	}
@@ -1012,16 +1015,16 @@ func TestE2eYAML(t *testing.T) {
 				tc.moduleNamespace)
 
 			previewResult := e2eTest.Preview(t)
-			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.previewExpect, previewResult.ChangeSummary)
 
 			upResult := e2eTest.Up(t)
-			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+			require.Equal(t, tc.upExpect, upResult.Summary.ResourceChanges)
 
 			previewResult = e2eTest.Preview(t)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.diffNoChangesExpect, previewResult.ChangeSummary)
 
 			destroyResult := e2eTest.Destroy(t)
-			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			require.Equal(t, tc.deleteExpect, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
