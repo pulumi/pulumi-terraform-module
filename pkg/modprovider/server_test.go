@@ -105,6 +105,21 @@ func TestParseParameterizeRequest(t *testing.T) {
 		assert.Equal(t, packageName("demoWebsite"), args.PackageName)
 	})
 
+	t.Run("parses github-based remote module source with version", func(t *testing.T) {
+		testRequest := &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: []string{"github.com/terraform-aws-modules/terraform-aws-vpc?ref=v5.21.0", "vpc"},
+				},
+			},
+		}
+		args, err := parseParameterizeRequest(ctx, testRequest)
+		assert.NoError(t, err)
+		assert.Equal(t, TFModuleSource("github.com/terraform-aws-modules/terraform-aws-vpc?ref=v5.21.0"), args.TFModuleSource)
+		assert.Equal(t, TFModuleVersion("5.21.0"), args.TFModuleVersion)
+		assert.Equal(t, packageName("vpc"), args.PackageName)
+	})
+
 	t.Run("fails on invalid module source", func(t *testing.T) {
 		testRequest := &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{

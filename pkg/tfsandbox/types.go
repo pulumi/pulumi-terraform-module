@@ -1,6 +1,7 @@
 package tfsandbox
 
 import (
+	"net/url"
 	"strings"
 )
 
@@ -20,6 +21,19 @@ func (s TFModuleSource) IsLocalPath() bool {
 		return true
 	}
 	return false
+}
+
+// ReferencedVersionInURL returns the version reference in the module source URL, if any.
+// for example git::https://example.com/vpc.git?ref=v1.2.0 would return "1.2.0", true.
+func (s TFModuleSource) ReferencedVersionInURL() (string, bool) {
+	source := string(s)
+	parsedURL, err := url.Parse(source)
+	if err != nil {
+		return "", false
+	}
+
+	ref := strings.TrimPrefix(parsedURL.Query().Get("ref"), "v")
+	return ref, ref != ""
 }
 
 // Version specification for a Terraform module, for example "5.16.0".

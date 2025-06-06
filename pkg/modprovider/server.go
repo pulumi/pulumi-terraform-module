@@ -246,6 +246,20 @@ func parseParameterizeRequest(
 
 			if !isValidVersion(args[1]) {
 				// if the second arg is not a version then it must be package name
+				source := TFModuleSource(args[0])
+				if referencedVersion, ok := source.ReferencedVersionInURL(); ok && isValidVersion(referencedVersion) {
+					// here the source is remote but the version is specified in the URL
+					// usually this is a git URL with a ref query parameter
+					// we make sure that the version is valid because sometimes
+					// the ref query parameter refers to a branch
+					return applyConfigWhenAvailable(args[1], ParameterizeArgs{
+						TFModuleSource:  source,
+						TFModuleVersion: TFModuleVersion(referencedVersion),
+						PackageName:     packageName(args[1]),
+					})
+				}
+
+				// if the second arg is not a version then it must be package name
 				// but the source is remote so we need to resolve the version ourselves
 				latest, err := latestModuleVersion(ctx, args[0])
 				if err != nil {
