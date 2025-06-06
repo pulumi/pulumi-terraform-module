@@ -477,7 +477,6 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 func TestS3BucketModSecret(t *testing.T) {
 	// t.Parallel() - cannot use t.Parallel because the test uses SetEnv
-
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
@@ -515,6 +514,35 @@ func TestS3BucketModSecret(t *testing.T) {
 			autogold.Expect(map[string]interface{}{}).Equal(t, encrConf.Outputs)
 		})
 	}
+}
+
+func TestShowingModifiedAWSCredentialsError(t *testing.T) {
+	skipLocalRunsWithoutCreds(t)
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+
+	// disable AWS credentials to test the error message shows up
+	integrationTest := newPulumiTest(t, testProgram, localPath,
+		opttest.Env("AWS_ACCESS_KEY_ID", ""),
+		opttest.Env("AWS_SECRET_ACCESS_KEY", ""),
+		opttest.Env("AWS_SESSION_TOKEN", ""),
+		opttest.Env("AWS_REGION", ""))
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:all
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	_, err := integrationTest.CurrentStack().Up(context.Background())
+	assert.Error(t, err)
+	// assert that error contains part of the modified credentials error message which is Pulumi sepcific
+	assert.ErrorContains(t, err, "Alternatively, you can use Pulumi ESC to set up dynamic credentials with AWS OIDC")
 }
 
 // When writing out TF files, we need to replace data that is random with a static value
