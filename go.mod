@@ -30,9 +30,8 @@ require (
 	github.com/pulumi/opentofu v0.0.0-20250318202137-3146daceaf73
 	github.com/pulumi/providertest v0.3.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.108.0
-	// pre-release version to accelerate getting pulumi/pulumi/issues/19755 fix
-	github.com/pulumi/pulumi/pkg/v3 v3.175.1-0.20250606094244-0d8ca0f9e129
-	github.com/pulumi/pulumi/sdk/v3 v3.175.1-0.20250606094244-0d8ca0f9e129
+	github.com/pulumi/pulumi/pkg/v3 v3.175.0
+	github.com/pulumi/pulumi/sdk/v3 v3.175.0
 	github.com/stretchr/testify v1.10.0
 	github.com/zclconf/go-cty v1.16.2
 	google.golang.org/grpc v1.70.0
