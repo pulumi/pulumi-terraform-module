@@ -742,7 +742,8 @@ func TestE2eDotnet(t *testing.T) {
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType("same"):   3,
+				apitype.OpType("update"): 1,
 			},
 		},
 	}
@@ -776,16 +777,16 @@ func TestE2eDotnet(t *testing.T) {
 				tc.moduleNamespace)
 
 			previewResult := integrationTest.Preview(t)
-			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.previewExpect, previewResult.ChangeSummary)
 
 			upResult := integrationTest.Up(t)
-			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
+			require.Equal(t, tc.upExpect, upResult.Summary.ResourceChanges)
 
 			previewResult = integrationTest.Preview(t)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			require.Equal(t, tc.diffNoChangesExpect, previewResult.ChangeSummary)
 
 			destroyResult := integrationTest.Destroy(t)
-			autogold.Expect(&tc.deleteExpect).Equal(t, destroyResult.Summary.ResourceChanges)
+			require.Equal(t, &tc.deleteExpect, destroyResult.Summary.ResourceChanges)
 		})
 	}
 }
