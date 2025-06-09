@@ -446,7 +446,7 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModuleAndVersion(t *testing.T) 
 func TestInferRequiredInputsWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("http")
-	for _, executor := range []string{"terraform"} {
+	for _, executor := range []string{"terraform", "opentofu"} {
 		t.Run("executor="+executor, func(t *testing.T) {
 			source := TFModuleSource("terraform-aws-modules/security-group/aws//modules/http-80")
 			version := TFModuleVersion("5.3.0")
