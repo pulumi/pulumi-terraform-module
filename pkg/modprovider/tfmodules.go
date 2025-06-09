@@ -365,7 +365,7 @@ func inferModuleSchema(
 			TypeSpec:    variableType,
 		}
 
-		if variable.Default.IsNull() && !variable.Nullable {
+		if variable.Default.IsNull() && !(variable.NullableSet && variable.Nullable) {
 			inferredModuleSchema.RequiredInputs = append(inferredModuleSchema.RequiredInputs, key)
 		}
 	}

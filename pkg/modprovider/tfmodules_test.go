@@ -443,6 +443,22 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModuleAndVersion(t *testing.T) 
 	}
 }
 
+func TestInferRequiredInputsWorks(t *testing.T) {
+	ctx := context.Background()
+	packageName := packageName("http")
+	for _, executor := range []string{"terraform"} {
+		t.Run("executor="+executor, func(t *testing.T) {
+			source := TFModuleSource("terraform-aws-modules/security-group/aws//modules/http-80")
+			version := TFModuleVersion("5.3.0")
+			tf := newTestRuntime(t, executor)
+			httpSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
+			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+			assert.NotNil(t, httpSchema, "inferred module schema for aws vpc module is nil")
+			assert.Contains(t, httpSchema.RequiredInputs, resource.PropertyKey("vpc_id"))
+		})
+	}
+}
+
 func TestResolveModuleSources(t *testing.T) {
 	executors := getExecutorsFromEnv()
 	for _, executor := range executors {
