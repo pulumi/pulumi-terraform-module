@@ -117,8 +117,9 @@ const testlambda = new lambda.Module("test-lambda", {
 
 ## How it works
 
-The modules are executed with `opentofu` binary that is automatically installed on-demand. The state is stored in your
-chosen [Pulumi state backend](https://www.pulumi.com/docs/iac/concepts/state-and-backends/), defaulting to Pulumi
+The modules are executed with the `terraform` binary that is assumed to be on the `PATH`. This can be configured with the `executor: "opentofu`
+provider option to use `opentofu` or the `PULUMI_TERRAFORM_MODULE_EXECUTOR` environment variable.
+The state is stored in your chosen [Pulumi state backend](https://www.pulumi.com/docs/iac/concepts/state-and-backends/), defaulting to Pulumi
 Cloud. [Secrets](https://www.pulumi.com/docs/iac/concepts/secrets/) are encrypted and stored securely.
 
 ## Why should I use this
