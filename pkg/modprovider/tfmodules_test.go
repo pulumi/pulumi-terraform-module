@@ -381,7 +381,7 @@ func TestInferringInputsFromLocalPath(t *testing.T) {
 			}
 
 			for name, expected := range expectedInputs {
-				actual, ok := inferredSchema.Inputs[resource.PropertyKey(name)]
+				actual, ok := inferredSchema.Inputs[name]
 				assert.True(t, ok, "input %s is missing from the schema", name)
 				assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
 				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
