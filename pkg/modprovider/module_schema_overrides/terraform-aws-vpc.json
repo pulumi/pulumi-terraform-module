@@ -75,6 +75,15 @@
             "type": "string"
           }
         },
+        "private_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
         "private_subnet_arns": {
           "type": "array",
           "items": {
@@ -97,6 +106,15 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "public_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
           }
         },
         "public_subnet_arns": {
@@ -127,6 +145,15 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "outpost_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
           }
         },
         "outpost_subnets_cidr_blocks": {
@@ -165,6 +192,15 @@
             "type": "string"
           }
         },
+        "database_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
+          }
+        },
         "database_subnet_group": {
           "type": "string"
         },
@@ -175,6 +211,15 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "redshift_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
           }
         },
         "redshift_subnet_arns": {
@@ -202,6 +247,15 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "elasticache_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
           }
         },
         "elasticache_subnet_arns": {
@@ -232,6 +286,15 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "intra_subnet_objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            }
           }
         },
         "intra_subnet_arns": {
