@@ -118,7 +118,7 @@ func (h *moduleHandler) Diff(
 		return nil, fmt.Errorf("failed preparing sandbox: %w", err)
 	}
 
-	plan, err := tf.Plan(ctx, newResourceLogger(h.hc, urn))
+	plan, err := tf.PlanNoRefresh(ctx, newResourceLogger(h.hc, urn))
 	if err != nil {
 		return nil, fmt.Errorf("error performing plan during Diff(...) %w", err)
 	}

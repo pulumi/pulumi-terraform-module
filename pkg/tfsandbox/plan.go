@@ -50,20 +50,42 @@ func (t *ModuleRuntime) PlanRefreshOnly(ctx context.Context, logger Logger) (*Pl
 	return p, nil
 }
 
+func (t *ModuleRuntime) PlanNoRefresh(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.planNoRefresh(ctx, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := NewPlan(plan)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 func (t *ModuleRuntime) plan(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
-	return t.planWithOptions(ctx, logger, false /*refreshOnly*/)
+	return t.planWithOptions(ctx, logger, t.planOptions())
 }
 
 func (t *ModuleRuntime) planRefreshOnly(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
-	return t.planWithOptions(ctx, logger, true /*refreshOnly*/)
+	return t.planWithOptions(ctx, logger, t.planOptions(tfexec.RefreshOnly(true)))
 }
 
-func (t *ModuleRuntime) planWithOptions(ctx context.Context, logger Logger, refreshOnly bool) (*tfjson.Plan, error) {
+func (t *ModuleRuntime) planNoRefresh(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, logger, t.planOptions(tfexec.Refresh(false)))
+}
+
+func (t *ModuleRuntime) planWithOptions(
+	ctx context.Context,
+	logger Logger,
+	options []tfexec.PlanOption,
+) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), defaultPlanFile)
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
-	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter,
-		t.planOptions(tfexec.Out(planFile), tfexec.RefreshOnly(refreshOnly))...)
+
+	planOptions := append(t.planOptions(tfexec.Out(planFile)), options...)
+	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter, planOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}
