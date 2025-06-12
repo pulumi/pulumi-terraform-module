@@ -1,0 +1,5 @@
+name: changing_module_source_resources
+runtime: yaml
+resources:
+  testModule:
+    type: rand:index:Module

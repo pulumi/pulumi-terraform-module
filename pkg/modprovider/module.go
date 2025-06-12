@@ -71,11 +71,15 @@ func (h *moduleHandler) Check(
 }
 
 func (h *moduleHandler) Diff(
-	_ context.Context,
+	ctx context.Context,
 	req *pulumirpc.DiffRequest,
+	moduleSource TFModuleSource,
+	moduleVersion TFModuleVersion,
+	providersConfig map[string]resource.PropertyMap,
+	inferredModule *InferredModuleSchema,
+	packageName packageName,
+	executor string,
 ) (*pulumirpc.DiffResponse, error) {
-	changes := pulumirpc.DiffResponse_DIFF_NONE
-
 	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
 	if err != nil {
 		return nil, err
@@ -88,10 +92,60 @@ func (h *moduleHandler) Diff(
 
 	// TODO[pulumi/pulumi-terraform-module#332] detect and correct drift
 	if !oldInputs.DeepEquals(newInputs) {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
+		// Inputs have changed, so we need tell the engine that an update is needed.
+		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
 	}
 
-	return &pulumirpc.DiffResponse{Changes: changes}, nil
+	// Here, inputs have not changes but the underlying module might have changed
+	// perform a plan to see if there were any changes in the module reported by terraform
+	urn := urn.URN(req.GetUrn())
+	oldOutputs, err := plugin.UnmarshalProperties(req.GetOlds(), h.marshalOpts())
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal old outputs: %w", err)
+	}
+
+	tf, err := h.prepSandbox(
+		ctx,
+		urn,
+		oldInputs,
+		oldOutputs,
+		inferredModule,
+		moduleSource,
+		moduleVersion,
+		providersConfig,
+		executor,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed preparing sandbox: %w", err)
+	}
+
+	plan, err := tf.Plan(ctx, newResourceLogger(h.hc, urn))
+	if err != nil {
+		return nil, fmt.Errorf("error performing plan during Diff(...) %w", err)
+	}
+
+	resourcesChanged := false
+	plan.VisitResourcePlans(func(resource *tfsandbox.ResourcePlan) {
+		if resource.ChangeKind() != tfsandbox.NoOp {
+			// if there is any resource change that is not a no-op, we need to update.
+			resourcesChanged = true
+		}
+	})
+
+	outputsChanged := false
+	for _, output := range plan.RawPlan().OutputChanges {
+		if !output.Actions.NoOp() {
+			outputsChanged = true
+			break
+		}
+	}
+
+	if resourcesChanged || outputsChanged {
+		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
+	}
+
+	// the module has not changed, return DIFF_NONE.
+	return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
 }
 
 func (h *moduleHandler) prepSandbox(
@@ -440,7 +494,7 @@ func (h *moduleHandler) Delete(
 		executor,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed preparing tofu sandbox: %w", err)
+		return nil, fmt.Errorf("failed preparing sandbox: %w", err)
 	}
 
 	// TODO[pulumi/pulumi-terraform-module#247] once the engine is ready to receive view steps multiple times, the

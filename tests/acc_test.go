@@ -358,6 +358,103 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	})
 }
 
+// Test that changing the source code of a local module causes the module to be updated
+// without any changes to the program code.
+// In this specific example, the change in the source code is from changing outputs
+func TestChangingLocalModuleSourceCodeOutputsCausesUpdate(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath := filepath.Join("testdata", "modules", "changing_module_source_outputs")
+	v1, err := filepath.Abs(filepath.Join(modulePath, "mod_v1"))
+	assert.NoError(t, err, "failed to get absolute path for v1 module")
+	v2, err := filepath.Abs(filepath.Join(modulePath, "mod_v2"))
+	assert.NoError(t, err, "failed to get absolute path for v2 module")
+
+	// YAML program that uses the module.
+	// We don't change anything here
+	program := filepath.Join("testdata", "programs", "yaml", "changing_module_source_outputs")
+
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, v1, "greeting")
+
+	resultV1 := integrationTest.Up(t)
+	assert.Len(t, resultV1.Outputs, 1, "expected one output")
+	greeting, ok := resultV1.Outputs["greeting"]
+	require.True(t, ok, "expected output greeting")
+	require.Equal(t, "Hello, John!", greeting.Value)
+
+	// Now change the source code of the module from v1 to v2
+	v1SourceCode, err := os.ReadFile(filepath.Join(v1, "main.tf"))
+	require.NoError(t, err, "failed to read v1 source code")
+	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
+	require.NoError(t, err, "failed to read v2 source code")
+
+	os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0o644)
+	t.Cleanup(func() {
+		// Restore the original source code after the test
+		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0o644)
+		require.NoError(t, err, "failed to restore v1 source code")
+	})
+
+	t.Logf("Changed module source code to v2")
+	resultV2 := integrationTest.Up(t)
+	assert.Len(t, resultV2.Outputs, 1, "expected one output")
+	greeting, ok = resultV2.Outputs["greeting"]
+	require.True(t, ok, "expected output greeting")
+	require.Equal(t, "Goodbye, John!", greeting.Value)
+}
+
+// Test that changing the source code of a local module causes the module to be updated
+// In this specific example, the change in the source code is from changing resources
+func TestChangingLocalModuleSourceCodeResourcesCausesUpdate(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath := filepath.Join("testdata", "modules", "changing_module_source_resources")
+	v1, err := filepath.Abs(filepath.Join(modulePath, "mod_v1"))
+	assert.NoError(t, err, "failed to get absolute path for v1 module")
+	v2, err := filepath.Abs(filepath.Join(modulePath, "mod_v2"))
+	assert.NoError(t, err, "failed to get absolute path for v2 module")
+
+	// YAML program that uses the module.
+	// We don't change anything here
+	program := filepath.Join("testdata", "programs", "yaml", "changing_module_source_resources")
+
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, v1, "rand")
+
+	integrationTest.Up(t)
+	// assert that the module was created with the expected resource
+	mustFindDeploymentResourceByType(t, integrationTest, "rand:tf:random_integer")
+
+	// Now change the source code of the module from v1 to v2
+	v1SourceCode, err := os.ReadFile(filepath.Join(v1, "main.tf"))
+	require.NoError(t, err, "failed to read v1 source code")
+	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
+	require.NoError(t, err, "failed to read v2 source code")
+
+	os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0o644)
+	t.Cleanup(func() {
+		// Restore the original source code after the test
+		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0o644)
+		require.NoError(t, err, "failed to restore v1 source code")
+	})
+
+	preview := integrationTest.Preview(t)
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("delete")],
+		"expected one resource to be deleted")
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("create")],
+		"expected one resource to be created")
+
+	integrationTest.Up(t)
+	// assert that the resource within the module has changed
+	// from random_integer into random_pet
+	mustFindDeploymentResourceByType(t, integrationTest, "rand:tf:random_pet")
+}
+
 func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	t.Parallel()
 
