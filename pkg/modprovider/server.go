@@ -474,7 +474,7 @@ func (s *server) Diff(
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
 		return s.moduleHandler.Diff(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
-			s.inferredModuleSchema, s.packageName, s.moduleExecutor)
+			s.inferredModuleSchema, s.moduleExecutor)
 	default:
 		return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
 	}

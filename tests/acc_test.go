@@ -391,7 +391,9 @@ func TestChangingLocalModuleSourceCodeOutputsCausesUpdate(t *testing.T) {
 	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
 	require.NoError(t, err, "failed to read v2 source code")
 
-	os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0o644)
+	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0o644)
+	require.NoError(t, err, "failed to write v2 source code to v1 module")
+
 	t.Cleanup(func() {
 		// Restore the original source code after the test
 		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0o644)
@@ -436,7 +438,9 @@ func TestChangingLocalModuleSourceCodeResourcesCausesUpdate(t *testing.T) {
 	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
 	require.NoError(t, err, "failed to read v2 source code")
 
-	os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0o644)
+	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0o644)
+	require.NoError(t, err, "failed to write v2 source code to v1 module")
+
 	t.Cleanup(func() {
 		// Restore the original source code after the test
 		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0o644)

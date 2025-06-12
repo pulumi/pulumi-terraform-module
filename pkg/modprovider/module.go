@@ -77,7 +77,6 @@ func (h *moduleHandler) Diff(
 	moduleVersion TFModuleVersion,
 	providersConfig map[string]resource.PropertyMap,
 	inferredModule *InferredModuleSchema,
-	packageName packageName,
 	executor string,
 ) (*pulumirpc.DiffResponse, error) {
 	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
