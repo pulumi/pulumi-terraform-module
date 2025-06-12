@@ -1767,6 +1767,21 @@ func Test_LocalModule_RelativePath_OpenTofu(t *testing.T) {
 	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
 }
 
+// verify that pulumi package get-schema works which also verifies that the
+// generated schema is valid and can be used to generate an SDK
+func TestPulumiPackageGetSchema(t *testing.T) {
+	t.Parallel()
+	localProviderBinPath := ensureCompiledProvider(t)
+	loadedSchema := pulumiGetSchema(t, localProviderBinPath, []string{
+		"terraform-module",
+		"terraform-aws-modules/vpc/aws",
+		"5.18.1",
+		"vpc",
+	})
+
+	assert.NotEmpty(t, loadedSchema, "expected schema to be loaded")
+}
+
 // assertTFStateResourceExists checks if a resource exists in the TF state.
 // packageName should be the name of the package used in `pulumi package add`
 // resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
@@ -1925,6 +1940,29 @@ func ensureCompiledProvider(t *testing.T) string {
 	}
 
 	return binPath
+}
+
+func pulumiGetSchema(t *testing.T, localProviderBinPath string, args []string) string {
+	t.Helper()
+
+	localPulumi := filepath.Join(getRoot(t), ".pulumi", "bin", "pulumi")
+
+	if _, err := os.Stat(localPulumi); os.IsNotExist(err) {
+		t.Errorf("This test requires a locally pinned Pulumi CLI; run `make prepare_local_workspace` first")
+	}
+
+	cmd := exec.Command(localPulumi, append([]string{"package", "get-schema"}, args...)...)
+
+	path := os.Getenv("PATH")
+	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s", path))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("failed to run pulumi package get-schema: %v\n%s", err, out)
+	}
+
+	return string(out)
 }
 
 func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string, generateOnly bool) {

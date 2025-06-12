@@ -208,6 +208,23 @@ func inferExpressionType(expr hcl.Expression) schema.TypeSpec {
 		case "compact":
 			// compact function has return type string[]
 			return arrayType(stringType)
+		case "try":
+			// expressions of format: try(<expr1>, <expr2>, ..., <default>)
+			// we check the last argument to see if it is a string literal or null
+			// if it is, we return a string type
+			if len(functionCall.Args) > 0 {
+				lastArg := functionCall.Args[len(functionCall.Args)-1]
+				switch lastArg := lastArg.(type) {
+				case *hclsyntax.LiteralValueExpr:
+					literalStringOrNull := lastArg.Val.Type().Equals(cty.String) ||
+						lastArg.Val.Type().Equals(cty.DynamicPseudoType)
+					if literalStringOrNull {
+						// try function with a string literal as the last argument
+						// returns a string type
+						return stringType
+					}
+				}
+			}
 		}
 	}
 
@@ -232,7 +249,11 @@ func inferExpressionType(expr hcl.Expression) schema.TypeSpec {
 		return arrayType(stringType)
 	}
 
-	return stringType
+	// default output type is any
+	// language SDKs are very strict when it comes to type schematized
+	// they have to match with the actual type at runtime from terraform
+	// so we use any as a fallback
+	return anyType
 }
 
 // isVariableReference checks if the given expression is a reference to a variable
@@ -495,25 +516,33 @@ func combineInferredModuleSchema(
 
 		// if the output already exists, we need to merge the types
 		existingOutput := inferredSchema.Outputs[name]
-		if output.Ref != "" {
-			existingOutput.Ref = output.Ref
-		}
+
 		if output.Description != "" {
 			existingOutput.Description = output.Description
 		}
 		if output.Secret {
 			existingOutput.Secret = output.Secret
 		}
+
+		if output.Ref != "" {
+			existingOutput.Ref = output.Ref
+			existingOutput.TypeSpec.AdditionalProperties = nil
+			existingOutput.TypeSpec.Items = nil
+			existingOutput.TypeSpec.Type = ""
+		}
 		if output.TypeSpec.Type != "" {
 			existingOutput.TypeSpec.Type = output.TypeSpec.Type
+			existingOutput.TypeSpec.Ref = ""
 		}
 		if output.TypeSpec.Items != nil {
 			existingOutput.TypeSpec.Items = output.TypeSpec.Items
 			existingOutput.TypeSpec.AdditionalProperties = nil
+			existingOutput.TypeSpec.Ref = ""
 		}
 		if output.TypeSpec.AdditionalProperties != nil {
 			existingOutput.TypeSpec.AdditionalProperties = output.TypeSpec.AdditionalProperties
 			existingOutput.TypeSpec.Items = nil
+			existingOutput.TypeSpec.Ref = ""
 		}
 	}
 
