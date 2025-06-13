@@ -752,6 +752,7 @@ func TestE2eTs(t *testing.T) {
 		upExpect            map[string]int
 		deleteExpect        map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
+		previewRefresh      bool // Whether to run preview with refresh enabled
 	}
 
 	testcases := []testCase{
@@ -803,6 +804,9 @@ func TestE2eTs(t *testing.T) {
 			moduleName:      "terraform-aws-modules/rds/aws",
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
+			// RDS module has immediate drift after creation,
+			// so we need to refresh to get the correct preview
+			previewRefresh: true,
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 10,
 			},
@@ -837,7 +841,11 @@ func TestE2eTs(t *testing.T) {
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
 
 			// Preview
-			previewResult := integrationTest.Preview(t, optpreview.Diff())
+			previewOptions := []optpreview.Option{optpreview.Diff()}
+			if tc.previewRefresh {
+				previewOptions = append(previewOptions, optpreview.Refresh())
+			}
+			previewResult := integrationTest.Preview(t, previewOptions...)
 			t.Logf("pulumi preview:\n%s", previewResult.StdOut+previewResult.StdErr)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
