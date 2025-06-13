@@ -753,6 +753,7 @@ func TestE2eTs(t *testing.T) {
 		deleteExpect        map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
 		previewRefresh      bool // Whether to run preview with refresh enabled
+		skipNoChangesExpect bool // Whether to skip the no changes expectation
 	}
 
 	testcases := []testCase{
@@ -779,6 +780,8 @@ func TestE2eTs(t *testing.T) {
 			moduleName:      "terraform-aws-modules/lambda/aws",
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
+			// aws lambda module creates drift even in terraform
+			skipNoChangesExpect: true,
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 8,
 			},
@@ -857,7 +860,9 @@ func TestE2eTs(t *testing.T) {
 			// Preview expect no changes
 			previewResult = integrationTest.Preview(t, previewOptions...)
 			t.Logf("pulumi preview\n%s", previewResult.StdOut+previewResult.StdErr)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			if !tc.skipNoChangesExpect {
+				autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			}
 
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
