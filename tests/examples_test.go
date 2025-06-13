@@ -53,7 +53,10 @@ func Test_RdsExample(t *testing.T) {
 		optup.ProgressStreams(tw),
 	)
 
-	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
+	integrationTest.Preview(t,
+		optpreview.Refresh(),
+		optpreview.Diff(),
+		optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(tw),
 		optpreview.ProgressStreams(tw),
 	)
