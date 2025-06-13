@@ -41,7 +41,7 @@ type Module struct {
 	// Name of database subnet group
 	Database_subnet_group_name pulumi.StringPtrOutput `pulumi:"database_subnet_group_name"`
 	// A list of all database subnets, containing the full objects.
-	Database_subnet_objects pulumi.StringPtrOutput `pulumi:"database_subnet_objects"`
+	Database_subnet_objects pulumi.MapArrayOutput `pulumi:"database_subnet_objects"`
 	// List of IDs of database subnets
 	Database_subnets pulumi.StringArrayOutput `pulumi:"database_subnets"`
 	// List of cidr_blocks of database subnets
@@ -93,7 +93,7 @@ type Module struct {
 	// Name of elasticache subnet group
 	Elasticache_subnet_group_name pulumi.StringPtrOutput `pulumi:"elasticache_subnet_group_name"`
 	// A list of all elasticache subnets, containing the full objects.
-	Elasticache_subnet_objects pulumi.StringPtrOutput `pulumi:"elasticache_subnet_objects"`
+	Elasticache_subnet_objects pulumi.MapArrayOutput `pulumi:"elasticache_subnet_objects"`
 	// List of IDs of elasticache subnets
 	Elasticache_subnets pulumi.StringArrayOutput `pulumi:"elasticache_subnets"`
 	// List of cidr_blocks of elasticache subnets
@@ -115,7 +115,7 @@ type Module struct {
 	// List of ARNs of intra subnets
 	Intra_subnet_arns pulumi.StringArrayOutput `pulumi:"intra_subnet_arns"`
 	// A list of all intra subnets, containing the full objects.
-	Intra_subnet_objects pulumi.StringPtrOutput `pulumi:"intra_subnet_objects"`
+	Intra_subnet_objects pulumi.MapArrayOutput `pulumi:"intra_subnet_objects"`
 	// List of IDs of intra subnets
 	Intra_subnets pulumi.StringArrayOutput `pulumi:"intra_subnets"`
 	// List of cidr_blocks of intra subnets
@@ -139,7 +139,7 @@ type Module struct {
 	// List of ARNs of outpost subnets
 	Outpost_subnet_arns pulumi.StringArrayOutput `pulumi:"outpost_subnet_arns"`
 	// A list of all outpost subnets, containing the full objects.
-	Outpost_subnet_objects pulumi.StringPtrOutput `pulumi:"outpost_subnet_objects"`
+	Outpost_subnet_objects pulumi.MapArrayOutput `pulumi:"outpost_subnet_objects"`
 	// List of IDs of outpost subnets
 	Outpost_subnets pulumi.StringArrayOutput `pulumi:"outpost_subnets"`
 	// List of cidr_blocks of outpost subnets
@@ -161,7 +161,7 @@ type Module struct {
 	// List of ARNs of private subnets
 	Private_subnet_arns pulumi.StringArrayOutput `pulumi:"private_subnet_arns"`
 	// A list of all private subnets, containing the full objects.
-	Private_subnet_objects pulumi.StringPtrOutput `pulumi:"private_subnet_objects"`
+	Private_subnet_objects pulumi.MapArrayOutput `pulumi:"private_subnet_objects"`
 	// List of IDs of private subnets
 	Private_subnets pulumi.StringArrayOutput `pulumi:"private_subnets"`
 	// List of cidr_blocks of private subnets
@@ -183,7 +183,7 @@ type Module struct {
 	// List of ARNs of public subnets
 	Public_subnet_arns pulumi.StringArrayOutput `pulumi:"public_subnet_arns"`
 	// A list of all public subnets, containing the full objects.
-	Public_subnet_objects pulumi.StringPtrOutput `pulumi:"public_subnet_objects"`
+	Public_subnet_objects pulumi.MapArrayOutput `pulumi:"public_subnet_objects"`
 	// List of IDs of public subnets
 	Public_subnets pulumi.StringArrayOutput `pulumi:"public_subnets"`
 	// List of cidr_blocks of public subnets
@@ -205,7 +205,7 @@ type Module struct {
 	// ID of redshift subnet group
 	Redshift_subnet_group pulumi.StringPtrOutput `pulumi:"redshift_subnet_group"`
 	// A list of all redshift subnets, containing the full objects.
-	Redshift_subnet_objects pulumi.StringPtrOutput `pulumi:"redshift_subnet_objects"`
+	Redshift_subnet_objects pulumi.MapArrayOutput `pulumi:"redshift_subnet_objects"`
 	// List of IDs of redshift subnets
 	Redshift_subnets pulumi.StringArrayOutput `pulumi:"redshift_subnets"`
 	// List of cidr_blocks of redshift subnets
@@ -228,11 +228,11 @@ type Module struct {
 	// Whether or not the VPC has DNS support
 	Vpc_enable_dns_support pulumi.BoolPtrOutput `pulumi:"vpc_enable_dns_support"`
 	// The ARN of the IAM role used when pushing logs to Cloudwatch log group
-	Vpc_flow_log_cloudwatch_iam_role_arn pulumi.StringPtrOutput `pulumi:"vpc_flow_log_cloudwatch_iam_role_arn"`
+	Vpc_flow_log_cloudwatch_iam_role_arn pulumi.AnyOutput `pulumi:"vpc_flow_log_cloudwatch_iam_role_arn"`
 	// The ARN of the IAM role used when pushing logs cross account
 	Vpc_flow_log_deliver_cross_account_role pulumi.StringPtrOutput `pulumi:"vpc_flow_log_deliver_cross_account_role"`
 	// The ARN of the destination for VPC Flow Logs
-	Vpc_flow_log_destination_arn pulumi.StringPtrOutput `pulumi:"vpc_flow_log_destination_arn"`
+	Vpc_flow_log_destination_arn pulumi.AnyOutput `pulumi:"vpc_flow_log_destination_arn"`
 	// The type of the destination for VPC Flow Logs
 	Vpc_flow_log_destination_type pulumi.StringPtrOutput `pulumi:"vpc_flow_log_destination_type"`
 	// The ID of the Flow Log resource
@@ -1338,8 +1338,8 @@ func (o ModuleOutput) Database_subnet_group_name() pulumi.StringPtrOutput {
 }
 
 // A list of all database subnets, containing the full objects.
-func (o ModuleOutput) Database_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Database_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Database_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Database_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of database subnets
@@ -1468,8 +1468,8 @@ func (o ModuleOutput) Elasticache_subnet_group_name() pulumi.StringPtrOutput {
 }
 
 // A list of all elasticache subnets, containing the full objects.
-func (o ModuleOutput) Elasticache_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Elasticache_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Elasticache_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Elasticache_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of elasticache subnets
@@ -1523,8 +1523,8 @@ func (o ModuleOutput) Intra_subnet_arns() pulumi.StringArrayOutput {
 }
 
 // A list of all intra subnets, containing the full objects.
-func (o ModuleOutput) Intra_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Intra_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Intra_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Intra_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of intra subnets
@@ -1583,8 +1583,8 @@ func (o ModuleOutput) Outpost_subnet_arns() pulumi.StringArrayOutput {
 }
 
 // A list of all outpost subnets, containing the full objects.
-func (o ModuleOutput) Outpost_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Outpost_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Outpost_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Outpost_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of outpost subnets
@@ -1638,8 +1638,8 @@ func (o ModuleOutput) Private_subnet_arns() pulumi.StringArrayOutput {
 }
 
 // A list of all private subnets, containing the full objects.
-func (o ModuleOutput) Private_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Private_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Private_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Private_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of private subnets
@@ -1693,8 +1693,8 @@ func (o ModuleOutput) Public_subnet_arns() pulumi.StringArrayOutput {
 }
 
 // A list of all public subnets, containing the full objects.
-func (o ModuleOutput) Public_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Public_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Public_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Public_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of public subnets
@@ -1748,8 +1748,8 @@ func (o ModuleOutput) Redshift_subnet_group() pulumi.StringPtrOutput {
 }
 
 // A list of all redshift subnets, containing the full objects.
-func (o ModuleOutput) Redshift_subnet_objects() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Redshift_subnet_objects }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Redshift_subnet_objects() pulumi.MapArrayOutput {
+	return o.ApplyT(func(v *Module) pulumi.MapArrayOutput { return v.Redshift_subnet_objects }).(pulumi.MapArrayOutput)
 }
 
 // List of IDs of redshift subnets
@@ -1807,8 +1807,8 @@ func (o ModuleOutput) Vpc_enable_dns_support() pulumi.BoolPtrOutput {
 }
 
 // The ARN of the IAM role used when pushing logs to Cloudwatch log group
-func (o ModuleOutput) Vpc_flow_log_cloudwatch_iam_role_arn() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Vpc_flow_log_cloudwatch_iam_role_arn }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Vpc_flow_log_cloudwatch_iam_role_arn() pulumi.AnyOutput {
+	return o.ApplyT(func(v *Module) pulumi.AnyOutput { return v.Vpc_flow_log_cloudwatch_iam_role_arn }).(pulumi.AnyOutput)
 }
 
 // The ARN of the IAM role used when pushing logs cross account
@@ -1817,8 +1817,8 @@ func (o ModuleOutput) Vpc_flow_log_deliver_cross_account_role() pulumi.StringPtr
 }
 
 // The ARN of the destination for VPC Flow Logs
-func (o ModuleOutput) Vpc_flow_log_destination_arn() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *Module) pulumi.StringPtrOutput { return v.Vpc_flow_log_destination_arn }).(pulumi.StringPtrOutput)
+func (o ModuleOutput) Vpc_flow_log_destination_arn() pulumi.AnyOutput {
+	return o.ApplyT(func(v *Module) pulumi.AnyOutput { return v.Vpc_flow_log_destination_arn }).(pulumi.AnyOutput)
 }
 
 // The type of the destination for VPC Flow Logs

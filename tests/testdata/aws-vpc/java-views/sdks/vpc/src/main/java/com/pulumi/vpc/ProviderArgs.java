@@ -5,6 +5,7 @@ package com.pulumi.vpc;
 
 import com.pulumi.core.Output;
 import com.pulumi.core.annotations.Import;
+import com.pulumi.core.internal.Codegen;
 import java.lang.Object;
 import java.lang.String;
 import java.util.Map;
@@ -32,10 +33,26 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
         return Optional.ofNullable(this.aws);
     }
 
+    /**
+     * Sets the executor used to run the module.
+     * 
+     */
+    @Import(name="executor")
+    private @Nullable Output<String> executor;
+
+    /**
+     * @return Sets the executor used to run the module.
+     * 
+     */
+    public Optional<Output<String>> executor() {
+        return Optional.ofNullable(this.executor);
+    }
+
     private ProviderArgs() {}
 
     private ProviderArgs(ProviderArgs $) {
         this.aws = $.aws;
+        this.executor = $.executor;
     }
 
     public static Builder builder() {
@@ -77,7 +94,29 @@ public final class ProviderArgs extends com.pulumi.resources.ResourceArgs {
             return aws(Output.of(aws));
         }
 
+        /**
+         * @param executor Sets the executor used to run the module.
+         * 
+         * @return builder
+         * 
+         */
+        public Builder executor(@Nullable Output<String> executor) {
+            $.executor = executor;
+            return this;
+        }
+
+        /**
+         * @param executor Sets the executor used to run the module.
+         * 
+         * @return builder
+         * 
+         */
+        public Builder executor(String executor) {
+            return executor(Output.of(executor));
+        }
+
         public ProviderArgs build() {
+            $.executor = Codegen.stringProp("executor").output().arg($.executor).env("PULUMI_TERRAFORM_MODULE_EXECUTOR").def("").getNullable();
             return $;
         }
     }

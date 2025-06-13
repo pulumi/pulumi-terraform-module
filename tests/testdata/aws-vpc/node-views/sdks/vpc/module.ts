@@ -88,7 +88,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all database subnets, containing the full objects.
      */
-    public /*out*/ readonly database_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly database_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of database subnets
      */
@@ -192,7 +192,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all elasticache subnets, containing the full objects.
      */
-    public /*out*/ readonly elasticache_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly elasticache_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of elasticache subnets
      */
@@ -236,7 +236,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all intra subnets, containing the full objects.
      */
-    public /*out*/ readonly intra_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly intra_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of intra subnets
      */
@@ -284,7 +284,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all outpost subnets, containing the full objects.
      */
-    public /*out*/ readonly outpost_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly outpost_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of outpost subnets
      */
@@ -328,7 +328,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all private subnets, containing the full objects.
      */
-    public /*out*/ readonly private_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly private_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of private subnets
      */
@@ -372,7 +372,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all public subnets, containing the full objects.
      */
-    public /*out*/ readonly public_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly public_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of public subnets
      */
@@ -416,7 +416,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * A list of all redshift subnets, containing the full objects.
      */
-    public /*out*/ readonly redshift_subnet_objects!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly redshift_subnet_objects!: pulumi.Output<{[key: string]: any}[] | undefined>;
     /**
      * List of IDs of redshift subnets
      */
@@ -461,7 +461,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * The ARN of the IAM role used when pushing logs to Cloudwatch log group
      */
-    public /*out*/ readonly vpc_flow_log_cloudwatch_iam_role_arn!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly vpc_flow_log_cloudwatch_iam_role_arn!: pulumi.Output<any | undefined>;
     /**
      * The ARN of the IAM role used when pushing logs cross account
      */
@@ -469,7 +469,7 @@ export class Module extends pulumi.CustomResource {
     /**
      * The ARN of the destination for VPC Flow Logs
      */
-    public /*out*/ readonly vpc_flow_log_destination_arn!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly vpc_flow_log_destination_arn!: pulumi.Output<any | undefined>;
     /**
      * The type of the destination for VPC Flow Logs
      */

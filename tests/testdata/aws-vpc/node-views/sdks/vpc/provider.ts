@@ -32,6 +32,7 @@ export class Provider extends pulumi.ProviderResource {
         opts = opts || {};
         {
             resourceInputs["aws"] = pulumi.output(args ? args.aws : undefined).apply(JSON.stringify);
+            resourceInputs["executor"] = (args ? args.executor : undefined) ?? (utilities.getEnv("PULUMI_TERRAFORM_MODULE_EXECUTOR") || "");
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Provider.__pulumiType, name, resourceInputs, opts, false /*dependency*/, utilities.getPackage());
@@ -46,4 +47,8 @@ export interface ProviderArgs {
      * provider configuration for aws
      */
     aws?: pulumi.Input<{[key: string]: any}>;
+    /**
+     * Sets the executor used to run the module.
+     */
+    executor?: pulumi.Input<string>;
 }
