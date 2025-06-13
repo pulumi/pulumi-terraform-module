@@ -855,7 +855,7 @@ func TestE2eTs(t *testing.T) {
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
 			// Preview expect no changes
-			previewResult = integrationTest.Preview(t, optpreview.Diff())
+			previewResult = integrationTest.Preview(t, previewOptions...)
 			t.Logf("pulumi preview\n%s", previewResult.StdOut+previewResult.StdErr)
 			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
 
