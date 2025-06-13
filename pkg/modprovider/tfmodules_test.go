@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,16 +44,13 @@ func TestExtractModuleContentWorks(t *testing.T) {
 	for _, executor := range executors {
 		t.Run("executor="+executor, func(t *testing.T) {
 			ctx := context.Background()
-			logger := &testLogger{}
+			logger := newTestLogger(t)
 			source := TFModuleSource("terraform-aws-modules/vpc/aws")
 			version := TFModuleVersion("5.18.1")
 			tf := newTestRuntime(t, executor)
 			awsVpc, err := extractModuleContent(ctx, tf, source, version, logger)
 			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 			assert.NotNil(t, awsVpc, "inferred module schema for aws vpc module is nil")
-			for _, log := range logger.logs {
-				t.Logf("Log: %s", log)
-			}
 		})
 	}
 }
@@ -303,12 +301,106 @@ func TestExtractModuleContentWorksFromLocalPath(t *testing.T) {
 	executors := getExecutorsFromEnv()
 	for _, executor := range executors {
 		t.Run("executor="+executor, func(t *testing.T) {
-			logger := &testLogger{}
+			logger := newTestLogger(t)
 			tf := newTestRuntime(t, executor)
 			assert.NoError(t, err, "failed to pick module runtime")
 			mod, err := extractModuleContent(ctx, tf, TFModuleSource(p), "", logger)
 			require.NoError(t, err)
 			require.NotNil(t, mod, "module contents should not be nil")
+		})
+	}
+}
+
+func TestInferringInputsFromLocalPath(t *testing.T) {
+	ctx := context.Background()
+	src := filepath.Join("..", "..", "tests", "testdata", "modules", "schema-inference-example")
+	p, err := filepath.Abs(src)
+	require.NoError(t, err)
+	for _, executor := range []string{"terraforn", "opentofu"} {
+		logger := newTestLogger(t)
+		t.Run("executor="+executor, func(t *testing.T) {
+			tf := newTestRuntime(t, executor)
+			assert.NoError(t, err, "failed to pick module runtime")
+			inferredSchema, err := inferModuleSchema(ctx, tf,
+				packageName("schema-inference-example"),
+				TFModuleSource(p),
+				TFModuleVersion(""),
+				logger)
+			require.NoError(t, err)
+			require.NotNil(t, inferredSchema, "module schema should not be nil")
+
+			expectedInputs := map[resource.PropertyKey]*schema.PropertySpec{
+				"required_string": {
+					Description: "required string",
+					TypeSpec:    stringType,
+				},
+				"optional_string_with_default": {
+					Description: "optional string with default",
+					TypeSpec:    stringType,
+				},
+				"optional_string_without_default": {
+					Description: "optional string without default",
+					TypeSpec:    stringType,
+				},
+				"required_string_using_nullable_false": {
+					TypeSpec: stringType,
+				},
+				"optional_string_using_nullable_true": {
+					TypeSpec: stringType,
+				},
+				"required_boolean": {
+					TypeSpec: boolType,
+				},
+				"optional_boolean_with_default": {
+					TypeSpec: boolType,
+				},
+				"required_number": {
+					TypeSpec: numberType,
+				},
+				"optional_number_with_default": {
+					TypeSpec: numberType,
+				},
+				"required_list_of_strings": {
+					TypeSpec: arrayType(stringType),
+				},
+				"optional_list_of_strings_with_default": {
+					TypeSpec:    arrayType(stringType),
+					Description: "optional list of strings with default",
+				},
+				"optional_list_of_strings_without_default": {
+					TypeSpec:    arrayType(stringType),
+					Description: "optional list of strings without default",
+				},
+				"required_map_of_strings": {
+					TypeSpec: mapType(stringType),
+				},
+				"optional_map_of_strings_with_default": {
+					TypeSpec:    mapType(stringType),
+					Description: "optional map of strings with default",
+				},
+			}
+
+			for name, expected := range expectedInputs {
+				actual, ok := inferredSchema.Inputs[name]
+				assert.True(t, ok, "input %s is missing from the schema", name)
+				assert.Equal(t, expected.Description, actual.Description, "input %s description is incorrect", name)
+				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
+			}
+
+			expectedRequiredInputs := []resource.PropertyKey{
+				"required_string",
+				"required_string_using_nullable_false",
+				"required_number",
+				"required_boolean",
+				"required_list_of_strings",
+				"required_map_of_strings",
+			}
+
+			actualRequiredInputs := inferredSchema.RequiredInputs
+
+			slices.Sort(expectedRequiredInputs)
+			slices.Sort(actualRequiredInputs)
+			assert.Equal(t, expectedRequiredInputs, actualRequiredInputs)
 		})
 	}
 }
@@ -439,6 +531,22 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModuleAndVersion(t *testing.T) 
 				assert.Equal(t, expected.Secret, actual.Secret, "input %s secret is incorrect", name)
 				assert.Equal(t, expected.TypeSpec, actual.TypeSpec, "input %s type is incorrect", name)
 			}
+		})
+	}
+}
+
+func TestInferRequiredInputsWorks(t *testing.T) {
+	ctx := context.Background()
+	packageName := packageName("http")
+	for _, executor := range []string{"terraform", "opentofu"} {
+		t.Run("executor="+executor, func(t *testing.T) {
+			source := TFModuleSource("terraform-aws-modules/security-group/aws//modules/http-80")
+			version := TFModuleVersion("5.3.0")
+			tf := newTestRuntime(t, executor)
+			httpSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
+			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
+			assert.NotNil(t, httpSchema, "inferred module schema for aws vpc module is nil")
+			assert.Contains(t, httpSchema.RequiredInputs, resource.PropertyKey("vpc_id"))
 		})
 	}
 }

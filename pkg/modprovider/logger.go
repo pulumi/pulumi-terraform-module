@@ -16,6 +16,7 @@ package modprovider
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -101,6 +102,12 @@ func newResourceLogger(hc *provider.HostClient, urn resource.URN) tfsandbox.Logg
 	return &resourceLogger{hc: hc, urn: urn}
 }
 
+func isMissingCredentialsErrorFromAWS(message string) bool {
+	topLevelError := strings.Contains(message, "No valid credential sources found") ||
+		strings.Contains(message, "Invalid provider configuration")
+	return topLevelError && strings.Contains(message, "hashicorp/aws")
+}
+
 func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, message string) {
 	if l.hc == nil {
 		return
@@ -119,6 +126,12 @@ func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, mess
 		diagLevel = diag.Error
 	default:
 		diagLevel = diag.Info
+	}
+
+	if diagLevel == diag.Error && isMissingCredentialsErrorFromAWS(message) {
+		// for AWS provider, we can detect missing credentials errors and provide a more helpful message
+		// that is specific to Pulumi users.
+		message = awsMissingCredentialsErrorMessage
 	}
 
 	err = l.hc.Log(ctx, diagLevel, l.urn, message)

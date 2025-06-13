@@ -205,14 +205,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all database subnets, containing the full objects.
      * 
      */
-    @Export(name="database_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> database_subnet_objects;
+    @Export(name="database_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> database_subnet_objects;
 
     /**
      * @return A list of all database subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> database_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> database_subnet_objects() {
         return Codegen.optional(this.database_subnet_objects);
     }
     /**
@@ -569,14 +569,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all elasticache subnets, containing the full objects.
      * 
      */
-    @Export(name="elasticache_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> elasticache_subnet_objects;
+    @Export(name="elasticache_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> elasticache_subnet_objects;
 
     /**
      * @return A list of all elasticache subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> elasticache_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> elasticache_subnet_objects() {
         return Codegen.optional(this.elasticache_subnet_objects);
     }
     /**
@@ -723,14 +723,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all intra subnets, containing the full objects.
      * 
      */
-    @Export(name="intra_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> intra_subnet_objects;
+    @Export(name="intra_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> intra_subnet_objects;
 
     /**
      * @return A list of all intra subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> intra_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> intra_subnet_objects() {
         return Codegen.optional(this.intra_subnet_objects);
     }
     /**
@@ -891,14 +891,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all outpost subnets, containing the full objects.
      * 
      */
-    @Export(name="outpost_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> outpost_subnet_objects;
+    @Export(name="outpost_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> outpost_subnet_objects;
 
     /**
      * @return A list of all outpost subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> outpost_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> outpost_subnet_objects() {
         return Codegen.optional(this.outpost_subnet_objects);
     }
     /**
@@ -1045,14 +1045,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all private subnets, containing the full objects.
      * 
      */
-    @Export(name="private_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> private_subnet_objects;
+    @Export(name="private_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> private_subnet_objects;
 
     /**
      * @return A list of all private subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> private_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> private_subnet_objects() {
         return Codegen.optional(this.private_subnet_objects);
     }
     /**
@@ -1199,14 +1199,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all public subnets, containing the full objects.
      * 
      */
-    @Export(name="public_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> public_subnet_objects;
+    @Export(name="public_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> public_subnet_objects;
 
     /**
      * @return A list of all public subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> public_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> public_subnet_objects() {
         return Codegen.optional(this.public_subnet_objects);
     }
     /**
@@ -1353,14 +1353,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * A list of all redshift subnets, containing the full objects.
      * 
      */
-    @Export(name="redshift_subnet_objects", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> redshift_subnet_objects;
+    @Export(name="redshift_subnet_objects", refs={List.class,Map.class,String.class,Object.class}, tree="[0,[1,2,3]]")
+    private Output</* @Nullable */ List<Map<String,Object>>> redshift_subnet_objects;
 
     /**
      * @return A list of all redshift subnets, containing the full objects.
      * 
      */
-    public Output<Optional<String>> redshift_subnet_objects() {
+    public Output<Optional<List<Map<String,Object>>>> redshift_subnet_objects() {
         return Codegen.optional(this.redshift_subnet_objects);
     }
     /**
@@ -1513,14 +1513,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * The ARN of the IAM role used when pushing logs to Cloudwatch log group
      * 
      */
-    @Export(name="vpc_flow_log_cloudwatch_iam_role_arn", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> vpc_flow_log_cloudwatch_iam_role_arn;
+    @Export(name="vpc_flow_log_cloudwatch_iam_role_arn", refs={Object.class}, tree="[0]")
+    private Output</* @Nullable */ Object> vpc_flow_log_cloudwatch_iam_role_arn;
 
     /**
      * @return The ARN of the IAM role used when pushing logs to Cloudwatch log group
      * 
      */
-    public Output<Optional<String>> vpc_flow_log_cloudwatch_iam_role_arn() {
+    public Output<Optional<Object>> vpc_flow_log_cloudwatch_iam_role_arn() {
         return Codegen.optional(this.vpc_flow_log_cloudwatch_iam_role_arn);
     }
     /**
@@ -1541,14 +1541,14 @@ public class Module extends com.pulumi.resources.CustomResource {
      * The ARN of the destination for VPC Flow Logs
      * 
      */
-    @Export(name="vpc_flow_log_destination_arn", refs={String.class}, tree="[0]")
-    private Output</* @Nullable */ String> vpc_flow_log_destination_arn;
+    @Export(name="vpc_flow_log_destination_arn", refs={Object.class}, tree="[0]")
+    private Output</* @Nullable */ Object> vpc_flow_log_destination_arn;
 
     /**
      * @return The ARN of the destination for VPC Flow Logs
      * 
      */
-    public Output<Optional<String>> vpc_flow_log_destination_arn() {
+    public Output<Optional<Object>> vpc_flow_log_destination_arn() {
         return Codegen.optional(this.vpc_flow_log_destination_arn);
     }
     /**
