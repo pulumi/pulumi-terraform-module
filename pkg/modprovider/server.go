@@ -470,7 +470,9 @@ func (s *server) Diff(
 ) (*pulumirpc.DiffResponse, error) {
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
-		return s.moduleHandler.Diff(ctx, req)
+		providersConfig := cleanProvidersConfig(s.providerConfig)
+		return s.moduleHandler.Diff(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
+			s.inferredModuleSchema, s.moduleExecutor)
 	default:
 		return nil, fmt.Errorf("[Diff]: type %q is not supported yet", req.GetType())
 	}

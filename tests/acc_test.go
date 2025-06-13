@@ -358,6 +358,107 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	})
 }
 
+// Test that changing the source code of a local module causes the module to be updated
+// without any changes to the program code.
+// In this specific example, the change in the source code is from changing outputs
+func TestChangingLocalModuleSourceCodeOutputsCausesUpdate(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath := filepath.Join("testdata", "modules", "changing_module_source_outputs")
+	v1, err := filepath.Abs(filepath.Join(modulePath, "mod_v1"))
+	assert.NoError(t, err, "failed to get absolute path for v1 module")
+	v2, err := filepath.Abs(filepath.Join(modulePath, "mod_v2"))
+	assert.NoError(t, err, "failed to get absolute path for v2 module")
+
+	// YAML program that uses the module.
+	// We don't change anything here
+	program := filepath.Join("testdata", "programs", "yaml", "changing_module_source_outputs")
+
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, v1, "greeting")
+
+	resultV1 := integrationTest.Up(t)
+	assert.Len(t, resultV1.Outputs, 1, "expected one output")
+	greeting, ok := resultV1.Outputs["greeting"]
+	require.True(t, ok, "expected output greeting")
+	require.Equal(t, "Hello, John!", greeting.Value)
+
+	// Now change the source code of the module from v1 to v2
+	v1SourceCode, err := os.ReadFile(filepath.Join(v1, "main.tf"))
+	require.NoError(t, err, "failed to read v1 source code")
+	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
+	require.NoError(t, err, "failed to read v2 source code")
+
+	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0600)
+	require.NoError(t, err, "failed to write v2 source code to v1 module")
+
+	t.Cleanup(func() {
+		// Restore the original source code after the test
+		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0600)
+		require.NoError(t, err, "failed to restore v1 source code")
+	})
+
+	t.Logf("Changed module source code to v2")
+	resultV2 := integrationTest.Up(t)
+	assert.Len(t, resultV2.Outputs, 1, "expected one output")
+	greeting, ok = resultV2.Outputs["greeting"]
+	require.True(t, ok, "expected output greeting")
+	require.Equal(t, "Goodbye, John!", greeting.Value)
+}
+
+// Test that changing the source code of a local module causes the module to be updated
+// In this specific example, the change in the source code is from changing resources
+func TestChangingLocalModuleSourceCodeResourcesCausesUpdate(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath := filepath.Join("testdata", "modules", "changing_module_source_resources")
+	v1, err := filepath.Abs(filepath.Join(modulePath, "mod_v1"))
+	assert.NoError(t, err, "failed to get absolute path for v1 module")
+	v2, err := filepath.Abs(filepath.Join(modulePath, "mod_v2"))
+	assert.NoError(t, err, "failed to get absolute path for v2 module")
+
+	// YAML program that uses the module.
+	// We don't change anything here
+	program := filepath.Join("testdata", "programs", "yaml", "changing_module_source_resources")
+
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, v1, "rand")
+
+	integrationTest.Up(t)
+	// assert that the module was created with the expected resource
+	mustFindDeploymentResourceByType(t, integrationTest, "rand:tf:random_integer")
+
+	// Now change the source code of the module from v1 to v2
+	v1SourceCode, err := os.ReadFile(filepath.Join(v1, "main.tf"))
+	require.NoError(t, err, "failed to read v1 source code")
+	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
+	require.NoError(t, err, "failed to read v2 source code")
+
+	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0600)
+	require.NoError(t, err, "failed to write v2 source code to v1 module")
+
+	t.Cleanup(func() {
+		// Restore the original source code after the test
+		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0600)
+		require.NoError(t, err, "failed to restore v1 source code")
+	})
+
+	preview := integrationTest.Preview(t)
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("delete")],
+		"expected one resource to be deleted")
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("create")],
+		"expected one resource to be created")
+
+	integrationTest.Up(t)
+	// assert that the resource within the module has changed
+	// from random_integer into random_pet
+	mustFindDeploymentResourceByType(t, integrationTest, "rand:tf:random_pet")
+}
+
 func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	t.Parallel()
 
@@ -651,6 +752,8 @@ func TestE2eTs(t *testing.T) {
 		upExpect            map[string]int
 		deleteExpect        map[string]int
 		diffNoChangesExpect map[apitype.OpType]int
+		previewRefresh      bool // Whether to run preview with refresh enabled
+		skipNoChangesExpect bool // Whether to skip the no changes expectation
 	}
 
 	testcases := []testCase{
@@ -677,6 +780,8 @@ func TestE2eTs(t *testing.T) {
 			moduleName:      "terraform-aws-modules/lambda/aws",
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
+			// aws lambda module creates drift even in terraform
+			skipNoChangesExpect: true,
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 8,
 			},
@@ -702,6 +807,9 @@ func TestE2eTs(t *testing.T) {
 			moduleName:      "terraform-aws-modules/rds/aws",
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
+			// RDS module has immediate drift after creation,
+			// so we need to refresh to get the correct preview
+			previewRefresh: true,
 			previewExpect: map[apitype.OpType]int{
 				apitype.OpType("create"): 10,
 			},
@@ -736,7 +844,11 @@ func TestE2eTs(t *testing.T) {
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName, tc.moduleVersion, tc.moduleNamespace)
 
 			// Preview
-			previewResult := integrationTest.Preview(t, optpreview.Diff())
+			previewOptions := []optpreview.Option{optpreview.Diff()}
+			if tc.previewRefresh {
+				previewOptions = append(previewOptions, optpreview.Refresh())
+			}
+			previewResult := integrationTest.Preview(t, previewOptions...)
 			t.Logf("pulumi preview:\n%s", previewResult.StdOut+previewResult.StdErr)
 			autogold.Expect(tc.previewExpect).Equal(t, previewResult.ChangeSummary)
 
@@ -746,9 +858,11 @@ func TestE2eTs(t *testing.T) {
 			autogold.Expect(&tc.upExpect).Equal(t, upResult.Summary.ResourceChanges)
 
 			// Preview expect no changes
-			previewResult = integrationTest.Preview(t, optpreview.Diff())
+			previewResult = integrationTest.Preview(t, previewOptions...)
 			t.Logf("pulumi preview\n%s", previewResult.StdOut+previewResult.StdErr)
-			autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			if !tc.skipNoChangesExpect {
+				autogold.Expect(tc.diffNoChangesExpect).Equal(t, previewResult.ChangeSummary)
+			}
 
 			// Delete
 			destroyResult := integrationTest.Destroy(t)
