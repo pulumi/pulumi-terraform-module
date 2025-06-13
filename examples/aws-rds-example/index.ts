@@ -52,7 +52,7 @@ new rdsmod.Module("test-rds", {
   publicly_accessible: false,
   allocated_storage: 20,
   max_allocated_storage: 100,
-  instance_class: "db.t4g.large",
+  instance_class: "db.t4g.micro",
   engine_version: "8.0",
   family: "mysql8.0",
   db_name: "completeMysql",
