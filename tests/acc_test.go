@@ -780,10 +780,10 @@ func TestE2eTs(t *testing.T) {
 			previewExpect: autogold.Expect(map[apitype.OpType]int{
 				apitype.OpType("create"): 8,
 			}),
-			upExpect: autogold.Expect(map[string]int{
+			upExpect: autogold.Expect(&map[string]int{
 				"create": 8,
 			}),
-			deleteExpect: autogold.Expect(map[string]int{
+			deleteExpect: autogold.Expect(&map[string]int{
 				"delete": 8,
 			}),
 			// With Views drift detection does not quite get picked up yet.
@@ -806,10 +806,10 @@ func TestE2eTs(t *testing.T) {
 			previewExpect: autogold.Expect(map[apitype.OpType]int{
 				apitype.OpType("create"): 10,
 			}),
-			upExpect: autogold.Expect(map[string]int{
+			upExpect: autogold.Expect(&map[string]int{
 				"create": 10,
 			}),
-			deleteExpect: autogold.Expect(map[string]int{
+			deleteExpect: autogold.Expect(&map[string]int{
 				"delete": 10,
 			}),
 			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
