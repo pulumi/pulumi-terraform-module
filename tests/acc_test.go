@@ -765,10 +765,9 @@ func TestE2eTs(t *testing.T) {
 			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 5}),
 			upExpect:        autogold.Expect(&map[string]int{"create": 5}),
 			deleteExpect:    autogold.Expect(&map[string]int{"delete": 5}),
-			// Explanation for the N>0 updates during diffNoChangesExpect:
-			//nolint:lll
-			// replace_test.go:353: module.test-bucket.aws_s3_bucket_server_side_encryption_configuration.this[0]: Drift detected (update)
-			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 4, apitype.OpType("update"): 1}),
+			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
+				apitype.OpType("same"): 5,
+			}),
 		},
 		{
 			name:            "awslambdamod",
@@ -900,8 +899,7 @@ func TestE2eDotnet(t *testing.T) {
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"):   3,
-				apitype.OpType("update"): 1,
+				apitype.OpType("same"): 4,
 			},
 		},
 	}
@@ -976,8 +974,7 @@ func TestE2ePython(t *testing.T) {
 				"create": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"):   3,
-				apitype.OpType("update"): 1,
+				apitype.OpType("same"): 4,
 			},
 			deleteExpect: &map[string]int{
 				"delete": 4,
@@ -1061,8 +1058,7 @@ func TestE2eGo(t *testing.T) {
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"):   3,
-				apitype.OpType("update"): 1,
+				apitype.OpType("same"): 4,
 			},
 		},
 	}
@@ -1139,8 +1135,7 @@ func TestE2eYAML(t *testing.T) {
 				"delete": 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"):   3,
-				apitype.OpType("update"): 1,
+				apitype.OpType("same"): 4,
 			},
 		},
 	}

@@ -17,7 +17,6 @@ package modprovider
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -47,9 +46,6 @@ type moduleHandler struct {
 	hc                *provider.HostClient
 	auxProviderServer *auxprovider.Server
 	statusPool        status.Pool
-
-	driftDetectedMutex sync.Mutex
-	driftDetected      map[urn.URN]struct{}
 }
 
 func newModuleHandler(hc *provider.HostClient, as *auxprovider.Server) *moduleHandler {
@@ -84,11 +80,6 @@ func (h *moduleHandler) Diff(
 	executor string,
 ) (*pulumirpc.DiffResponse, error) {
 	urn := urn.URN(req.GetUrn())
-
-	// Need to trigger an Update to try to correct the drift.
-	if h.hasDrift(urn) {
-		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
-	}
 
 	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
 	if err != nil {
@@ -600,8 +591,6 @@ func (h *moduleHandler) Read(
 		return nil, err
 	}
 
-	// h.markDriftDetected(urn, plan.HasDrift())
-
 	state, err := tf.Refresh(ctx, logger)
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running refresh: %v", err))
@@ -689,26 +678,3 @@ func (*moduleHandler) marshalOpts() plugin.MarshalOptions {
 		KeepOutputValues: false,
 	}
 }
-
-func (h *moduleHandler) hasDrift(u urn.URN) bool {
-	h.driftDetectedMutex.Lock()
-	defer h.driftDetectedMutex.Unlock()
-	if h.driftDetected == nil {
-		return false
-	}
-	_, ok := h.driftDetected[u]
-	return ok
-}
-
-//func (h *moduleHandler) markDriftDetected(u urn.URN, hasDrift bool) {
-//	h.driftDetectedMutex.Lock()
-//	defer h.driftDetectedMutex.Unlock()
-//	if h.driftDetected == nil {
-//		h.driftDetected = map[urn.URN]struct{}{}
-//	}
-//	if hasDrift {
-//		h.driftDetected[u] = struct{}{}
-//	} else {
-//		delete(h.driftDetected, u)
-//	}
-//}
