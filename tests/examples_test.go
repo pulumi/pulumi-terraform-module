@@ -33,7 +33,6 @@ func Test_RdsExample(t *testing.T) {
 
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
-	tw := newTestWriter(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-rds-example"))
 	require.NoError(t, err)

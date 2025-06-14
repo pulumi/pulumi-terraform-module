@@ -90,8 +90,6 @@ func (h *moduleHandler) Diff(
 		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
 	}
 
-	changes := pulumirpc.DiffResponse_DIFF_NONE
-
 	oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(), h.marshalOpts())
 	if err != nil {
 		return nil, err
@@ -245,11 +243,10 @@ func (h *moduleHandler) applyModuleOperation(
 	logger := newResourceLogger(h.hc, urn)
 
 	// Because of RefreshBeforeUpdate, Pulumi CLI has already refreshed at this point.
-	refreshOpts := tfsandbox.RefreshOpts{NoRefresh: true}
-
+	// so we use plan -refresh=false via tfsandbox.PlanNoRefresh()
 	// Plans are always needed, so this code will run in DryRun and otherwise. In the future we
 	// may be able to reuse the plan from DryRun for the subsequent application.
-	plan, err := tf.Plan(ctx, logger, refreshOpts)
+	plan, err := tf.PlanNoRefresh(ctx, logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Plan failed: %w", err)
 	}
@@ -266,7 +263,9 @@ func (h *moduleHandler) applyModuleOperation(
 		moduleOutputs = plan.Outputs()
 	} else {
 		// TODO[pulumi/pulumi-terraform-module#341] reuse the plan
-		tfState, err := tf.Apply(ctx, logger, refreshOpts)
+		tfState, err := tf.Apply(ctx, logger, tfsandbox.RefreshOpts{
+			NoRefresh: true, // we already refreshed before this point
+		})
 		if tfState != nil {
 			msg := fmt.Sprintf("tf.Apply produced the following state: %s", tfState.PrettyPrint())
 			logger.Log(ctx, tfsandbox.Debug, msg)
@@ -592,10 +591,10 @@ func (h *moduleHandler) Read(
 		executor,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
+		return nil, fmt.Errorf("failed preparing tofu sandbox: %w", err)
 	}
 
-	plan, err := tf.Plan(ctx, logger, tfsandbox.RefreshOpts{RefreshOnly: true})
+	plan, err := tf.PlanRefreshOnly(ctx, logger)
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error planning refresh: %v", err))
 		return nil, err
@@ -606,7 +605,7 @@ func (h *moduleHandler) Read(
 	state, err := tf.Refresh(ctx, logger)
 	if err != nil {
 		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error running refresh: %v", err))
-		return nil, fmt.Errorf("Module refresh failed: %w", err)
+		return nil, fmt.Errorf("module refresh failed: %w", err)
 	}
 
 	outputs, err := h.outputs(ctx, tf, state)

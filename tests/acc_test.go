@@ -777,25 +777,23 @@ func TestE2eTs(t *testing.T) {
 			moduleNamespace: "lambda",
 			// aws lambda module creates drift even in terraform
 			skipNoChangesExpect: true,
-			previewExpect: map[apitype.OpType]int{
+			previewExpect: autogold.Expect(map[apitype.OpType]int{
 				apitype.OpType("create"): 8,
-			},
-			upExpect: map[string]int{
+			}),
+			upExpect: autogold.Expect(map[string]int{
 				"create": 8,
-			},
-			deleteExpect: map[string]int{
+			}),
+			deleteExpect: autogold.Expect(map[string]int{
 				"delete": 8,
-			},
-			diffNoChangesExpect: func() map[apitype.OpType]int {
-				// With Views drift detection does not quite get picked up yet.
-				// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
-				// will make Pulumi refresh, so TF refreshes as well. When this is done whether
-				// the final counts match or not is less important, the user expectation is to
-				// refresh by default as TF does.
-				return map[apitype.OpType]int{
-					apitype.OpType("same"): 8,
-				}
-			}(),
+			}),
+			// With Views drift detection does not quite get picked up yet.
+			// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
+			// will make Pulumi refresh, so TF refreshes as well. When this is done whether
+			// the final counts match or not is less important, the user expectation is to
+			// refresh by default as TF does.
+			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
+				apitype.OpType("same"): 8,
+			}),
 		},
 		{
 			name:            "rdsmod",
@@ -805,18 +803,18 @@ func TestE2eTs(t *testing.T) {
 			// RDS module has immediate drift after creation,
 			// so we need to refresh to get the correct preview
 			previewRefresh: true,
-			previewExpect: map[apitype.OpType]int{
+			previewExpect: autogold.Expect(map[apitype.OpType]int{
 				apitype.OpType("create"): 10,
-			},
-			upExpect: map[string]int{
+			}),
+			upExpect: autogold.Expect(map[string]int{
 				"create": 10,
-			},
-			deleteExpect: map[string]int{
+			}),
+			deleteExpect: autogold.Expect(map[string]int{
 				"delete": 10,
-			},
-			diffNoChangesExpect: map[apitype.OpType]int{
+			}),
+			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
 				apitype.OpType("same"): 10,
-			},
+			}),
 		},
 	}
 
@@ -843,7 +841,7 @@ func TestE2eTs(t *testing.T) {
 
 			// Preview
 			previewOptions := []optpreview.Option{
-				optpreview.Diff()
+				optpreview.Diff(),
 			}
 			if tc.previewRefresh {
 				previewOptions = append(previewOptions, optpreview.Refresh())
@@ -1882,10 +1880,24 @@ func TestPulumiPackageGetSchema(t *testing.T) {
 	assert.NotEmpty(t, loadedSchema, "expected schema to be loaded")
 }
 
-// assertTFStateResourceExists checks if a resource exists in the TF state.
-// packageName should be the name of the package used in `pulumi package add`
-// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
-func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packageName string, resourceAddress string) {
+func getTFResourceAddr(t *testing.T, res any) string {
+	resMap, ok := res.(map[string]any)
+	require.Truef(t, ok, "resources must be a map")
+	module, ok := resMap["module"].(string)
+	require.Truef(t, ok, "module key must exist")
+	typ, ok := resMap["type"].(string)
+	require.Truef(t, ok, "type key must exist")
+	name, ok := resMap["name"].(string)
+	require.Truef(t, ok, "name key must exist")
+	fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
+	return fullName
+}
+
+func findTFStateResources(
+	t *testing.T,
+	pt *pulumitest.PulumiTest,
+	packageName string,
+) []any {
 	tfStateRaw := mustFindRawState(t, pt, packageName)
 	tfState, isMap := tfStateRaw.(map[string]any)
 	require.True(t, isMap)
@@ -1900,19 +1912,6 @@ func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packag
 	resources, ok := state["resources"].([]any)
 	require.Truef(t, ok, "TF state must contain 'resources': %v", state)
 	return resources
-}
-
-func getTFResourceAddr(t *testing.T, res any) string {
-	resMap, ok := res.(map[string]any)
-	require.Truef(t, ok, "resources must be a map")
-	module, ok := resMap["module"].(string)
-	require.Truef(t, ok, "module key must exist")
-	typ, ok := resMap["type"].(string)
-	require.Truef(t, ok, "type key must exist")
-	name, ok := resMap["name"].(string)
-	require.Truef(t, ok, "name key must exist")
-	fullName := fmt.Sprintf("%s.%s.%s", module, typ, name)
-	return fullName
 }
 
 func findTFStateResource(

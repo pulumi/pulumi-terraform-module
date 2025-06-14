@@ -56,6 +56,19 @@ func (t *ModuleRuntime) PlanNoRefresh(ctx context.Context, logger Logger) (*Plan
 	return p, nil
 }
 
+func (t *ModuleRuntime) PlanRefreshOnly(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.planRefreshOnly(ctx, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := NewPlan(plan)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 func (t *ModuleRuntime) plan(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
 	return t.planWithOptions(ctx, logger, t.planOptions())
 }

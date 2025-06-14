@@ -72,7 +72,7 @@ func TestTofuPlan(t *testing.T) {
 	err = tofu.Init(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu init")
 
-	plan, err := tofu.plan(ctx, DiscardLogger, RefreshOpts{})
+	plan, err := tofu.plan(ctx, DiscardLogger)
 	assert.NoErrorf(t, err, "error running tofu plan")
 	childModules := plan.PlannedValues.RootModule.ChildModules
 	assert.Len(t, childModules, 1)
