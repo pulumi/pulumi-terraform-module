@@ -38,7 +38,7 @@ func newTestTofu(t *testing.T) *tfsandbox.ModuleRuntime {
 	srv := newTestAuxProviderServer(t)
 
 	tofu, err := tfsandbox.NewTofu(context.Background(),
-		tfsandbox.DiscardLogger,
+		newTestLogger(t),
 		nil,
 		srv,
 		tofuresolver.ResolveOpts{})

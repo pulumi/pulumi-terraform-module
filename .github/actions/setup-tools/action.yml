@@ -97,3 +97,8 @@ runs:
       shell: bash
       run: |
         terraform -version
+
+    - name: Show Pulumi Version
+      shell: bash
+      run: |
+        pulumi version

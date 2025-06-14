@@ -57,7 +57,6 @@ func viewStepsGeneric(
 	preview bool,
 ) []*pulumirpc.ViewStep {
 	var steps []*pulumirpc.ViewStep
-	priorState, hasPriorState := plan.PriorState()
 	hasFinalState := finalState != nil
 
 	counter := 0
@@ -73,14 +72,7 @@ func viewStepsGeneric(
 		// TODO[pulumi/pulumi-terraform-module#61] sometimes addresses change but identity remains the same.
 		addr := rplan.Address()
 
-		var priorRState, finalRState *tfsandbox.ResourceState
-
-		if hasPriorState {
-			s, ok := priorState.FindResourceState(addr)
-			if ok {
-				priorRState = s
-			}
-		}
+		var finalRState *tfsandbox.ResourceState
 
 		if hasFinalState {
 			s, ok := finalState.FindResourceState(addr)
@@ -89,7 +81,7 @@ func viewStepsGeneric(
 			}
 		}
 
-		rSteps := viewStepsForResource(packageName, rplan, priorRState, finalRState, preview)
+		rSteps := viewStepsForResource(packageName, rplan, finalRState, preview)
 		steps = append(steps, rSteps...)
 	})
 
@@ -121,11 +113,21 @@ func viewStepsGeneric(
 	return steps
 }
 
-func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
+func viewStepOp(changeKind tfsandbox.ChangeKind, _ bool /*drift*/) []pulumirpc.ViewStep_Op {
 	switch changeKind {
 	case tfsandbox.NoOp:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_SAME}
 	case tfsandbox.Update:
+		// TODO this does not seem to work, per Justin:
+		//
+		//  will not work with the current implementation… If you sent an Op UPDATE for the view, I think it will.
+		//
+		//
+		// Need to figure out if this is temporary or final.
+		//
+		// if drift {
+		// 	return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_REFRESH}
+		// }
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_UPDATE}
 	case tfsandbox.Replace:
 		return []pulumirpc.ViewStep_Op{
@@ -141,8 +143,6 @@ func viewStepOp(changeKind tfsandbox.ChangeKind) []pulumirpc.ViewStep_Op {
 		}
 	case tfsandbox.Create:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_CREATE}
-	case tfsandbox.Read:
-		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_REFRESH}
 	case tfsandbox.Delete:
 		return []pulumirpc.ViewStep_Op{pulumirpc.ViewStep_DELETE}
 	case tfsandbox.Forget:
@@ -211,7 +211,6 @@ func viewStepForSameResource(
 func viewStepsForResource(
 	packageName packageName,
 	rplan ResourcePlan,
-	priorState ResourceState, // may be nil in operations such as create
 	finalState ResourceState, // may be nil when planning or failed to create
 	preview bool,
 ) []*pulumirpc.ViewStep {
@@ -221,7 +220,7 @@ func viewStepsForResource(
 	ty := childResourceTypeToken(packageName, rplan.Type()).String()
 	name := childResourceName(addr)
 
-	var oldViewState, newViewState *pulumirpc.ViewStepState
+	var newViewState *pulumirpc.ViewStepState
 	if finalState != nil {
 		newViewState = viewStepState(packageName, addr, tfType, finalState.AttributeValues())
 	} else {
@@ -231,13 +230,15 @@ func viewStepsForResource(
 		}
 	}
 
-	if priorState != nil {
-		oldViewState = viewStepState(packageName, addr, tfType, priorState.AttributeValues())
+	var oldViewState *pulumirpc.ViewStepState
+	before, hasBefore := rplan.Before()
+	if hasBefore {
+		oldViewState = viewStepState(packageName, addr, tfType, before)
 	}
 
 	steps := []*pulumirpc.ViewStep{}
 
-	for _, op := range viewStepOp(rplan.ChangeKind()) {
+	for _, op := range viewStepOp(rplan.ChangeKind(), rplan.Drift()) {
 		newViewStateToSend := newViewState
 		if op == pulumirpc.ViewStep_DELETE_REPLACED {
 			newViewStateToSend = nil

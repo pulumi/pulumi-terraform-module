@@ -16,6 +16,7 @@ package tests
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -246,7 +247,7 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 func Test_replace_drift_deleted(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("TODO[pulumi/pulumi-terraform-module#331]")
+	tw := newTestWriter(t)
 
 	localProviderBinPath := ensureCompiledProvider(t)
 
@@ -260,13 +261,17 @@ func Test_replace_drift_deleted(t *testing.T) {
 	pt := newPulumiTest(t, randModProg, localPath)
 	pt.CopyToTempDir(t)
 
-	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, "rmod")
+	packageName := "rmod"
+
+	pulumiPackageAdd(t, pt, localProviderBinPath, modPath, packageName)
 
 	pwd, err := filepath.Abs(pt.WorkingDir())
 	require.NoError(t, err)
 
 	pt.SetConfig(t, "pwd", pwd)
-	pt.Up(t)
+
+	t.Logf("## pulumi up: provision initial version")
+	pt.Up(t, optup.Diff(), optup.ProgressStreams(tw), optup.ErrorProgressStreams(tw))
 
 	// Check that a file got provisioned as expected.
 	filePath := filepath.Join(pwd, "hello.txt")
@@ -274,47 +279,70 @@ func Test_replace_drift_deleted(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Hello, World!", string(bytes))
 
+	t.Logf("## delete the file introducing drift")
 	// Now remove the file.
 	err = os.Remove(filePath)
 	require.NoError(t, err)
 
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, uncomment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
 	// Terraform will detect drift and try to recreate. Pulumi currently would show this as a replacement with
 	// several properties changing into unknowns. This is because all properties are projected as Pulumi inputs.
-	diffResult := pt.Preview(t, optpreview.Diff())
-	t.Logf("pulumi preview: %s", diffResult.StdOut+diffResult.StdErr)
+	t.Logf("## pulumi preview: expecting to detect missing resource and plan to re-create")
+	previewResult := pt.Preview(t,
+		optpreview.Diff(),
+		optpreview.ProgressStreams(tw),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.DebugLogging(debugOpts),
+	)
+
+	// Preview should not have  modified TF state, the drifted resource should still exist.
+	assertTFStateResourceExists(t, pt, packageName, "module.rmod.local_file.hello")
+
 	autogold.Expect(map[apitype.OpType]int{
-		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    3,
-	}).Equal(t, diffResult.ChangeSummary)
+		apitype.OpType("create"): 1,
+		apitype.OpType("same"):   1,
+		apitype.OpType("update"): 1,
+	}).Equal(t, previewResult.ChangeSummary)
 
-	// In this situation delete-replaced is unnecessary but will be a no-op in this provider.
-	delta := runPreviewWithPlanDiff(t, pt)
-	autogold.Expect(map[string]interface{}{"module.rmod.local_file.hello": map[string]interface{}{
-		"diff": apitype.PlanDiffV1{Updates: map[string]interface{}{
-			"content_base64sha256": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			"content_base64sha512": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			"content_md5":          "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			"content_sha1":         "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			"content_sha256":       "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			"content_sha512":       "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-			"id":                   "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-		}},
-		"steps": []apitype.OpType{
-			apitype.OpType("create-replacement"),
-			apitype.OpType("replace"),
-			apitype.OpType("delete-replaced"),
-		},
-	}}).Equal(t, delta)
+	t.Logf("## pulumi up: fix the drift by re-creating the missing resource")
+	upResult := pt.Up(t,
+		optup.Diff(),
+		optup.ProgressStreams(tw),
+		optup.ErrorProgressStreams(tw),
+		//optup.DebugLogging(debugOpts),
+	)
 
-	replaceResult := pt.Up(t)
+	t.Logf("GRPC logging")
+	for _, entry := range pt.GrpcLog(t).Entries {
+		bytes, err := json.MarshalIndent(entry, "", "  ")
+		require.NoError(t, err)
+		t.Logf("%s", string(bytes))
+	}
 
-	t.Logf("pulumi up: %s", replaceResult.StdOut+replaceResult.StdErr)
+	autogold.Expect(&map[string]int{
+		"create": 1,
+		"same":   1,
+		"update": 1,
+	}).Equal(t, upResult.Summary.ResourceChanges)
+
+	// The resource representing the file should exist in TF state as well.
+	assertTFStateResourceExists(t, pt, packageName, "module.rmod.local_file.hello")
 
 	// Check that a file is back to being provisioned as expected.
 	filePath = filepath.Join(pwd, "hello.txt")
 	bytes, err = os.ReadFile(filePath)
-	require.NoError(t, err)
-	require.Equal(t, "Hello, World!", string(bytes))
+	assert.NoError(t, err, "could not find the file asset on disk")
+	assert.Equal(t, "Hello, World!", string(bytes), "file asset on disk does not match the expected content")
 }
 
 func newTestWriter(t *testing.T) io.Writer {
