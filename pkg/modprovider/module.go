@@ -700,15 +700,15 @@ func (h *moduleHandler) hasDrift(u urn.URN) bool {
 	return ok
 }
 
-func (h *moduleHandler) markDriftDetected(u urn.URN, hasDrift bool) {
-	h.driftDetectedMutex.Lock()
-	defer h.driftDetectedMutex.Unlock()
-	if h.driftDetected == nil {
-		h.driftDetected = map[urn.URN]struct{}{}
-	}
-	if hasDrift {
-		h.driftDetected[u] = struct{}{}
-	} else {
-		delete(h.driftDetected, u)
-	}
-}
+//func (h *moduleHandler) markDriftDetected(u urn.URN, hasDrift bool) {
+//	h.driftDetectedMutex.Lock()
+//	defer h.driftDetectedMutex.Unlock()
+//	if h.driftDetected == nil {
+//		h.driftDetected = map[urn.URN]struct{}{}
+//	}
+//	if hasDrift {
+//		h.driftDetected[u] = struct{}{}
+//	} else {
+//		delete(h.driftDetected, u)
+//	}
+//}
