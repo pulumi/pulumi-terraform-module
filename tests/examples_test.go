@@ -57,7 +57,6 @@ func Test_RdsExample(t *testing.T) {
 	// Due to some issues in the RDS resource there is going to be drift even after initial creation, which
 	// will show up as changes planned in the preview. so we refresh first before preview.
 	integrationTest.Preview(t,
-		optpreview.Refresh(),
 		optpreview.Diff(),
 		optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(tw),
