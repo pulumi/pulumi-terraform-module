@@ -1,0 +1,10 @@
+name: changing_module_source_outputs
+runtime: yaml
+resources:
+  testModule:
+    type: greeting:index:Module
+    properties:
+      name: John
+
+outputs:
+  greeting: ${testModule.greeting}

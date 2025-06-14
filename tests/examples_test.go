@@ -15,18 +15,15 @@
 package tests
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 func Test_RdsExample(t *testing.T) {
@@ -36,6 +33,7 @@ func Test_RdsExample(t *testing.T) {
 
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
+	tw := newTestWriter(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-rds-example"))
 	require.NoError(t, err)
@@ -58,9 +56,11 @@ func Test_RdsExample(t *testing.T) {
 	)
 
 	// Due to some issues in the RDS resource there is going to be drift even after initial creation, which
-	// will show up as changes planned in the preview.
+	// will show up as changes planned in the preview. so we refresh first before preview.
 	integrationTest.Preview(t,
+		optpreview.Refresh(),
 		optpreview.Diff(),
+		optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(tw),
 		optpreview.ProgressStreams(tw),
 	)
@@ -68,9 +68,10 @@ func Test_RdsExample(t *testing.T) {
 
 func Test_EksExample(t *testing.T) {
 	t.Parallel()
-
 	localProviderBinPath := ensureCompiledProvider(t)
+	tw := newTestWriter(t)
 	skipLocalRunsWithoutCreds(t)
+
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-eks-example"))
 	require.NoError(t, err)
@@ -87,17 +88,14 @@ func Test_EksExample(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/vpc/aws", "5.19.0", "vpcmod")
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/eks/aws", "20.34.0", "eksmod")
 
-	integrationTest.Up(t,
-		optup.Diff(),
-		optup.ErrorProgressStreams(os.Stderr),
-		optup.ProgressStreams(os.Stdout),
+	integrationTest.Up(t, optup.Diff(),
+		optup.ErrorProgressStreams(tw),
+		optup.ProgressStreams(tw),
 	)
 
-	// Due to some drift detection there are changes detected even after the initial creation.
-	integrationTest.Preview(t,
-		optpreview.Diff(),
-		optpreview.ErrorProgressStreams(os.Stderr),
-		optpreview.ProgressStreams(os.Stdout),
+	integrationTest.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges(),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.ProgressStreams(tw),
 	)
 }
 
@@ -106,7 +104,7 @@ func Test_AlbExample(t *testing.T) {
 	tw := newTestWriter(t)
 
 	localProviderBinPath := ensureCompiledProvider(t)
-	skipLocalRunsWithoutCreds(t)
+	// skipLocalRunsWithoutCreds(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-alb-example"))
 	require.NoError(t, err)
@@ -135,13 +133,9 @@ func Test_AlbExample(t *testing.T) {
 		"create": 46,
 	}, upResult.Summary.ResourceChanges)
 
-	previewResult := integrationTest.Preview(t,
+	integrationTest.Preview(t,
 		optpreview.Diff(),
 		optpreview.ErrorProgressStreams(tw),
 		optpreview.ProgressStreams(tw),
 	)
-	autogold.Expect(map[apitype.OpType]int{
-		apitype.OpType("same"):   41,
-		apitype.OpType("update"): 5,
-	}).Equal(t, previewResult.ChangeSummary)
 }

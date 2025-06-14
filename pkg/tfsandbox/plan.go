@@ -31,8 +31,8 @@ type RefreshOpts struct {
 }
 
 // Plan runs terraform plan and returns the plan representation.
-func (t *ModuleRuntime) Plan(ctx context.Context, logger Logger, opts RefreshOpts) (*Plan, error) {
-	plan, err := t.plan(ctx, logger, opts)
+func (t *ModuleRuntime) Plan(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.plan(ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -43,28 +43,42 @@ func (t *ModuleRuntime) Plan(ctx context.Context, logger Logger, opts RefreshOpt
 	return p, nil
 }
 
-func (t *ModuleRuntime) plan(ctx context.Context, logger Logger, opts RefreshOpts) (*tfjson.Plan, error) {
-	return t.planWithOptions(ctx, logger, opts)
+func (t *ModuleRuntime) PlanNoRefresh(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.planNoRefresh(ctx, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := NewPlan(plan)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
-func (t *ModuleRuntime) planWithOptions(ctx context.Context, logger Logger, opts RefreshOpts) (*tfjson.Plan, error) {
+func (t *ModuleRuntime) plan(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, logger, t.planOptions())
+}
+
+func (t *ModuleRuntime) planRefreshOnly(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, logger, t.planOptions(tfexec.RefreshOnly(true)))
+}
+
+func (t *ModuleRuntime) planNoRefresh(ctx context.Context, logger Logger) (*tfjson.Plan, error) {
+	return t.planWithOptions(ctx, logger, t.planOptions(tfexec.Refresh(false)))
+}
+
+func (t *ModuleRuntime) planWithOptions(
+	ctx context.Context,
+	logger Logger,
+	options []tfexec.PlanOption,
+) (*tfjson.Plan, error) {
 	planFile := path.Join(t.WorkingDir(), defaultPlanFile)
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
 
-	planOptions := []tfexec.PlanOption{
-		tfexec.Out(planFile),
-	}
-
-	if opts.NoRefresh {
-		planOptions = append(planOptions, tfexec.Refresh(false))
-	}
-
-	if opts.RefreshOnly {
-		planOptions = append(planOptions, tfexec.RefreshOnly(true))
-	}
-
-	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter, t.planOptions(planOptions...)...)
+	planOptions := append(t.planOptions(tfexec.Out(planFile)), options...)
+	_ /*hasChanges*/, err := t.tf.PlanJSON(ctx, logWriter, planOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("error running plan: %w", err)
 	}

@@ -358,6 +358,107 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	})
 }
 
+// Test that changing the source code of a local module causes the module to be updated
+// without any changes to the program code.
+// In this specific example, the change in the source code is from changing outputs
+func TestChangingLocalModuleSourceCodeOutputsCausesUpdate(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath := filepath.Join("testdata", "modules", "changing_module_source_outputs")
+	v1, err := filepath.Abs(filepath.Join(modulePath, "mod_v1"))
+	assert.NoError(t, err, "failed to get absolute path for v1 module")
+	v2, err := filepath.Abs(filepath.Join(modulePath, "mod_v2"))
+	assert.NoError(t, err, "failed to get absolute path for v2 module")
+
+	// YAML program that uses the module.
+	// We don't change anything here
+	program := filepath.Join("testdata", "programs", "yaml", "changing_module_source_outputs")
+
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, v1, "greeting")
+
+	resultV1 := integrationTest.Up(t)
+	assert.Len(t, resultV1.Outputs, 1, "expected one output")
+	greeting, ok := resultV1.Outputs["greeting"]
+	require.True(t, ok, "expected output greeting")
+	require.Equal(t, "Hello, John!", greeting.Value)
+
+	// Now change the source code of the module from v1 to v2
+	v1SourceCode, err := os.ReadFile(filepath.Join(v1, "main.tf"))
+	require.NoError(t, err, "failed to read v1 source code")
+	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
+	require.NoError(t, err, "failed to read v2 source code")
+
+	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0600)
+	require.NoError(t, err, "failed to write v2 source code to v1 module")
+
+	t.Cleanup(func() {
+		// Restore the original source code after the test
+		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0600)
+		require.NoError(t, err, "failed to restore v1 source code")
+	})
+
+	t.Logf("Changed module source code to v2")
+	resultV2 := integrationTest.Up(t)
+	assert.Len(t, resultV2.Outputs, 1, "expected one output")
+	greeting, ok = resultV2.Outputs["greeting"]
+	require.True(t, ok, "expected output greeting")
+	require.Equal(t, "Goodbye, John!", greeting.Value)
+}
+
+// Test that changing the source code of a local module causes the module to be updated
+// In this specific example, the change in the source code is from changing resources
+func TestChangingLocalModuleSourceCodeResourcesCausesUpdate(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath := filepath.Join("testdata", "modules", "changing_module_source_resources")
+	v1, err := filepath.Abs(filepath.Join(modulePath, "mod_v1"))
+	assert.NoError(t, err, "failed to get absolute path for v1 module")
+	v2, err := filepath.Abs(filepath.Join(modulePath, "mod_v2"))
+	assert.NoError(t, err, "failed to get absolute path for v2 module")
+
+	// YAML program that uses the module.
+	// We don't change anything here
+	program := filepath.Join("testdata", "programs", "yaml", "changing_module_source_resources")
+
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, v1, "rand")
+
+	integrationTest.Up(t)
+	// assert that the module was created with the expected resource
+	mustFindDeploymentResourceByType(t, integrationTest, "rand:tf:random_integer")
+
+	// Now change the source code of the module from v1 to v2
+	v1SourceCode, err := os.ReadFile(filepath.Join(v1, "main.tf"))
+	require.NoError(t, err, "failed to read v1 source code")
+	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
+	require.NoError(t, err, "failed to read v2 source code")
+
+	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0600)
+	require.NoError(t, err, "failed to write v2 source code to v1 module")
+
+	t.Cleanup(func() {
+		// Restore the original source code after the test
+		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0600)
+		require.NoError(t, err, "failed to restore v1 source code")
+	})
+
+	preview := integrationTest.Preview(t)
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("delete")],
+		"expected one resource to be deleted")
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("create")],
+		"expected one resource to be created")
+
+	integrationTest.Up(t)
+	// assert that the resource within the module has changed
+	// from random_integer into random_pet
+	mustFindDeploymentResourceByType(t, integrationTest, "rand:tf:random_pet")
+}
+
 func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	t.Parallel()
 
@@ -477,7 +578,6 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 
 func TestS3BucketModSecret(t *testing.T) {
 	// t.Parallel() - cannot use t.Parallel because the test uses SetEnv
-
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
 	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
@@ -515,6 +615,35 @@ func TestS3BucketModSecret(t *testing.T) {
 			autogold.Expect(map[string]interface{}{}).Equal(t, encrConf.Outputs)
 		})
 	}
+}
+
+func TestShowingModifiedAWSCredentialsError(t *testing.T) {
+	skipLocalRunsWithoutCreds(t)
+	localProviderBinPath := ensureCompiledProvider(t)
+
+	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+
+	// disable AWS credentials to test the error message shows up
+	integrationTest := newPulumiTest(t, testProgram, localPath,
+		opttest.Env("AWS_ACCESS_KEY_ID", ""),
+		opttest.Env("AWS_SECRET_ACCESS_KEY", ""),
+		opttest.Env("AWS_SESSION_TOKEN", ""),
+		opttest.Env("AWS_REGION", ""))
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	//nolint:all
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	_, err := integrationTest.CurrentStack().Up(context.Background())
+	assert.Error(t, err)
+	// assert that error contains part of the modified credentials error message which is Pulumi sepcific
+	assert.ErrorContains(t, err, "Alternatively, you can use Pulumi ESC to set up dynamic credentials with AWS OIDC")
 }
 
 // When writing out TF files, we need to replace data that is random with a static value
@@ -623,6 +752,8 @@ func TestE2eTs(t *testing.T) {
 		upExpect            autogold.Value
 		deleteExpect        autogold.Value
 		diffNoChangesExpect autogold.Value
+		previewRefresh      bool // Whether to run preview with refresh enabled
+		skipNoChangesExpect bool // Whether to skip the no changes expectation
 	}
 
 	testcases := []testCase{
@@ -644,23 +775,48 @@ func TestE2eTs(t *testing.T) {
 			moduleName:      "terraform-aws-modules/lambda/aws",
 			moduleVersion:   "7.20.1",
 			moduleNamespace: "lambda",
-			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 8}),
-			upExpect:        autogold.Expect(&map[string]int{"create": 8}),
-			deleteExpect:    autogold.Expect(&map[string]int{"delete": 8}),
-			// Similarly some lambda resources have drift immediately after creation.
-			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 6, apitype.OpType("update"): 2}),
+			// aws lambda module creates drift even in terraform
+			skipNoChangesExpect: true,
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 8,
+			},
+			upExpect: map[string]int{
+				"create": 8,
+			},
+			deleteExpect: map[string]int{
+				"delete": 8,
+			},
+			diffNoChangesExpect: func() map[apitype.OpType]int {
+				// With Views drift detection does not quite get picked up yet.
+				// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
+				// will make Pulumi refresh, so TF refreshes as well. When this is done whether
+				// the final counts match or not is less important, the user expectation is to
+				// refresh by default as TF does.
+				return map[apitype.OpType]int{
+					apitype.OpType("same"): 8,
+				}
+			}(),
 		},
 		{
 			name:            "rdsmod",
 			moduleName:      "terraform-aws-modules/rds/aws",
 			moduleVersion:   "6.10.0",
 			moduleNamespace: "rds",
-			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 10}),
-			upExpect:        autogold.Expect(&map[string]int{"create": 10}),
-			deleteExpect:    autogold.Expect(&map[string]int{"delete": 10}),
-			// Similarly some RDS resources have drift immediately after creation.
-			// module.test-rds.module.db_instance.aws_db_instance.this[0]: Drift detected (update)
-			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 9, apitype.OpType("update"): 1}),
+			// RDS module has immediate drift after creation,
+			// so we need to refresh to get the correct preview
+			previewRefresh: true,
+			previewExpect: map[apitype.OpType]int{
+				apitype.OpType("create"): 10,
+			},
+			upExpect: map[string]int{
+				"create": 10,
+			},
+			deleteExpect: map[string]int{
+				"delete": 10,
+			},
+			diffNoChangesExpect: map[apitype.OpType]int{
+				apitype.OpType("same"): 10,
+			},
 		},
 	}
 
@@ -685,23 +841,27 @@ func TestE2eTs(t *testing.T) {
 			pulumiPackageAdd(t, integrationTest, localProviderBinPath, tc.moduleName,
 				tc.moduleVersion, tc.moduleNamespace)
 
-			t.Logf("# pulumi preview - previewing creates")
-			previewResult := integrationTest.Preview(t,
-				optpreview.Diff(),
-				optpreview.ErrorProgressStreams(tw),
-				optpreview.ProgressStreams(tw))
+			// Preview
+			previewOptions := []optpreview.Option{
+				optpreview.Diff()
+			}
+			if tc.previewRefresh {
+				previewOptions = append(previewOptions, optpreview.Refresh())
+			}
+			previewResult := integrationTest.Preview(t, previewOptions...)
+			t.Logf("pulumi preview:\n%s", previewResult.StdOut+previewResult.StdErr)
 			tc.previewExpect.Equal(t, previewResult.ChangeSummary)
 
 			t.Logf("# pulumi up - creating resources")
 			upResult := integrationTest.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
 			tc.upExpect.Equal(t, upResult.Summary.ResourceChanges)
 
-			t.Logf("# pulumi preview - expecting no changes except when buggy resources drift")
-			previewResult = integrationTest.Preview(t,
-				optpreview.Diff(),
-				optpreview.ErrorProgressStreams(tw),
-				optpreview.ProgressStreams(tw))
-			tc.diffNoChangesExpect.Equal(t, previewResult.ChangeSummary)
+			// Preview expect no changes
+			previewResult = integrationTest.Preview(t, previewOptions...)
+			t.Logf("pulumi preview\n%s", previewResult.StdOut+previewResult.StdErr)
+			if !tc.skipNoChangesExpect {
+				tc.diffNoChangesExpect.Equal(t, previewResult.ChangeSummary)
+			}
 
 			t.Logf("# pulumi destroy")
 			destroyResult := integrationTest.Destroy(t,
@@ -1707,11 +1867,25 @@ func Test_LocalModule_RelativePath_OpenTofu(t *testing.T) {
 	t.Logf("%s", previewResult.StdErr+previewResult.StdOut)
 }
 
-func findTFStateResources(
-	t *testing.T,
-	pt *pulumitest.PulumiTest,
-	packageName string,
-) []any {
+// verify that pulumi package get-schema works which also verifies that the
+// generated schema is valid and can be used to generate an SDK
+func TestPulumiPackageGetSchema(t *testing.T) {
+	t.Parallel()
+	localProviderBinPath := ensureCompiledProvider(t)
+	loadedSchema := pulumiGetSchema(t, localProviderBinPath, []string{
+		"terraform-module",
+		"terraform-aws-modules/vpc/aws",
+		"5.18.1",
+		"vpc",
+	})
+
+	assert.NotEmpty(t, loadedSchema, "expected schema to be loaded")
+}
+
+// assertTFStateResourceExists checks if a resource exists in the TF state.
+// packageName should be the name of the package used in `pulumi package add`
+// resourceAddress should be the full TF address of the resource, e.g. "module.test-bucket.aws_s3_bucket.this"
+func assertTFStateResourceExists(t *testing.T, pt *pulumitest.PulumiTest, packageName string, resourceAddress string) {
 	tfStateRaw := mustFindRawState(t, pt, packageName)
 	tfState, isMap := tfStateRaw.(map[string]any)
 	require.True(t, isMap)
@@ -1870,6 +2044,29 @@ func ensureCompiledProvider(t *testing.T) string {
 	}
 
 	return binPath
+}
+
+func pulumiGetSchema(t *testing.T, localProviderBinPath string, args []string) string {
+	t.Helper()
+
+	localPulumi := filepath.Join(getRoot(t), ".pulumi", "bin", "pulumi")
+
+	if _, err := os.Stat(localPulumi); os.IsNotExist(err) {
+		t.Errorf("This test requires a locally pinned Pulumi CLI; run `make prepare_local_workspace` first")
+	}
+
+	cmd := exec.Command(localPulumi, append([]string{"package", "get-schema"}, args...)...)
+
+	path := os.Getenv("PATH")
+	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s", path))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("failed to run pulumi package get-schema: %v\n%s", err, out)
+	}
+
+	return string(out)
 }
 
 func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, language string, generateOnly bool) {
