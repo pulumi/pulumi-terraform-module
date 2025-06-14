@@ -1153,9 +1153,6 @@ func TestE2eYAML(t *testing.T) {
 				opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath)),
 				// The program references a module that doesn't exist yet, so we skip the install step,
 				opttest.SkipInstall(),
-
-				// TODO[pulumi/pulumi-terraform-module#403] remove the need to set this envvar for YAML programs
-				opttest.Env("PULUMI_ENABLE_VIEWS_PREVIEW", "true"),
 			}
 
 			e2eTest := newPulumiTest(t, testProgram, testOpts...)
