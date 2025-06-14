@@ -16,6 +16,7 @@ package tfsandbox
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -23,6 +24,11 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 )
+
+type RefreshOpts struct {
+	RefreshOnly bool // if set to true, passes -refresh-only to TF
+	NoRefresh   bool // if set to true, passes -refresh=false to TF; TF default is implicit -refresh=true
+}
 
 // Plan runs terraform plan and returns the plan representation.
 func (t *ModuleRuntime) Plan(ctx context.Context, logger Logger) (*Plan, error) {
@@ -37,8 +43,8 @@ func (t *ModuleRuntime) Plan(ctx context.Context, logger Logger) (*Plan, error) 
 	return p, nil
 }
 
-func (t *ModuleRuntime) PlanRefreshOnly(ctx context.Context, logger Logger) (*Plan, error) {
-	plan, err := t.planRefreshOnly(ctx, logger)
+func (t *ModuleRuntime) PlanNoRefresh(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.planNoRefresh(ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +56,8 @@ func (t *ModuleRuntime) PlanRefreshOnly(ctx context.Context, logger Logger) (*Pl
 	return p, nil
 }
 
-func (t *ModuleRuntime) PlanNoRefresh(ctx context.Context, logger Logger) (*Plan, error) {
-	plan, err := t.planNoRefresh(ctx, logger)
+func (t *ModuleRuntime) PlanRefreshOnly(ctx context.Context, logger Logger) (*Plan, error) {
+	plan, err := t.planRefreshOnly(ctx, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +121,12 @@ func (t *ModuleRuntime) planWithOptions(
 	}
 
 	logger.Log(ctx, Debug, humanPlan)
+
+	planJ, err := json.MarshalIndent(plan, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	logger.Log(ctx, Debug, fmt.Sprintf("JSON plan: %s", planJ))
 
 	return plan, nil
 }

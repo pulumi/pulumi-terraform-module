@@ -36,8 +36,10 @@ const (
 	Replace
 	ReplaceDestroyBeforeCreate
 	Create
-	Read
 	Delete
+
+	// Need to pin down when Read is used, might not be in use; possibly only for data sources.
+	Read
 
 	// Need to pin down when Forget operations arise.
 	// Likely during https://developer.hashicorp.com/terraform/cli/commands/state/rm
@@ -51,6 +53,12 @@ type ResourcePlan struct {
 	resourceChange *tfjson.ResourceChange
 
 	plannedState *tfjson.StateResource // may be nil when planning removal
+
+	drift bool // when true, the change comes from ResourceDrift, e.g. refresh
+}
+
+func (p *ResourcePlan) Drift() bool {
+	return p.drift
 }
 
 // TODO sometimes address changes while identity remains the same, e.g see PreviousAddress. The call sites need to be
@@ -71,6 +79,31 @@ func (p *ResourcePlan) PlannedValues() (resource.PropertyMap, bool) {
 	}
 
 	return extractPropertyMapFromPlan(*p.plannedState, p.resourceChange), true
+}
+
+// The values before the change. For some change such as creating the resource these values are not available. Note
+// also that for some changes such as refreshing a resource that has drifted, the Before values will be different from
+// values found in the resource's prior state. The Before() values will be the fresh values detected by Read.
+func (p *ResourcePlan) Before() (resource.PropertyMap, bool) {
+	change := p.resourceChange.Change
+	if change == nil {
+		return nil, false
+	}
+	before := change.Before
+	if before == nil {
+		return nil, false
+	}
+	beforeMap, ok := before.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	pm := extractPropertyMapFromAttributeValues(beforeMap)
+	if change.BeforeSensitive != nil {
+		obj := resource.NewObjectProperty(pm)
+		upd := updateResourceValue(obj, change.BeforeSensitive, resourceMakeSecretConservative)
+		pm = upd.ObjectValue()
+	}
+	return pm, true
 }
 
 // Describes what change is being planned.
@@ -115,7 +148,12 @@ func (s *ResourceState) AttributeValues() resource.PropertyMap {
 type Plan struct {
 	rawPlan   *tfjson.Plan
 	byAddress map[ResourceAddress]*ResourcePlan
+	hasDrift  bool
 }
+
+//func (p *Plan) HasDrift() bool {
+//	return p.hasDrift
+//}
 
 func (p *Plan) VisitResourcePlans(visitor func(*ResourcePlan)) {
 	for _, rp := range p.byAddress {
@@ -134,15 +172,29 @@ func NewPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 		return nil, fmt.Errorf("unexpected error extracting planned values from *tfjson.Plan: %w", err)
 	}
 
-	p := &Plan{rawPlan: rawPlan, byAddress: map[ResourceAddress]*ResourcePlan{}}
+	if len(rawPlan.ResourceDrift) > 0 && len(rawPlan.ResourceChanges) > 0 {
+		contract.Failf("Currently cannot handle plans with both resource_drift and resource_changes.\n" +
+			"Make sure plans are obtained with -refresh-only (no changes) or -refresh=false (no drift)")
+	}
 
-	for _, ch := range rawPlan.ResourceChanges {
+	drift := len(rawPlan.ResourceDrift) > 0
+
+	p := &Plan{
+		rawPlan:   rawPlan,
+		byAddress: map[ResourceAddress]*ResourcePlan{},
+		hasDrift:  drift,
+	}
+
+	for _, ch := range append(rawPlan.ResourceChanges, rawPlan.ResourceDrift...) {
 		// Exclude entries pertaining to data source look-ups, only interested in resources proper.
 		if ch.Mode == tfjson.DataResourceMode {
 			continue
 		}
 
-		plan := &ResourcePlan{resourceChange: ch}
+		plan := &ResourcePlan{
+			resourceChange: ch,
+			drift:          drift,
+		}
 		addr := ResourceAddress(ch.Address)
 		plannedState, ok := resourcePlannedValues[addr]
 		if ok {
@@ -189,15 +241,6 @@ func (p *Plan) Outputs() resource.PropertyMap {
 		}
 	}
 	return outputs
-}
-
-func (p *Plan) PriorState() (*State, bool) {
-	if p.rawPlan.PriorState == nil {
-		return nil, false
-	}
-	st, err := NewState(p.rawPlan.PriorState)
-	contract.AssertNoErrorf(err, "newState failed when processing PriorState")
-	return st, true
 }
 
 // RawPlan returns the raw tfjson.Plan

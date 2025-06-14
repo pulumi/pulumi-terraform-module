@@ -64,7 +64,6 @@ module "local" {
 	}
 
 	t.Run("SDKV2_TypeList", func(t *testing.T) {
-
 		tofu := init(awsProviderVersion)
 
 		tfFile := requiredProviders(awsProviderVersion) + `
@@ -113,7 +112,6 @@ resource "aws_s3_bucket" "this" {
 	})
 
 	t.Run("SDKV2_TypeSet", func(t *testing.T) {
-
 		tofu := init(awsProviderVersion)
 
 		tfFile := requiredProviders(awsProviderVersion) + `
@@ -179,7 +177,6 @@ resource "aws_s3_bucket" "this" {
 	})
 
 	t.Run("SDKV2_TypeMap", func(t *testing.T) {
-
 		tofu := init(awsProviderVersion)
 
 		tfFile := requiredProviders(awsProviderVersion) + `

@@ -13,8 +13,8 @@ import (
 // Apply can return both a non-nil State and a non-nil error. If the apply
 // fails, but some resources were created and written to the TF State we will return
 // the state and the apply error.
-func (t *ModuleRuntime) Apply(ctx context.Context, logger Logger) (*State, error) {
-	state, applyErr := t.apply(ctx, logger)
+func (t *ModuleRuntime) Apply(ctx context.Context, logger Logger, opts RefreshOpts) (*State, error) {
+	state, applyErr := t.apply(ctx, logger, opts)
 	s, err := NewState(state)
 	if err != nil {
 		return nil, err
@@ -23,11 +23,20 @@ func (t *ModuleRuntime) Apply(ctx context.Context, logger Logger) (*State, error
 }
 
 // Apply runs the terraform apply command and returns the final state
-func (t *ModuleRuntime) apply(ctx context.Context, logger Logger) (*tfjson.State, error) {
+func (t *ModuleRuntime) apply(ctx context.Context, logger Logger, opts RefreshOpts) (*tfjson.State, error) {
 	logWriter := newJSONLogPipe(ctx, logger)
 	defer logWriter.Close()
 
-	applyErr := t.tf.ApplyJSON(ctx, logWriter, t.applyOptions()...)
+	aOpts := []tfexec.ApplyOption{}
+
+	if opts.NoRefresh {
+		aOpts = append(aOpts, tfexec.Refresh(false))
+	}
+	if opts.RefreshOnly {
+		aOpts = append(aOpts, tfexec.RefreshOnly(true))
+	}
+
+	applyErr := t.tf.ApplyJSON(ctx, logWriter, t.applyOptions(aOpts...)...)
 	// if the apply failed just log it to debug logs and continue
 	// we want to return and process the partial state from a failed apply
 	if applyErr != nil {

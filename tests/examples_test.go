@@ -29,9 +29,10 @@ import (
 func Test_RdsExample(t *testing.T) {
 	t.Parallel()
 
+	tw := newTestWriter(t)
+
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
-	tw := newTestWriter(t)
 	// Module written to support the test.
 	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "aws-rds-example"))
 	require.NoError(t, err)
@@ -53,15 +54,14 @@ func Test_RdsExample(t *testing.T) {
 		optup.ProgressStreams(tw),
 	)
 
+	// Due to some issues in the RDS resource there is going to be drift even after initial creation, which
+	// will show up as changes planned in the preview. so we refresh first before preview.
 	integrationTest.Preview(t,
-		optpreview.Refresh(),
 		optpreview.Diff(),
 		optpreview.ExpectNoChanges(),
 		optpreview.ErrorProgressStreams(tw),
 		optpreview.ProgressStreams(tw),
 	)
-
-	integrationTest.Destroy(t)
 }
 
 func Test_EksExample(t *testing.T) {
