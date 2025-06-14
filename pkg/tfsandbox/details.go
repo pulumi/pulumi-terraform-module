@@ -151,9 +151,9 @@ type Plan struct {
 	hasDrift  bool
 }
 
-func (p *Plan) HasDrift() bool {
-	return p.hasDrift
-}
+//func (p *Plan) HasDrift() bool {
+//	return p.hasDrift
+//}
 
 func (p *Plan) VisitResourcePlans(visitor func(*ResourcePlan)) {
 	for _, rp := range p.byAddress {
