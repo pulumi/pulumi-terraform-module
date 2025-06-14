@@ -600,7 +600,7 @@ func (h *moduleHandler) Read(
 		return nil, err
 	}
 
-	h.markDriftDetected(urn, plan.HasDrift())
+	// h.markDriftDetected(urn, plan.HasDrift())
 
 	state, err := tf.Refresh(ctx, logger)
 	if err != nil {
