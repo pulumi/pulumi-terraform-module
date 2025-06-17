@@ -1,0 +1,13 @@
+{
+    "name": "azure-vnet-example",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/azure-native": "^2.0.0",
+        "@pulumi/pulumi": "^3.113.0",
+        "@pulumi/vnet": "file:sdks/vnet"
+    }
+}
