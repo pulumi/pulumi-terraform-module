@@ -85,7 +85,8 @@ func Test_Azure_VirtualNetworkExample_NoExplicitProvider(t *testing.T) {
 	integrationTest := newPulumiTest(t, testProgram, localPath)
 
 	// Generate package
-	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "Azure/avm-res-network-virtualnetwork/azurerm", "0.8.1", "vnet")
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath,
+		"Azure/avm-res-network-virtualnetwork/azurerm", "0.8.1", "vnet")
 
 	integrationTest.Up(t, optup.Diff(),
 		optup.ErrorProgressStreams(tw),
