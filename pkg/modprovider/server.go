@@ -27,6 +27,7 @@ import (
 
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -464,6 +465,27 @@ func (s *server) CheckConfig(
 	}, nil
 }
 
+// fixupProvidersConfigForAzureResourceManager ensures that the azurerm provider is configured
+// with an empty features block if it is required by the module but not explicitly configured
+func fixupProvidersConfigForAzureResourceManager(
+	config map[string]resource.PropertyMap,
+	providerVariables map[string]schema.PropertySpec,
+) map[string]resource.PropertyMap {
+
+	if len(providerVariables) == 0 {
+		return config
+	}
+	_, requireAzureProvider := providerVariables["azurerm"]
+	_, configuredAzure := config["azurerm"]
+	if requireAzureProvider && !configuredAzure {
+		config["azurerm"] = resource.PropertyMap{
+			"features": resource.NewObjectProperty(resource.PropertyMap{}),
+		}
+	}
+
+	return config
+}
+
 func (s *server) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
@@ -471,6 +493,8 @@ func (s *server) Diff(
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
+		providerVariables := s.inferredModuleSchema.ProvidersConfig.Variables
+		providersConfig = fixupProvidersConfigForAzureResourceManager(providersConfig, providerVariables)
 		return s.moduleHandler.Diff(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
 			s.inferredModuleSchema, s.moduleExecutor)
 	default:
@@ -502,6 +526,8 @@ func (s *server) Create(
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
+		providerVariables := s.inferredModuleSchema.ProvidersConfig.Variables
+		providersConfig = fixupProvidersConfigForAzureResourceManager(providersConfig, providerVariables)
 		return s.moduleHandler.Create(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
 			s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 	default:
@@ -516,6 +542,8 @@ func (s *server) Update(
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
+		providerVariables := s.inferredModuleSchema.ProvidersConfig.Variables
+		providersConfig = fixupProvidersConfigForAzureResourceManager(providersConfig, providerVariables)
 		return s.moduleHandler.Update(ctx, req, s.params.TFModuleSource, s.params.TFModuleVersion, providersConfig,
 			s.inferredModuleSchema, s.packageName, s.moduleExecutor)
 	default:
@@ -530,6 +558,8 @@ func (s *server) Delete(
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
+		providerVariables := s.inferredModuleSchema.ProvidersConfig.Variables
+		providersConfig = fixupProvidersConfigForAzureResourceManager(providersConfig, providerVariables)
 		return s.moduleHandler.Delete(ctx, req, s.packageName,
 			s.params.TFModuleSource, s.params.TFModuleVersion,
 			s.inferredModuleSchema, providersConfig, s.moduleExecutor)
@@ -554,6 +584,8 @@ func (s *server) Read(
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
 		providersConfig := cleanProvidersConfig(s.providerConfig)
+		providerVariables := s.inferredModuleSchema.ProvidersConfig.Variables
+		providersConfig = fixupProvidersConfigForAzureResourceManager(providersConfig, providerVariables)
 		return s.moduleHandler.Read(ctx, req, s.packageName,
 			s.params.TFModuleSource, s.params.TFModuleVersion,
 			s.inferredModuleSchema, providersConfig, s.moduleExecutor)

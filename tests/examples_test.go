@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -56,6 +57,42 @@ func Test_RdsExample(t *testing.T) {
 
 	// Due to some issues in the RDS resource there is going to be drift even after initial creation, which
 	// will show up as changes planned in the preview. so we refresh first before preview.
+	integrationTest.Preview(t,
+		optpreview.Diff(),
+		optpreview.ExpectNoChanges(),
+		optpreview.ErrorProgressStreams(tw),
+		optpreview.ProgressStreams(tw),
+	)
+}
+
+func Test_Azure_VirtualNetworkExample_NoExplicitProvider(t *testing.T) {
+	t.Parallel()
+
+	if _, ci := os.LookupEnv("CI"); !ci {
+		t.Skip("Skipping Azure tests in local runs without credentials.")
+	}
+
+	if _, ok := os.LookupEnv("ARM_SUBSCRIPTION_ID"); !ok {
+		t.Skip("Skipping AzureRM tests without ARM_SUBSCRIPTION_ID set.")
+	}
+
+	tw := newTestWriter(t)
+	localProviderBinPath := ensureCompiledProvider(t)
+	// Module written to support the test.
+	testProgram, err := filepath.Abs(filepath.Join("../", "examples", "azure-vnet-example"))
+	require.NoError(t, err)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := newPulumiTest(t, testProgram, localPath)
+
+	// Generate package
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath,
+		"Azure/avm-res-network-virtualnetwork/azurerm", "0.8.1", "vnet")
+
+	integrationTest.Up(t, optup.Diff(),
+		optup.ErrorProgressStreams(tw),
+		optup.ProgressStreams(tw),
+	)
+
 	integrationTest.Preview(t,
 		optpreview.Diff(),
 		optpreview.ExpectNoChanges(),
