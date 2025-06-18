@@ -1,0 +1,54 @@
+{
+  "module": {
+    "testvnet": {
+      "address_space": [
+        "10.0.0.0/16"
+      ],
+      "location": "eastus",
+      "name": "testvnet",
+      "providers": {
+        "azurerm": "azurerm"
+      },
+      "resource_group_name": "RESOURCE_GROUP-resource-group",
+      "source": "Azure/avm-res-network-virtualnetwork/azurerm",
+      "version": "0.8.1"
+    }
+  },
+  "output": {
+    "internal_output_is_secret_name": {
+      "value": "${jsondecode(issensitive(jsonencode(module.testvnet.name)))}"
+    },
+    "internal_output_is_secret_peerings": {
+      "value": "${jsondecode(issensitive(jsonencode(module.testvnet.peerings)))}"
+    },
+    "internal_output_is_secret_resource": {
+      "value": "${jsondecode(issensitive(jsonencode(module.testvnet.resource)))}"
+    },
+    "internal_output_is_secret_resource_id": {
+      "value": "${jsondecode(issensitive(jsonencode(module.testvnet.resource_id)))}"
+    },
+    "internal_output_is_secret_subnets": {
+      "value": "${jsondecode(issensitive(jsonencode(module.testvnet.subnets)))}"
+    },
+    "name": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.testvnet.name)))}"
+    },
+    "peerings": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.testvnet.peerings)))}"
+    },
+    "resource": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.testvnet.resource)))}"
+    },
+    "resource_id": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.testvnet.resource_id)))}"
+    },
+    "subnets": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.testvnet.subnets)))}"
+    }
+  },
+  "provider": {
+    "azurerm": {
+      "features": {}
+    }
+  }
+}
