@@ -245,8 +245,6 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 func TestPartialApply(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("TODO[pulumi/pulumi#19635]")
-
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
