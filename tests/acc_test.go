@@ -483,14 +483,6 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	t.Run("typescript", func(t *testing.T) {
 		d := dest("node")
 		pulumiConvert(t, localProviderBinPath, pclDir, d, "typescript", generateOnly)
-
-		// TODO[github.com/pulumi#19616] not quite working right and to avoid issues we need to clean up
-		// artifacts of `pulumi install`.
-		err := os.RemoveAll(filepath.Join(d, "node_modules"))
-		require.NoError(t, err)
-
-		err = os.RemoveAll(filepath.Join(d, "package-lock.json"))
-		require.NoError(t, err)
 	})
 
 	t.Run("python", func(t *testing.T) {
@@ -500,7 +492,6 @@ func TestGenerateTerraformAwsModulesSDKs(t *testing.T) {
 	})
 
 	t.Run("dotnet", func(t *testing.T) {
-		t.Skip("TODO[pulumi/pulumi-terraform-module#77] the project is missing the SDK")
 		d := dest("dotnet")
 		pulumiConvert(t, localProviderBinPath, pclDir, d, "dotnet", generateOnly)
 	})
