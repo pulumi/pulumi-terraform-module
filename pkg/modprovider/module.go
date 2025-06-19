@@ -325,15 +325,8 @@ func (h *moduleHandler) applyModuleOperation(
 	}
 
 	if applyErr != nil {
-		// TODO[pulumi/pulumi-terraform-module#342] Possibly wrap partial errors in initializationError. This
-		// does not quite work as expected yet as views get recorded into state as pending_operations. They
-		// need to be recorded as finalized operations because they did complete.
-		if 1+2 == 4 {
-			applyErr = h.initializationError(moduleOutputs, applyErr.Error())
-		}
-
-		// Instead, log and propagate the error for now. This will forget partial TF state but fail Pulumi.
-		logger.Log(ctx, tfsandbox.Error, fmt.Sprintf("partial failure in apply: %v", applyErr))
+		// we have a partial error, wrap it with ErrorResourceInitFailed
+		applyErr = h.initializationError(moduleOutputs, applyErr.Error())
 	}
 
 	hasOutputFieldMappings := inferredModule != nil &&
