@@ -277,6 +277,10 @@ func TestPartialApply(t *testing.T) {
 	// Generate package
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, localMod, "localmod")
 
+	t.Logf("################################################################################")
+	t.Logf("step 1 - partial failure in create")
+	t.Logf("################################################################################")
+
 	_, err = integrationTest.CurrentStack().Up(
 		integrationTest.Context(),
 		optup.Diff(),
@@ -296,7 +300,7 @@ func TestPartialApply(t *testing.T) {
 	mustFindDeploymentResourceByType(t, integrationTest, "localmod:tf:aws_iam_role")
 
 	t.Logf("################################################################################")
-	t.Logf("step 2")
+	t.Logf("step 2 - complete create")
 	t.Logf("################################################################################")
 
 	integrationTest.SetConfig(t, "step", "2")
@@ -309,11 +313,47 @@ func TestPartialApply(t *testing.T) {
 	)
 	changes2 := *upRes2.Summary.ResourceChanges
 	assert.Equal(t, map[string]int{
-		"update": 1,
+		"update": 2,
 		"create": 1,
-		"same":   2,
+		"same":   1,
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
+
+	t.Logf("################################################################################")
+	t.Logf("step 3 - partial failure in update")
+	t.Logf("################################################################################")
+
+	integrationTest.SetConfig(t, "step", "3")
+
+	_, err = integrationTest.CurrentStack().Up(
+		integrationTest.Context(),
+		optup.Diff(),
+		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts),
+	)
+
+	assert.Errorf(t, err, "expected error on up")
+
+	t.Logf("################################################################################")
+	t.Logf("step 4 - complete update")
+	t.Logf("################################################################################")
+
+	integrationTest.SetConfig(t, "step", "4")
+
+	upRes4 := integrationTest.Up(t,
+		optup.Diff(),
+		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts),
+	)
+	changes4 := *upRes4.Summary.ResourceChanges
+	assert.Equal(t, map[string]int{
+		"update": 2,
+		"create": 1,
+		"same":   1,
+	}, changes4)
+	assert.Contains(t, upRes4.Outputs, "roleArn")
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular

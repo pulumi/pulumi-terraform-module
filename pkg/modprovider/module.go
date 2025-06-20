@@ -492,17 +492,20 @@ func (h *moduleHandler) Update(
 		req.GetPreview(),
 		executor,
 	)
-	// TODO[pulumi/pulumi-terraform-module#342] partial error handling needs to modify this.
-	if err != nil {
-		return nil, err
+
+	// Publish views even if applyErr != nil as is the case of partial failures.
+	if views != nil {
+		_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+			Token: req.ResourceStatusToken,
+			Steps: views,
+		})
+		if err != nil {
+			logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
+			return nil, err
+		}
 	}
 
-	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
-		Token: req.ResourceStatusToken,
-		Steps: views,
-	})
 	if err != nil {
-		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
 		return nil, err
 	}
 
