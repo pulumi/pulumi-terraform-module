@@ -1182,6 +1182,37 @@ func TestE2eYAML(t *testing.T) {
 	}
 }
 
+func TestEndToEndUsingModuleWithDashes(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	modulePath, err := filepath.Abs(filepath.Join("testdata", "modules", "dashed-module-fields"))
+	assert.NoError(t, err, "failed to get absolute path for dashed module")
+	// TODO[pulumi/pulumi-terraform-module#426] - test local modules with Go
+	for _, runtime := range []string{"yaml", "ts", "python", "dotnet"} {
+		t.Run(runtime, func(t *testing.T) {
+			testProgram, err := filepath.Abs(filepath.Join("testdata", "programs", runtime, "dashed_module"))
+			require.NoError(t, err, "failed to get absolute path for dashed_module program")
+			tfFilesOutputDir := filepath.Join(testProgram, "tf_files")
+			t.Cleanup(func() {
+				t.Log("Cleaning up Terraform artifacts")
+				cleanRandomDataFromTerraformArtifacts(t, tfFilesOutputDir, map[string]string{
+					modulePath: "./path/to/module",
+				})
+			})
+
+			it := newPulumiTest(t, testProgram, localPath,
+				opttest.SkipInstall(),
+				opttest.Env("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFilesOutputDir))
+
+			pulumiPackageAdd(t, it, localProviderBinPath, modulePath, "", "dashed")
+			upResult := it.Up(t)
+			result, ok := upResult.Outputs["result"]
+			assert.True(t, ok, "expected output 'result' to be present")
+			assert.Equal(t, "example", result.Value)
+		})
+	}
+}
+
 func TestDiffDetailTerraform(t *testing.T) {
 	w := newTestWriter(t)
 

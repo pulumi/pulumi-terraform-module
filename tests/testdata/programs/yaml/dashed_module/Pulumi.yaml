@@ -1,0 +1,10 @@
+name: dashed_module_yaml
+description: example program using module that has fields with dashes
+runtime: yaml
+resources:
+  test:
+    type: dashed:index:Module
+    properties:
+      dashed_input: example
+outputs:
+  result: ${test.dashed_output}

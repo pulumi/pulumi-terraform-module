@@ -1,0 +1,16 @@
+{
+  "module": {
+    "test": {
+      "dashed-input": "example",
+      "source": "./path/to/module"
+    }
+  },
+  "output": {
+    "dashed-output": {
+      "value": "${jsondecode(nonsensitive(jsonencode(module.test.dashed-output)))}"
+    },
+    "internal_output_is_secret_dashed-output": {
+      "value": "${jsondecode(issensitive(jsonencode(module.test.dashed-output)))}"
+    }
+  }
+}
