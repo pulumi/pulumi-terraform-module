@@ -127,9 +127,9 @@ func (h *moduleHandler) Diff(
 		return nil, err
 	}
 
+	inputsChanged := false
 	if !oldInputs.DeepEquals(newInputs) {
-		// Inputs have changed, so we need tell the engine that an update is needed.
-		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
+		inputsChanged = true
 	}
 
 	// Here, inputs have not changes but the underlying module might have changed
@@ -142,7 +142,7 @@ func (h *moduleHandler) Diff(
 	tf, err := h.prepSandbox(
 		ctx,
 		urn,
-		oldInputs,
+		newInputs,
 		oldOutputs,
 		inferredModule,
 		moduleSource,
@@ -159,11 +159,18 @@ func (h *moduleHandler) Diff(
 		return nil, fmt.Errorf("error performing plan during Diff(...) %w", err)
 	}
 
+	replaceKeys := []string{}
 	resourcesChanged := false
-	plan.VisitResourcePlans(func(resource *tfsandbox.ResourcePlan) {
-		if resource.ChangeKind() != tfsandbox.NoOp {
+	plan.VisitResourcePlans(func(res *tfsandbox.ResourcePlan) {
+		println("Visiting resource plan for", res.Address())
+		println("Change kind is", res.ChangeKind())
+		if res.ChangeKind() != tfsandbox.NoOp {
 			// if there is any resource change that is not a no-op, we need to update.
 			resourcesChanged = true
+		}
+		// Add any resources that are replacing to the replaceKeys list.
+		if res.ChangeKind() == tfsandbox.Replace || res.ChangeKind() == tfsandbox.ReplaceDestroyBeforeCreate {
+			replaceKeys = append(replaceKeys, string(res.Address()))
 		}
 	})
 
@@ -175,8 +182,16 @@ func (h *moduleHandler) Diff(
 		}
 	}
 
-	if resourcesChanged || outputsChanged {
-		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
+	println("Is it DIFF_SOME?", inputsChanged || resourcesChanged || outputsChanged)
+	println("inputsChanged?", inputsChanged)
+	println("resourcesChanged?", resourcesChanged)
+	println("outputsChanged?", outputsChanged)
+
+	if inputsChanged || resourcesChanged || outputsChanged {
+		return &pulumirpc.DiffResponse{
+			Changes:  pulumirpc.DiffResponse_DIFF_SOME,
+			Replaces: replaceKeys,
+		}, nil
 	}
 
 	// the module has not changed, return DIFF_NONE.
