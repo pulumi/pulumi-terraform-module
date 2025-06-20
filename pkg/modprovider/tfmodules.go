@@ -92,13 +92,20 @@ func parseModuleSchemaOverrides(packageName string) []*ModuleSchemaOverride {
 	return overrides
 }
 
+type SchemaFieldMappings struct {
+	ProviderFieldMappings map[string]string
+	InputFieldMappings    map[resource.PropertyKey]resource.PropertyKey
+	OutputFieldMappings   map[resource.PropertyKey]resource.PropertyKey
+}
+
 type InferredModuleSchema struct {
-	Inputs          map[resource.PropertyKey]*schema.PropertySpec `json:"inputs"`
-	Outputs         map[resource.PropertyKey]*schema.PropertySpec `json:"outputs"`
-	SupportingTypes map[string]*schema.ComplexTypeSpec            `json:"supportingTypes"`
-	RequiredInputs  []resource.PropertyKey                        `json:"requiredInputs"`
-	NonNilOutputs   []resource.PropertyKey                        `json:"nonNilOutputs"`
-	ProvidersConfig schema.ConfigSpec                             `json:"providersConfig"`
+	Inputs              map[resource.PropertyKey]*schema.PropertySpec `json:"inputs"`
+	Outputs             map[resource.PropertyKey]*schema.PropertySpec `json:"outputs"`
+	SupportingTypes     map[string]*schema.ComplexTypeSpec            `json:"supportingTypes"`
+	RequiredInputs      []resource.PropertyKey                        `json:"requiredInputs"`
+	NonNilOutputs       []resource.PropertyKey                        `json:"nonNilOutputs"`
+	ProvidersConfig     schema.ConfigSpec                             `json:"providersConfig"`
+	SchemaFieldMappings *SchemaFieldMappings                          `json:"schemaFieldMappings,omitempty"`
 }
 
 var stringType = schema.TypeSpec{Type: "string"}
@@ -343,6 +350,10 @@ func InferModuleSchema(
 	return inferModuleSchema(ctx, tf, packageName, mod, ver, newComponentLogger(nil, nil))
 }
 
+func containsDash(s string) bool {
+	return strings.Contains(s, "-")
+}
+
 func inferModuleSchema(
 	ctx context.Context,
 	tf *tfsandbox.ModuleRuntime,
@@ -365,10 +376,26 @@ func inferModuleSchema(
 		ProvidersConfig: schema.ConfigSpec{
 			Variables: map[string]schema.PropertySpec{},
 		},
+		SchemaFieldMappings: &SchemaFieldMappings{
+			InputFieldMappings:    make(map[resource.PropertyKey]resource.PropertyKey),
+			OutputFieldMappings:   make(map[resource.PropertyKey]resource.PropertyKey),
+			ProviderFieldMappings: make(map[string]string),
+		},
 	}
+
+	providerFieldMappings := inferredModuleSchema.SchemaFieldMappings.ProviderFieldMappings
+	inputFieldMappings := inferredModuleSchema.SchemaFieldMappings.InputFieldMappings
+	outputFieldMappings := inferredModuleSchema.SchemaFieldMappings.OutputFieldMappings
 
 	if module.ProviderRequirements != nil {
 		for providerName := range module.ProviderRequirements.RequiredProviders {
+			if containsDash(providerName) {
+				// fields with dashes are not valid in Pulumi
+				// so we replace dashes with underscores
+				pulumiName := strings.ReplaceAll(providerName, "-", "_")
+				providerFieldMappings[pulumiName] = providerName
+				providerName = pulumiName
+			}
 			inferredModuleSchema.ProvidersConfig.Variables[providerName] = schema.PropertySpec{
 				Description: "provider configuration for " + providerName,
 				TypeSpec:    mapType(anyType),
@@ -377,6 +404,14 @@ func inferModuleSchema(
 	}
 
 	for variableName, variable := range module.Variables {
+		if containsDash(variableName) {
+			// fields with dashes are not valid in Pulumi
+			// so we replace dashes with underscores
+			pulumiName := strings.ReplaceAll(variableName, "-", "_")
+			inputFieldMappings[resource.PropertyKey(pulumiName)] = resource.PropertyKey(variableName)
+			variableName = pulumiName
+		}
+
 		variableType := convertType(variable.Type, variableName, packageName, inferredModuleSchema.SupportingTypes)
 
 		key := tfsandbox.PulumiTopLevelKey(variableName)
@@ -395,11 +430,21 @@ func inferModuleSchema(
 	}
 
 	for outputName, output := range module.Outputs {
+		if containsDash(outputName) {
+			// fields with dashes are not valid in Pulumi
+			// so we replace dashes with underscores
+			pulumiName := strings.ReplaceAll(outputName, "-", "_")
+			outputFieldMappings[resource.PropertyKey(pulumiName)] = resource.PropertyKey(outputName)
+			outputName = pulumiName
+		}
+
 		// TODO[pulumi/pulumi-terraform-module#70] reconsider output type inference vs config
 		var inferredType schema.TypeSpec
 		if referencedVariableName, ok := isVariableReference(output.Expr); ok {
 			k := tfsandbox.PulumiTopLevelKey(referencedVariableName)
-			inferredType = inferredModuleSchema.Inputs[k].TypeSpec
+			tfName := string(k)
+			pulumiInputName := resource.PropertyKey(strings.ReplaceAll(tfName, "-", "_"))
+			inferredType = inferredModuleSchema.Inputs[pulumiInputName].TypeSpec
 		} else {
 			inferredType = inferExpressionType(output.Expr)
 		}

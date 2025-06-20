@@ -405,6 +405,72 @@ func TestInferringInputsFromLocalPath(t *testing.T) {
 	}
 }
 
+func TestInferringSchemaWithDashedFielsFromLocalPath(t *testing.T) {
+	ctx := context.Background()
+	src := filepath.Join("..", "..", "tests", "testdata", "modules", "dashed-module-fields")
+	p, err := filepath.Abs(src)
+	require.NoError(t, err)
+	for _, executor := range []string{"terraforn", "opentofu"} {
+		logger := newTestLogger(t)
+		t.Run("executor="+executor, func(t *testing.T) {
+			tf := newTestRuntime(t, executor)
+			assert.NoError(t, err, "failed to pick module runtime")
+			inferredSchema, err := inferModuleSchema(ctx, tf,
+				packageName("dashed"),
+				TFModuleSource(p),
+				TFModuleVersion(""),
+				logger)
+			require.NoError(t, err)
+			require.NotNil(t, inferredSchema, "module schema should not be nil")
+
+			expectedInputs := map[resource.PropertyKey]*schema.PropertySpec{
+				"dashed_input": {
+					TypeSpec: stringType,
+				},
+			}
+
+			// Pulumi -> Terraform field name conversion
+			expectedInputFieldMappings := map[resource.PropertyKey]resource.PropertyKey{
+				"dashed_input": "dashed-input",
+			}
+
+			assert.Equal(t, expectedInputs, inferredSchema.Inputs, "inferred inputs do not match")
+			assert.Equal(t, expectedInputFieldMappings, inferredSchema.SchemaFieldMappings.InputFieldMappings)
+
+			expectedOutputs := map[resource.PropertyKey]*schema.PropertySpec{
+				"dashed_output": {
+					TypeSpec: stringType,
+				},
+			}
+
+			// Pulumi -> Terraform field name conversion
+			expectedOutputFieldMappings := map[resource.PropertyKey]resource.PropertyKey{
+				"dashed_output": "dashed-output",
+			}
+
+			assert.Equal(t, expectedOutputs, inferredSchema.Outputs, "inferred outputs do not match")
+			assert.Equal(t, expectedOutputFieldMappings, inferredSchema.SchemaFieldMappings.OutputFieldMappings)
+
+			expectedProviderConfig := schema.ConfigSpec{
+				Variables: map[string]schema.PropertySpec{
+					"google_beta": {
+						Description: "provider configuration for google_beta",
+						TypeSpec:    mapType(anyType),
+					},
+				},
+			}
+
+			expectedProviderFieldMappings := map[string]string{
+				"google_beta": "google-beta",
+			}
+
+			assert.Equal(t, expectedProviderConfig, inferredSchema.ProvidersConfig, "inferred provider config does not match")
+			assert.Equal(t, expectedProviderFieldMappings, inferredSchema.SchemaFieldMappings.ProviderFieldMappings,
+				"inferred provider field mappings do not match")
+		})
+	}
+}
+
 func TestInferModuleSchemaFromGitHubSource(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("demoWebsite")

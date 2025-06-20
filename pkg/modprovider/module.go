@@ -172,11 +172,58 @@ func (h *moduleHandler) prepSandbox(
 	// which will get further reused for Pulumi URNs.
 	tfName := getModuleName(urn)
 
+	hasOutputFieldMapping := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.OutputFieldMappings != nil
+
 	outputSpecs := []tfsandbox.TFOutputSpec{}
 	for outputName := range inferredModule.Outputs {
+		if hasOutputFieldMapping {
+			mappings := inferredModule.SchemaFieldMappings.OutputFieldMappings
+			if tfName, ok := mappings[outputName]; ok {
+				outputName = tfName
+			}
+		}
+
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
 			Name: tfsandbox.DecodePulumiTopLevelKey(outputName),
 		})
+	}
+
+	// remap input fields to terraform module inputs
+	// for example if terraform module input was "input-value" but pulumi input was "input_value",
+	// then we need to remap it to "input-value" in the tf file.
+	hasInputFieldMappings := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.InputFieldMappings != nil
+
+	if hasInputFieldMappings {
+		mappings := inferredModule.SchemaFieldMappings.InputFieldMappings
+		for pulumiInputName, input := range moduleInputs {
+			if tfName, ok := mappings[pulumiInputName]; ok {
+				// if the input is mapped, use the mapped name
+				moduleInputs[tfName] = input
+				delete(moduleInputs, pulumiInputName)
+			}
+		}
+	}
+
+	// remap some required providers in the TF module. For example,
+	// if the module requires "google-beta", the Pulumi name of the field would be "google_beta"
+	// so we need to remap it to "google-beta" in the tf file.
+	hasProviderFieldMappings := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.ProviderFieldMappings != nil
+
+	if hasProviderFieldMappings {
+		mappings := inferredModule.SchemaFieldMappings.ProviderFieldMappings
+		for providerName, config := range providersConfig {
+			if tfName, ok := mappings[providerName]; ok {
+				// if the provider is mapped, use the mapped name
+				providersConfig[tfName] = config
+				delete(providersConfig, providerName)
+			}
+		}
 	}
 
 	err = tfsandbox.CreateTFFile(tfName, moduleSource,
@@ -202,7 +249,7 @@ func (h *moduleHandler) prepSandbox(
 	return tf, nil
 }
 
-// This method handles Create and Update in a uniform way; both map to tofu apply operation.
+// This method handles Create and Update in a uniform way; both map to tofu/terraform apply operation.
 func (h *moduleHandler) applyModuleOperation(
 	ctx context.Context,
 	urn urn.URN,
@@ -287,6 +334,22 @@ func (h *moduleHandler) applyModuleOperation(
 
 		// Instead, log and propagate the error for now. This will forget partial TF state but fail Pulumi.
 		logger.Log(ctx, tfsandbox.Error, fmt.Sprintf("partial failure in apply: %v", applyErr))
+	}
+
+	hasOutputFieldMappings := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.OutputFieldMappings != nil
+
+	if hasOutputFieldMappings {
+		mappings := inferredModule.SchemaFieldMappings.OutputFieldMappings
+		for tfName, output := range moduleOutputs {
+			for pulumiOutputName, mappedTerraformName := range mappings {
+				if tfName == mappedTerraformName {
+					moduleOutputs[pulumiOutputName] = output
+					delete(moduleOutputs, tfName)
+				}
+			}
+		}
 	}
 
 	return moduleOutputs, views, applyErr
