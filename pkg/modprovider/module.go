@@ -299,9 +299,10 @@ func (h *moduleHandler) initializationError(outputs resource.PropertyMap, reason
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties failed")
 
 	detail := pulumirpc.ErrorResourceInitFailed{
-		Id:         moduleStateResourceID,
-		Properties: props,
-		Reasons:    reasons,
+		Id:                  moduleStateResourceID,
+		Properties:          props,
+		Reasons:             reasons,
+		RefreshBeforeUpdate: true,
 	}
 	return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 }
