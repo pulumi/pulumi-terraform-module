@@ -1192,18 +1192,19 @@ func TestEndToEndUsingModuleWithDashes(t *testing.T) {
 		t.Run(runtime, func(t *testing.T) {
 			testProgram, err := filepath.Abs(filepath.Join("testdata", "programs", runtime, "dashed_module"))
 			require.NoError(t, err, "failed to get absolute path for dashed_module program")
-			tfFilesOutputDir := filepath.Join(testProgram, "tf_files")
-			t.Cleanup(func() {
-				t.Log("Cleaning up Terraform artifacts")
-				cleanRandomDataFromTerraformArtifacts(t, tfFilesOutputDir, map[string]string{
-					modulePath: "./path/to/module",
-				})
-			})
 
-			it := newPulumiTest(t, testProgram, localPath,
-				opttest.SkipInstall(),
-				opttest.Env("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFilesOutputDir))
+			// debug generated Terraform files
+			// tfFilesOutputDir := filepath.Join(testProgram, "tf_files")
+			// t.Cleanup(func() {
+			// 	t.Log("Cleaning up Terraform artifacts")
+			// 	cleanRandomDataFromTerraformArtifacts(t, tfFilesOutputDir, map[string]string{
+			// 		modulePath: "./path/to/module",
+			// 	})
+			// })
+			// add this option to the test program
+			// opttest.Env("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFilesOutputDir)
 
+			it := newPulumiTest(t, testProgram, localPath, opttest.SkipInstall())
 			pulumiPackageAdd(t, it, localProviderBinPath, modulePath, "", "dashed")
 			upResult := it.Up(t)
 			result, ok := upResult.Outputs["result"]

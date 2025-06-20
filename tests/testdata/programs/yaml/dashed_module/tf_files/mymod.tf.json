@@ -1,7 +1,0 @@
-{
-  "module": {
-    "mymod": {
-      "source": "./path/to/module"
-    }
-  }
-}
