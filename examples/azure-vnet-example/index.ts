@@ -1,7 +1,12 @@
 import * as resources from "@pulumi/azure-native/resources";
 import * as vnet from "@pulumi/vnet";
+import * as pulumi from "@pulumi/pulumi";
+
+const cfg = new pulumi.Config();
+const rgName = cfg.get("rg") ?? pulumi.getStack();
 
 const resourceGroup = new resources.ResourceGroup("resourceGroup", {
+    resourceGroupName: rgName,
     location: "EastUS",
 });
 
@@ -11,7 +16,6 @@ const virtualNetwork = new vnet.Module("testvnet", {
     resource_group_name: resourceGroup.name,
     location: resourceGroup.location,
     address_space: ["10.0.0.0/16"],
-    name: "testvnet",
 })
 
-export const networkId = virtualNetwork.id;
+export const networkId = virtualNetwork.name;

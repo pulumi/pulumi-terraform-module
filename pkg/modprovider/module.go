@@ -91,6 +91,9 @@ func (h *moduleHandler) Diff(
 		return nil, err
 	}
 
+	// apply autonaming here
+	newInputs = setNameInput(newInputs, inferredModule, urn)
+
 	if !oldInputs.DeepEquals(newInputs) {
 		// Inputs have changed, so we need tell the engine that an update is needed.
 		return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_SOME}, nil
@@ -147,6 +150,24 @@ func (h *moduleHandler) Diff(
 	return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
 }
 
+// setNameInput automatically sets the name input of the module if it not set by the user and
+// the module schema specifies a name input property
+func setNameInput(
+	moduleInputs resource.PropertyMap,
+	inferredModule *InferredModuleSchema,
+	urn urn.URN,
+) resource.PropertyMap {
+	// automatically set the name input of the module if it not set by the user and
+	// the module schema specifies a name input property
+	nameProperty := resource.PropertyKey("name")
+	inputProperty, hasNameInput := inferredModule.Inputs[nameProperty]
+	_, nameAlreadySet := moduleInputs[nameProperty]
+	if hasNameInput && inputProperty.Type == "string" && !nameAlreadySet {
+		moduleInputs[nameProperty] = resource.NewStringProperty(urn.Name())
+	}
+	return moduleInputs
+}
+
 func (h *moduleHandler) prepSandbox(
 	ctx context.Context,
 	urn urn.URN,
@@ -178,6 +199,9 @@ func (h *moduleHandler) prepSandbox(
 			Name: tfsandbox.DecodePulumiTopLevelKey(outputName),
 		})
 	}
+
+	// apply autonaming here
+	moduleInputs = setNameInput(moduleInputs, inferredModule, urn)
 
 	err = tfsandbox.CreateTFFile(tfName, moduleSource,
 		moduleVersion, tf.WorkingDir(),

@@ -66,8 +66,6 @@ func Test_RdsExample(t *testing.T) {
 }
 
 func Test_Azure_VirtualNetworkExample_NoExplicitProvider(t *testing.T) {
-	t.Parallel()
-
 	if _, ci := os.LookupEnv("CI"); !ci {
 		t.Skip("Skipping Azure tests in local runs without credentials.")
 	}
@@ -88,17 +86,43 @@ func Test_Azure_VirtualNetworkExample_NoExplicitProvider(t *testing.T) {
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath,
 		"Azure/avm-res-network-virtualnetwork/azurerm", "0.8.1", "vnet")
 
-	integrationTest.Up(t, optup.Diff(),
-		optup.ErrorProgressStreams(tw),
-		optup.ProgressStreams(tw),
-	)
+	// resource group name
+	resourceGroupName := generateTestResourcePrefix()
+	integrationTest.SetConfig(t, "rg", resourceGroupName+"-resource-group")
 
-	integrationTest.Preview(t,
-		optpreview.Diff(),
-		optpreview.ExpectNoChanges(),
-		optpreview.ErrorProgressStreams(tw),
-		optpreview.ProgressStreams(tw),
-	)
+	t.Run("up", func(t *testing.T) {
+		// for debugging generated Terraform files during up
+		terraformFiles := filepath.Join(testProgram, "up")
+		t.Setenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", terraformFiles)
+		t.Cleanup(func() {
+			cleanRandomDataFromTerraformArtifacts(t, terraformFiles, map[string]string{
+				resourceGroupName: "RESOURCE_GROUP",
+			})
+		})
+
+		integrationTest.Up(t, optup.Diff(),
+			optup.ErrorProgressStreams(tw),
+			optup.ProgressStreams(tw),
+		)
+	})
+
+	t.Run("preview", func(t *testing.T) {
+		// for debugging generated Terraform files during preview
+		terraformFiles := filepath.Join(testProgram, "preview")
+		t.Setenv("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", terraformFiles)
+		t.Cleanup(func() {
+			cleanRandomDataFromTerraformArtifacts(t, terraformFiles, map[string]string{
+				resourceGroupName: "RESOURCE_GROUP",
+			})
+		})
+
+		integrationTest.Preview(t,
+			optpreview.Diff(),
+			optpreview.ExpectNoChanges(),
+			optpreview.ErrorProgressStreams(tw),
+			optpreview.ProgressStreams(tw),
+		)
+	})
 }
 
 func Test_EksExample(t *testing.T) {

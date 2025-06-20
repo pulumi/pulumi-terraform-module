@@ -358,6 +358,34 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 	})
 }
 
+func TestAutomaticallySettingNameInputFromResourceName(t *testing.T) {
+	t.Parallel()
+	localProviderBinPath := ensureCompiledProvider(t)
+	modulePath, err := filepath.Abs(filepath.Join("testdata", "modules", "autonaming"))
+	require.NoError(t, err, "failed to get absolute path for autonaming module")
+	program := filepath.Join("testdata", "programs", "yaml", "autonaming")
+	integrationTest := pulumitest.NewPulumiTest(t, program,
+		opttest.SkipInstall(),
+		opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)))
+
+	packageName := "autonamed"
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, modulePath, packageName)
+
+	result := integrationTest.Up(t)
+	assert.Len(t, result.Outputs, 1, "expected one output")
+	output, ok := result.Outputs["result"]
+	require.True(t, ok, "expected output called result")
+	// the output should be the name of the resource, which is set to "exampleResourceName
+	require.Equal(t, "exampleResourceName", output.Value)
+
+	preview := integrationTest.Preview(t)
+	assert.Equal(t, 2, preview.ChangeSummary[apitype.OpType("same")])
+
+	deleteResult := integrationTest.Destroy(t)
+	expected := &map[string]int{"delete": 2}
+	assert.Equal(t, deleteResult.Summary.ResourceChanges, expected, "should delete one resource")
+}
+
 // Test that changing the source code of a local module causes the module to be updated
 // without any changes to the program code.
 // In this specific example, the change in the source code is from changing outputs

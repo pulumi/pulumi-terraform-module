@@ -1,0 +1,9 @@
+name: autonaming_example
+runtime: yaml
+description: example showing name input property being automatically populated
+resources:
+  exampleResourceName: 
+    type: autonamed:index:Module
+
+outputs:
+  result: ${exampleResourceName.name}
