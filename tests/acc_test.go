@@ -319,6 +319,8 @@ func TestPartialApply(t *testing.T) {
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
 
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
+
 	t.Logf("################################################################################")
 	t.Logf("step 3 - partial failure in update")
 	t.Logf("################################################################################")
@@ -334,6 +336,8 @@ func TestPartialApply(t *testing.T) {
 	)
 
 	assert.Errorf(t, err, "expected error on up")
+
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
 
 	t.Logf("################################################################################")
 	t.Logf("step 4 - complete update")
@@ -354,6 +358,8 @@ func TestPartialApply(t *testing.T) {
 		"same":   1,
 	}, changes4)
 	assert.Contains(t, upRes4.Outputs, "roleArn")
+
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
