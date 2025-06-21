@@ -479,7 +479,7 @@ func (h *moduleHandler) Update(
 
 	//q.Q("Update", req.GetPreview())
 
-	moduleOutputs, views, err := h.applyModuleOperation(
+	moduleOutputs, views, applyErr := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -505,8 +505,8 @@ func (h *moduleHandler) Update(
 		}
 	}
 
-	if err != nil {
-		return nil, err
+	if applyErr != nil {
+		return nil, applyErr
 	}
 
 	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
