@@ -6,9 +6,10 @@ const prefix = config.get('prefix') ?? pulumi.getStack();
 const step = config.getNumber('step') ?? 1;
 
 const mod = new localmod.Module('test-localmod', {
-    name_prefix: prefix,
-    should_fail: step === 1 ? true : false,
+  name_prefix: prefix,
+  description: `Step ${step}`,
+  should_fail: step % 2 === 1 ? true : false,
 });
 
-export const roleArn =  mod.role_arn;
+export const roleArn = mod.role_arn;
 
