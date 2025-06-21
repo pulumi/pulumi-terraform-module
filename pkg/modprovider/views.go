@@ -157,35 +157,30 @@ func viewStepStatusCheck(
 	changeKind tfsandbox.ChangeKind,
 	finalState *tfsandbox.ResourceState, // may be nil when planning or failed to create
 ) error {
-
-	switch {
-
+	switch changeKind {
 	// Planned a create but there is no final state. Resource creation must have failed. Neither TF state nor TF
 	// plan contains the correct error message, so using a generic message for now before TF errors can be properly
 	// correlated to a resource by address.
-	case changeKind == tfsandbox.Create && finalState == nil:
-		return fmt.Errorf("failed to create")
-
-	default:
-		return nil
-
-	}
+	case tfsandbox.Create:
+		if finalState == nil {
+			return fmt.Errorf("failed to create")
+		}
 
 	// All these operations when successful imply the resource must exist in the final state.
-	// case tfsandbox.NoOp, tfsandbox.Update, tfsandbox.Create,
-	// 	tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
-	// 	if finalState == nil {
-	// 		return errors.New("resource operation failed")
-	// 	}
+	case tfsandbox.NoOp, tfsandbox.Update,
+		tfsandbox.Replace, tfsandbox.ReplaceDestroyBeforeCreate:
+		if finalState == nil {
+			return fmt.Errorf("resource operation failed")
+		}
 
-	// // These operations if successful imply the resource must not exist in the final state.
-	// case tfsandbox.Delete, tfsandbox.Forget:
-	// 	if finalState != nil {
-	// 		return errors.New("resource operation failed")
-	// 	}
-	// }
+	// These operations if successful imply the resource must not exist in the final state.
+	case tfsandbox.Delete, tfsandbox.Forget:
+		if finalState != nil {
+			return fmt.Errorf("resource operation failed")
+		}
+	}
 
-	// return nil
+	return nil
 }
 
 // A resource that has not changed and therefore has no Plan entry in TF needs a ViewStep.
@@ -264,6 +259,15 @@ func viewStepsForResource(
 		if !preview {
 			if err := viewStepStatusCheck(rplan.ChangeKind(), finalState); err != nil {
 				step.Error = err.Error()
+
+				// TODO: We should improve this to better detect errors in the ReplaceDestroyBeforeCreate case.
+				// Right now, viewStepStatusCheck will return an error for ReplaceDestroyBeforeCreate when the
+				// finalState is nil, implying that the create part of the operation failed.
+				// In this case, we only want the ViewStep_CREATE_REPLACEMENT step to have the error.
+				if rplan.ChangeKind() == tfsandbox.ReplaceDestroyBeforeCreate &&
+					(op == pulumirpc.ViewStep_DELETE_REPLACED || op == pulumirpc.ViewStep_REPLACE) {
+					step.Error = ""
+				}
 			}
 		}
 
