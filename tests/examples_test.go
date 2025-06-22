@@ -145,7 +145,7 @@ func Test_EksExample(t *testing.T) {
 
 	// Generate package
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/vpc/aws", "5.19.0", "vpcmod")
-	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/eks/aws", "20.34.0", "eksmod")
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/eks/aws", "20.37.1", "eksmod")
 
 	integrationTest.Up(t, optup.Diff(),
 		optup.ErrorProgressStreams(tw),

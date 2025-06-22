@@ -245,8 +245,6 @@ func TestLambdaMemorySizeDiff(t *testing.T) {
 func TestPartialApply(t *testing.T) {
 	t.Parallel()
 
-	t.Skip("TODO[pulumi/pulumi#19635]")
-
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
@@ -279,6 +277,10 @@ func TestPartialApply(t *testing.T) {
 	// Generate package
 	pulumiPackageAdd(t, integrationTest, localProviderBinPath, localMod, "localmod")
 
+	t.Logf("################################################################################")
+	t.Logf("step 1 - partial failure in create")
+	t.Logf("################################################################################")
+
 	_, err = integrationTest.CurrentStack().Up(
 		integrationTest.Context(),
 		optup.Diff(),
@@ -298,7 +300,7 @@ func TestPartialApply(t *testing.T) {
 	mustFindDeploymentResourceByType(t, integrationTest, "localmod:tf:aws_iam_role")
 
 	t.Logf("################################################################################")
-	t.Logf("step 2")
+	t.Logf("step 2 - complete create")
 	t.Logf("################################################################################")
 
 	integrationTest.SetConfig(t, "step", "2")
@@ -311,11 +313,53 @@ func TestPartialApply(t *testing.T) {
 	)
 	changes2 := *upRes2.Summary.ResourceChanges
 	assert.Equal(t, map[string]int{
-		"update": 1,
+		"update": 2,
 		"create": 1,
-		"same":   2,
+		"same":   1,
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
+
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
+
+	t.Logf("################################################################################")
+	t.Logf("step 3 - partial failure in update")
+	t.Logf("################################################################################")
+
+	integrationTest.SetConfig(t, "step", "3")
+
+	_, err = integrationTest.CurrentStack().Up(
+		integrationTest.Context(),
+		optup.Diff(),
+		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts),
+	)
+
+	assert.Errorf(t, err, "expected error on up")
+
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
+
+	t.Logf("################################################################################")
+	t.Logf("step 4 - complete update")
+	t.Logf("################################################################################")
+
+	integrationTest.SetConfig(t, "step", "4")
+
+	upRes4 := integrationTest.Up(t,
+		optup.Diff(),
+		optup.ErrorProgressStreams(testWriter),
+		optup.ProgressStreams(testWriter),
+		optup.DebugLogging(debugOpts),
+	)
+	changes4 := *upRes4.Summary.ResourceChanges
+	assert.Equal(t, map[string]int{
+		"update": 2,
+		"create": 1,
+		"same":   1,
+	}, changes4)
+	assert.Contains(t, upRes4.Outputs, "roleArn")
+
+	t.Logf("State: %s", string(integrationTest.ExportStack(t).Deployment))
 }
 
 // Sanity check that we can provision two instances of the same module side-by-side, in particular
@@ -1206,6 +1250,38 @@ func TestE2eYAML(t *testing.T) {
 
 			destroyResult := e2eTest.Destroy(t)
 			require.Equal(t, tc.deleteExpect, destroyResult.Summary.ResourceChanges)
+		})
+	}
+}
+
+func TestEndToEndUsingModuleWithDashes(t *testing.T) {
+	localProviderBinPath := ensureCompiledProvider(t)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	modulePath, err := filepath.Abs(filepath.Join("testdata", "modules", "dashed-module-fields"))
+	assert.NoError(t, err, "failed to get absolute path for dashed module")
+	// TODO[pulumi/pulumi-terraform-module#426] - test local modules with Go
+	for _, runtime := range []string{"yaml", "ts", "python", "dotnet"} {
+		t.Run(runtime, func(t *testing.T) {
+			testProgram, err := filepath.Abs(filepath.Join("testdata", "programs", runtime, "dashed_module"))
+			require.NoError(t, err, "failed to get absolute path for dashed_module program")
+
+			// debug generated Terraform files
+			// tfFilesOutputDir := filepath.Join(testProgram, "tf_files")
+			// t.Cleanup(func() {
+			// 	t.Log("Cleaning up Terraform artifacts")
+			// 	cleanRandomDataFromTerraformArtifacts(t, tfFilesOutputDir, map[string]string{
+			// 		modulePath: "./path/to/module",
+			// 	})
+			// })
+			// add this option to the test program
+			// opttest.Env("PULUMI_TERRAFORM_MODULE_WRITE_TF_FILE", tfFilesOutputDir)
+
+			it := newPulumiTest(t, testProgram, localPath, opttest.SkipInstall())
+			pulumiPackageAdd(t, it, localProviderBinPath, modulePath, "", "dashed")
+			upResult := it.Up(t)
+			result, ok := upResult.Outputs["result"]
+			assert.True(t, ok, "expected output 'result' to be present")
+			assert.Equal(t, "example", result.Value)
 		})
 	}
 }

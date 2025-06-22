@@ -193,15 +193,59 @@ func (h *moduleHandler) prepSandbox(
 	// which will get further reused for Pulumi URNs.
 	tfName := getModuleName(urn)
 
+	hasOutputFieldMapping := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.OutputFieldMappings != nil
+
 	outputSpecs := []tfsandbox.TFOutputSpec{}
 	for outputName := range inferredModule.Outputs {
+		if hasOutputFieldMapping {
+			mappings := inferredModule.SchemaFieldMappings.OutputFieldMappings
+			if tfName, ok := mappings[outputName]; ok {
+				outputName = tfName
+			}
+		}
+
 		outputSpecs = append(outputSpecs, tfsandbox.TFOutputSpec{
 			Name: tfsandbox.DecodePulumiTopLevelKey(outputName),
 		})
 	}
 
-	// apply autonaming here
-	moduleInputs = setNameInput(moduleInputs, inferredModule, urn)
+	// remap input fields to terraform module inputs
+	// for example if terraform module input was "input-value" but pulumi input was "input_value",
+	// then we need to remap it to "input-value" in the tf file.
+	hasInputFieldMappings := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.InputFieldMappings != nil
+
+	if hasInputFieldMappings {
+		mappings := inferredModule.SchemaFieldMappings.InputFieldMappings
+		for pulumiInputName, input := range moduleInputs {
+			if tfName, ok := mappings[pulumiInputName]; ok {
+				// if the input is mapped, use the mapped name
+				moduleInputs[tfName] = input
+				delete(moduleInputs, pulumiInputName)
+			}
+		}
+	}
+
+	// remap some required providers in the TF module. For example,
+	// if the module requires "google-beta", the Pulumi name of the field would be "google_beta"
+	// so we need to remap it to "google-beta" in the tf file.
+	hasProviderFieldMappings := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.ProviderFieldMappings != nil
+
+	if hasProviderFieldMappings {
+		mappings := inferredModule.SchemaFieldMappings.ProviderFieldMappings
+		for providerName, config := range providersConfig {
+			if tfName, ok := mappings[providerName]; ok {
+				// if the provider is mapped, use the mapped name
+				providersConfig[tfName] = config
+				delete(providersConfig, providerName)
+			}
+		}
+	}
 
 	err = tfsandbox.CreateTFFile(tfName, moduleSource,
 		moduleVersion, tf.WorkingDir(),
@@ -226,7 +270,7 @@ func (h *moduleHandler) prepSandbox(
 	return tf, nil
 }
 
-// This method handles Create and Update in a uniform way; both map to tofu apply operation.
+// This method handles Create and Update in a uniform way; both map to tofu/terraform apply operation.
 func (h *moduleHandler) applyModuleOperation(
 	ctx context.Context,
 	urn urn.URN,
@@ -302,15 +346,24 @@ func (h *moduleHandler) applyModuleOperation(
 	}
 
 	if applyErr != nil {
-		// TODO[pulumi/pulumi-terraform-module#342] Possibly wrap partial errors in initializationError. This
-		// does not quite work as expected yet as views get recorded into state as pending_operations. They
-		// need to be recorded as finalized operations because they did complete.
-		if 1+2 == 4 {
-			applyErr = h.initializationError(moduleOutputs, applyErr.Error())
-		}
+		// we have a partial error, wrap it with ErrorResourceInitFailed
+		applyErr = h.initializationError(moduleOutputs, applyErr.Error())
+	}
 
-		// Instead, log and propagate the error for now. This will forget partial TF state but fail Pulumi.
-		logger.Log(ctx, tfsandbox.Error, fmt.Sprintf("partial failure in apply: %v", applyErr))
+	hasOutputFieldMappings := inferredModule != nil &&
+		inferredModule.SchemaFieldMappings != nil &&
+		inferredModule.SchemaFieldMappings.OutputFieldMappings != nil
+
+	if hasOutputFieldMappings {
+		mappings := inferredModule.SchemaFieldMappings.OutputFieldMappings
+		for tfName, output := range moduleOutputs {
+			for pulumiOutputName, mappedTerraformName := range mappings {
+				if tfName == mappedTerraformName {
+					moduleOutputs[pulumiOutputName] = output
+					delete(moduleOutputs, tfName)
+				}
+			}
+		}
 	}
 
 	return moduleOutputs, views, applyErr
@@ -323,9 +376,10 @@ func (h *moduleHandler) initializationError(outputs resource.PropertyMap, reason
 	contract.AssertNoErrorf(err, "plugin.MarshalProperties failed")
 
 	detail := pulumirpc.ErrorResourceInitFailed{
-		Id:         moduleStateResourceID,
-		Properties: props,
-		Reasons:    reasons,
+		Id:                  moduleStateResourceID,
+		Properties:          props,
+		Reasons:             reasons,
+		RefreshBeforeUpdate: true,
 	}
 	return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 }
@@ -446,7 +500,7 @@ func (h *moduleHandler) Update(
 
 	//q.Q("Update", req.GetPreview())
 
-	moduleOutputs, views, err := h.applyModuleOperation(
+	moduleOutputs, views, applyErr := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -459,18 +513,21 @@ func (h *moduleHandler) Update(
 		req.GetPreview(),
 		executor,
 	)
-	// TODO[pulumi/pulumi-terraform-module#342] partial error handling needs to modify this.
-	if err != nil {
-		return nil, err
+
+	// Publish views even if applyErr != nil as is the case of partial failures.
+	if views != nil {
+		_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+			Token: req.ResourceStatusToken,
+			Steps: views,
+		})
+		if err != nil {
+			logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
+			return nil, err
+		}
 	}
 
-	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
-		Token: req.ResourceStatusToken,
-		Steps: views,
-	})
-	if err != nil {
-		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
-		return nil, err
+	if applyErr != nil {
+		return nil, applyErr
 	}
 
 	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
