@@ -414,7 +414,7 @@ func (s *server) Construct(
 	_ context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	return nil, fmt.Errorf("Unsupported type: %q", req.GetType())
+	return nil, fmt.Errorf("unsupported type: %q", req.GetType())
 }
 
 func (s *server) Check(
@@ -423,7 +423,7 @@ func (s *server) Check(
 ) (*pulumirpc.CheckResponse, error) {
 	switch {
 	case req.GetType() == string(moduleTypeToken(s.packageName)):
-		return s.moduleHandler.Check(ctx, req)
+		return s.moduleHandler.Check(ctx, req, s.inferredModuleSchema)
 	default:
 		return nil, fmt.Errorf("[Check]: type %q is not supported yet", req.GetType())
 	}
@@ -513,9 +513,10 @@ func (s *server) Handshake(
 	}
 	s.pulumiCliSupportsViews = true
 	return &pulumirpc.ProviderHandshakeResponse{
-		AcceptSecrets:   true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+		AcceptSecrets:                   true,
+		AcceptResources:                 true,
+		AcceptOutputs:                   true,
+		SupportsAutonamingConfiguration: true,
 	}, nil
 }
 

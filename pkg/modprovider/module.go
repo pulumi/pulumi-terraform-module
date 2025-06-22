@@ -20,6 +20,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -64,9 +65,33 @@ func moduleTypeToken(pkgName packageName) tokens.Type {
 func (h *moduleHandler) Check(
 	_ context.Context,
 	req *pulumirpc.CheckRequest,
+	moduleSchema *InferredModuleSchema,
 ) (*pulumirpc.CheckResponse, error) {
+	news := make(map[string]*structpb.Value)
+	if req.News != nil && req.News.Fields != nil {
+		news = req.News.Fields
+	}
+
+	_, nameInputProvided := news["name"]
+	inputProperty, hasNameInput := moduleSchema.Inputs["name"]
+	if hasNameInput && inputProperty.Type == "string" && !nameInputProvided {
+		// if the module schema specifies a name input property and it is not set by the user,
+		// then we need to set it to the name of the resource urn.
+		urn := urn.URN(req.GetUrn())
+		autoname := urn.Name()
+		if req.Autonaming != nil {
+			switch req.Autonaming.Mode {
+			case pulumirpc.CheckRequest_AutonamingOptions_ENFORCE, pulumirpc.CheckRequest_AutonamingOptions_PROPOSE:
+				contract.Assertf(req.Autonaming.ProposedName != "", "expected proposed name to be non-empty: %v", req.Autonaming)
+				autoname = req.Autonaming.ProposedName
+			}
+		}
+
+		news["name"] = structpb.NewStringValue(autoname)
+	}
+
 	return &pulumirpc.CheckResponse{
-		Inputs: req.News,
+		Inputs: &structpb.Struct{Fields: news},
 	}, nil
 }
 
@@ -90,9 +115,6 @@ func (h *moduleHandler) Diff(
 	if err != nil {
 		return nil, err
 	}
-
-	// apply autonaming here
-	newInputs = setNameInput(newInputs, inferredModule, urn)
 
 	if !oldInputs.DeepEquals(newInputs) {
 		// Inputs have changed, so we need tell the engine that an update is needed.
@@ -148,24 +170,6 @@ func (h *moduleHandler) Diff(
 
 	// the module has not changed, return DIFF_NONE.
 	return &pulumirpc.DiffResponse{Changes: pulumirpc.DiffResponse_DIFF_NONE}, nil
-}
-
-// setNameInput automatically sets the name input of the module if it not set by the user and
-// the module schema specifies a name input property
-func setNameInput(
-	moduleInputs resource.PropertyMap,
-	inferredModule *InferredModuleSchema,
-	urn urn.URN,
-) resource.PropertyMap {
-	// automatically set the name input of the module if it not set by the user and
-	// the module schema specifies a name input property
-	nameProperty := resource.PropertyKey("name")
-	inputProperty, hasNameInput := inferredModule.Inputs[nameProperty]
-	_, nameAlreadySet := moduleInputs[nameProperty]
-	if hasNameInput && inputProperty.Type == "string" && !nameAlreadySet {
-		moduleInputs[nameProperty] = resource.NewStringProperty(urn.Name())
-	}
-	return moduleInputs
 }
 
 func (h *moduleHandler) prepSandbox(
@@ -296,7 +300,7 @@ func (h *moduleHandler) applyModuleOperation(
 		executor,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed preparing tofu sandbox: %w", err)
+		return nil, nil, fmt.Errorf("failed preparing sandbox: %w", err)
 	}
 
 	logger := newResourceLogger(h.hc, urn)

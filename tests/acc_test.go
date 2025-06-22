@@ -418,10 +418,9 @@ func TestAutomaticallySettingNameInputFromResourceName(t *testing.T) {
 	result := integrationTest.Up(t)
 	assert.Len(t, result.Outputs, 1, "expected one output")
 	output, ok := result.Outputs["result"]
-	require.True(t, ok, "expected output called result")
-	// the output should be the name of the resource, which is set to "exampleResourceName
-	require.Equal(t, "exampleResourceName", output.Value)
-
+	assert.True(t, ok, "expected output called result")
+	// the output should be the name of the resource, which is set to "exampleResourceName"
+	assert.Equal(t, "exampleResourceName", output.Value)
 	preview := integrationTest.Preview(t)
 	assert.Equal(t, 2, preview.ChangeSummary[apitype.OpType("same")])
 
