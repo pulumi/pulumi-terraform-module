@@ -1,5 +1,6 @@
 resource "aws_iam_role" "this" {
   name_prefix = var.name_prefix
+  description = var.description
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

@@ -325,15 +325,8 @@ func (h *moduleHandler) applyModuleOperation(
 	}
 
 	if applyErr != nil {
-		// TODO[pulumi/pulumi-terraform-module#342] Possibly wrap partial errors in initializationError. This
-		// does not quite work as expected yet as views get recorded into state as pending_operations. They
-		// need to be recorded as finalized operations because they did complete.
-		if 1+2 == 4 {
-			applyErr = h.initializationError(moduleOutputs, applyErr.Error())
-		}
-
-		// Instead, log and propagate the error for now. This will forget partial TF state but fail Pulumi.
-		logger.Log(ctx, tfsandbox.Error, fmt.Sprintf("partial failure in apply: %v", applyErr))
+		// we have a partial error, wrap it with ErrorResourceInitFailed
+		applyErr = h.initializationError(moduleOutputs, applyErr.Error())
 	}
 
 	hasOutputFieldMappings := inferredModule != nil &&
@@ -486,7 +479,7 @@ func (h *moduleHandler) Update(
 
 	//q.Q("Update", req.GetPreview())
 
-	moduleOutputs, views, err := h.applyModuleOperation(
+	moduleOutputs, views, applyErr := h.applyModuleOperation(
 		ctx,
 		urn,
 		moduleInputs,
@@ -499,18 +492,21 @@ func (h *moduleHandler) Update(
 		req.GetPreview(),
 		executor,
 	)
-	// TODO[pulumi/pulumi-terraform-module#342] partial error handling needs to modify this.
-	if err != nil {
-		return nil, err
+
+	// Publish views even if applyErr != nil as is the case of partial failures.
+	if views != nil {
+		_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
+			Token: req.ResourceStatusToken,
+			Steps: views,
+		})
+		if err != nil {
+			logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
+			return nil, err
+		}
 	}
 
-	_, err = statusClient.PublishViewSteps(ctx, &pulumirpc.PublishViewStepsRequest{
-		Token: req.ResourceStatusToken,
-		Steps: views,
-	})
-	if err != nil {
-		logger.Log(ctx, tfsandbox.Debug, fmt.Sprintf("error publishing view steps after Update: %v", err))
-		return nil, err
+	if applyErr != nil {
+		return nil, applyErr
 	}
 
 	props, err := plugin.MarshalProperties(moduleOutputs, h.marshalOpts())
