@@ -420,7 +420,9 @@ func TestAutomaticallySettingNameInputFromResourceName(t *testing.T) {
 	output, ok := result.Outputs["result"]
 	assert.True(t, ok, "expected output called result")
 	// the output should be the name of the resource, which is set to "exampleResourceName"
-	assert.Equal(t, "exampleResourceName", output.Value)
+	resultValue, ok := output.Value.(string)
+	assert.True(t, ok, "expected output value to be a string")
+	assert.True(t, strings.HasPrefix(resultValue, "exampleResourceName-"))
 	preview := integrationTest.Preview(t)
 	assert.Equal(t, 2, preview.ChangeSummary[apitype.OpType("same")])
 

@@ -75,19 +75,30 @@ func (h *moduleHandler) Check(
 	_, nameInputProvided := news["name"]
 	inputProperty, hasNameInput := moduleSchema.Inputs["name"]
 	if hasNameInput && inputProperty.Type == "string" && !nameInputProvided {
-		// if the module schema specifies a name input property and it is not set by the user,
-		// then we need to set it to the name of the resource urn.
-		urn := urn.URN(req.GetUrn())
-		autoname := urn.Name()
-		if req.Autonaming != nil {
-			switch req.Autonaming.Mode {
-			case pulumirpc.CheckRequest_AutonamingOptions_ENFORCE, pulumirpc.CheckRequest_AutonamingOptions_PROPOSE:
-				contract.Assertf(req.Autonaming.ProposedName != "", "expected proposed name to be non-empty: %v", req.Autonaming)
-				autoname = req.Autonaming.ProposedName
-			}
+		olds := make(map[string]*structpb.Value)
+		if req.Olds != nil && req.Olds.Fields != nil {
+			olds = req.Olds.Fields
 		}
 
-		news["name"] = structpb.NewStringValue(autoname)
+		if previouslySetName, ok := olds["name"]; ok {
+			news["name"] = previouslySetName
+		} else {
+			// if the module schema specifies a name input property and it is not set by the user,
+			// then we need to set it to the name of the resource urn.
+			urn := urn.URN(req.GetUrn())
+			prefix := urn.Name() + "-"
+			autoname, err := resource.NewUniqueName(req.RandomSeed, prefix, 0, 0, nil)
+			contract.AssertNoErrorf(err, "NewUniqueName should not fail in Check")
+			if req.Autonaming != nil {
+				switch req.Autonaming.Mode {
+				case pulumirpc.CheckRequest_AutonamingOptions_ENFORCE, pulumirpc.CheckRequest_AutonamingOptions_PROPOSE:
+					contract.Assertf(req.Autonaming.ProposedName != "", "expected proposed name to be non-empty: %v", req.Autonaming)
+					autoname = req.Autonaming.ProposedName
+				}
+			}
+
+			news["name"] = structpb.NewStringValue(autoname)
+		}
 	}
 
 	return &pulumirpc.CheckResponse{
