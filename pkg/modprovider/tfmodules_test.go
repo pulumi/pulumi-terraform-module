@@ -226,6 +226,14 @@ func TestParsingModuleSchemaOverrides(t *testing.T) {
 			},
 		},
 	})
+
+	assert.Equal(t, testSchemaOverride.PartialSchema.RequiredInputs, []resource.PropertyKey{
+		"example_input",
+	})
+
+	assert.Equal(t, testSchemaOverride.PartialSchema.NonNilOutputs, []resource.PropertyKey{
+		"example_output",
+	})
 }
 
 func TestApplyModuleOverrides(t *testing.T) {
@@ -243,13 +251,14 @@ func TestApplyModuleOverrides(t *testing.T) {
 			// We cannot infer which outputs are required or not so everything is optional, initially.
 			assert.Empty(t, awsVpcSchema.NonNilOutputs, "required outputs is empty")
 
-			t.Run("required outputs are updated", func(t *testing.T) {
+			t.Run("required inputs/outputs are updated", func(t *testing.T) {
 				moduleOverrides := []*ModuleSchemaOverride{
 					{
 						Source:         string(source),
 						MaximumVersion: "6.0.0",
 						PartialSchema: &InferredModuleSchema{
-							NonNilOutputs: []resource.PropertyKey{"vpc_id"},
+							NonNilOutputs:  []resource.PropertyKey{"vpc_id"},
+							RequiredInputs: []resource.PropertyKey{"cidr"},
 						},
 					},
 				}
@@ -259,6 +268,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 				overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
 				assert.NotNil(t, overridenSchema, "overridden module schema is nil")
 				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be required")
+				assert.Contains(t, overridenSchema.RequiredInputs, resource.PropertyKey("cidr"), "cidr should be required")
 			})
 
 			t.Run("specific fields can be updated", func(t *testing.T) {
