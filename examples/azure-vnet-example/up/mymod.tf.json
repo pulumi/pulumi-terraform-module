@@ -1,0 +1,8 @@
+{
+  "module": {
+    "mymod": {
+      "source": "Azure/avm-res-network-virtualnetwork/azurerm",
+      "version": "0.8.1"
+    }
+  }
+}
