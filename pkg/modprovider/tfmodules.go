@@ -502,6 +502,9 @@ func combineInferredModuleSchema(
 	inferredSchema *InferredModuleSchema,
 	partialInferredSchema *InferredModuleSchema,
 ) *InferredModuleSchema {
+	if partialInferredSchema == nil {
+		return inferredSchema
+	}
 
 	// add required outputs to the inferred schema if they are not already present
 	for _, requiredOutput := range partialInferredSchema.NonNilOutputs {
@@ -515,6 +518,20 @@ func combineInferredModuleSchema(
 
 		if !alreadyExists {
 			inferredSchema.NonNilOutputs = append(inferredSchema.NonNilOutputs, requiredOutput)
+		}
+	}
+
+	// add required inputs to the inferred schema if they are not already present
+	for _, requiredInput := range partialInferredSchema.RequiredInputs {
+		alreadyExists := false
+		for _, existingRequiredInput := range inferredSchema.RequiredInputs {
+			if existingRequiredInput == requiredInput {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			inferredSchema.RequiredInputs = append(inferredSchema.RequiredInputs, requiredInput)
 		}
 	}
 
