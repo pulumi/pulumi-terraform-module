@@ -113,7 +113,27 @@ func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, mess
 		return
 	}
 
-	var err error
+	err := l.hc.Log(ctx, asSeverity(level), l.urn, message)
+	contract.IgnoreError(err)
+}
+
+func (l *resourceLogger) LogStatus(ctx context.Context, level tfsandbox.LogLevel, message string) {
+	if l.hc == nil {
+		return
+	}
+
+	// warnings and errors should not be Status messages
+	switch level {
+	case tfsandbox.Warn, tfsandbox.Error:
+		l.Log(ctx, level, message)
+		return
+	}
+
+	err := l.hc.LogStatus(ctx, asSeverity(level), l.urn, message)
+	contract.IgnoreError(err)
+}
+
+func asSeverity(level tfsandbox.LogLevel) diag.Severity {
 	var diagLevel diag.Severity
 	switch level {
 	case tfsandbox.Debug:
@@ -127,37 +147,5 @@ func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, mess
 	default:
 		diagLevel = diag.Info
 	}
-
-	if diagLevel == diag.Error && isMissingCredentialsErrorFromAWS(message) {
-		// for AWS provider, we can detect missing credentials errors and provide a more helpful message
-		// that is specific to Pulumi users.
-		message = awsMissingCredentialsErrorMessage
-	}
-
-	err = l.hc.Log(ctx, diagLevel, l.urn, message)
-
-	contract.IgnoreError(err)
-}
-
-func (l *resourceLogger) LogStatus(ctx context.Context, level tfsandbox.LogLevel, message string) {
-	if l.hc == nil {
-		return
-	}
-
-	var err error
-	var diagLevel diag.Severity
-	switch level {
-	case tfsandbox.Info:
-		diagLevel = diag.Info
-	case tfsandbox.Warn:
-	case tfsandbox.Error:
-		l.Log(ctx, level, message)
-		return
-	default:
-		diagLevel = diag.Info
-	}
-
-	err = l.hc.LogStatus(ctx, diagLevel, l.urn, message)
-
-	contract.IgnoreError(err)
+	return diagLevel
 }
