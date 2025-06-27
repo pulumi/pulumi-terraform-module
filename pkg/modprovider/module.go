@@ -188,10 +188,14 @@ func (h *moduleHandler) Diff(
 	println("outputsChanged?", outputsChanged)
 
 	if inputsChanged || resourcesChanged || outputsChanged {
-		return &pulumirpc.DiffResponse{
-			Changes:  pulumirpc.DiffResponse_DIFF_SOME,
-			Replaces: replaceKeys,
-		}, nil
+		resp := &pulumirpc.DiffResponse{
+			Changes: pulumirpc.DiffResponse_DIFF_SOME,
+		}
+		if len(replaceKeys) > 0 {
+			resp.Replaces = replaceKeys
+			resp.DeleteBeforeReplace = true
+		}
+		return resp, nil
 	}
 
 	// the module has not changed, return DIFF_NONE.
