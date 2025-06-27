@@ -113,7 +113,15 @@ func (l *resourceLogger) Log(ctx context.Context, level tfsandbox.LogLevel, mess
 		return
 	}
 
-	err := l.hc.Log(ctx, asSeverity(level), l.urn, message)
+	diagLevel := asSeverity(level)
+
+	if diagLevel == diag.Error && isMissingCredentialsErrorFromAWS(message) {
+		// for AWS provider, we can detect missing credentials errors and provide a more helpful message
+		// that is specific to Pulumi users.
+		message = awsMissingCredentialsErrorMessage
+	}
+
+	err := l.hc.Log(ctx, diagLevel, l.urn, message)
 	contract.IgnoreError(err)
 }
 
