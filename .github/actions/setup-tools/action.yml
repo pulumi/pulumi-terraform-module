@@ -47,7 +47,7 @@ runs:
 
     - name: Install Pulumi CLI
       if: inputs.tools == 'all' || contains(inputs.tools, 'pulumicli')
-      uses: pulumi/actions@df5a93ad715135263c732ba288301bd044c383c0 # v6
+      uses: pulumi/actions@cc7494be991dba0978f7ffafaf995b0449a0998e # v6
       with:
         pulumi-version: "dev"
 
@@ -89,16 +89,3 @@ runs:
       uses: gradle/gradle-build-action@ac2d340dc04d9e1113182899e983b5400c17cda1 # v3
       with:
         gradle-version: 7.6
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-
-    - name: Show Terraform Version
-      shell: bash
-      run: |
-        terraform -version
-
-    - name: Show Pulumi Version
-      shell: bash
-      run: |
-        pulumi version
