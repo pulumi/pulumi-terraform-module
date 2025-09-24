@@ -746,10 +746,14 @@ func (h *moduleHandler) Read(
 	}, nil
 }
 
-func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, rawLockFile []byte, moduleVersion tfsandbox.TFModuleVersion) {
+func (h *moduleHandler) getState(props resource.PropertyMap) (
+	rawState []byte,
+	rawLockFile []byte,
+	moduleVersion tfsandbox.TFModuleVersion,
+) {
 	state, ok := props[moduleResourceStatePropName]
 	if !ok {
-		return // empty
+		return rawState, rawLockFile, moduleVersion // empty
 	}
 
 	for state.IsSecret() {
@@ -776,7 +780,7 @@ func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, r
 		contract.Assertf(version.IsString(), "Expected %q to carry a String PropertyValue", moduleResourceVersionPropName)
 		moduleVersion = tfsandbox.TFModuleVersion(version.StringValue())
 	}
-	return
+	return rawState, rawLockFile, moduleVersion
 }
 
 func versionOrUnknown(v tfsandbox.TFModuleVersion) string {
