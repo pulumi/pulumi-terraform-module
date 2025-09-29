@@ -1,0 +1,12 @@
+[[tools.opentofu]]
+version = "1.10.6"
+backend = "aqua:opentofu/opentofu"
+
+[tools.opentofu.platforms.macos-arm64]
+checksum = "sha256:f5399a1ebca90724fda83d93f8a76790979fadb4d896e2be964efcd7df3c146c"
+size = 25598685
+url = "https://github.com/opentofu/opentofu/releases/download/v1.10.6/tofu_1.10.6_darwin_arm64.tar.gz"
+
+[[tools.terraform]]
+version = "1.13.1"
+backend = "aqua:hashicorp/terraform"
