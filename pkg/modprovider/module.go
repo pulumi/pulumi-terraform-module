@@ -37,10 +37,11 @@ import (
 )
 
 const (
-	moduleTypeName              = "Module"
-	moduleResourceID            = "module"
-	moduleResourceStatePropName = "__state"
-	moduleResourceLockPropName  = "__lock"
+	moduleTypeName                = "Module"
+	moduleResourceID              = "module"
+	moduleResourceStatePropName   = "__state"
+	moduleResourceLockPropName    = "__lock"
+	moduleResourceVersionPropName = "__moduleVersion"
 )
 
 type moduleHandler struct {
@@ -269,15 +270,26 @@ func (h *moduleHandler) prepSandbox(
 		return nil, fmt.Errorf("seed file generation failed: %w", err)
 	}
 
+	var previousVersion tfsandbox.TFModuleVersion
 	if oldOutputs != nil {
-		rawState, rawLockFile := h.getState(oldOutputs)
+		rawState, rawLockFile, recordedVersion := h.getState(oldOutputs)
+		previousVersion = recordedVersion
 		err = tf.PushStateAndLockFile(ctx, rawState, rawLockFile)
 		if err != nil {
 			return nil, fmt.Errorf("PushStateAndLockFile failed: %w", err)
 		}
 	}
 
-	err = tf.Init(ctx, logger)
+	// If the module version changed between deployments, rerun init with -upgrade so the lockfile
+	// is refreshed to match the newer constraint set.
+	if needsInitUpgrade(oldOutputs, previousVersion, moduleVersion) {
+		logger.LogStatus(ctx, tfsandbox.Info, fmt.Sprintf(
+			"Module version changed from %s to %s; re-running init with -upgrade",
+			versionOrUnknown(previousVersion), versionOrUnknown(moduleVersion)))
+		err = tf.InitUpgrade(ctx, logger)
+	} else {
+		err = tf.Init(ctx, logger)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("init failed: %w", err)
 	}
@@ -354,7 +366,7 @@ func (h *moduleHandler) applyModuleOperation(
 		}
 
 		views = viewStepsAfterApply(packageName, plan, tfState)
-		moduleOutputs, err = h.outputs(ctx, tf, tfState)
+		moduleOutputs, err = h.outputs(ctx, tf, tfState, moduleVersion)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -404,6 +416,7 @@ func (h *moduleHandler) outputs(
 	ctx context.Context,
 	tf *tfsandbox.ModuleRuntime,
 	tfState *tfsandbox.State,
+	moduleVersion TFModuleVersion,
 ) (resource.PropertyMap, error) {
 	rawState, rawLockFile, err := tf.PullStateAndLockFile(ctx)
 	if err != nil {
@@ -415,6 +428,7 @@ func (h *moduleHandler) outputs(
 	lockProp := resource.NewStringProperty(string(rawLockFile))
 	moduleOutputs[moduleResourceStatePropName] = stateProp
 	moduleOutputs[moduleResourceLockPropName] = lockProp
+	moduleOutputs[moduleResourceVersionPropName] = resource.NewStringProperty(string(moduleVersion))
 	return moduleOutputs, nil
 }
 
@@ -693,7 +707,7 @@ func (h *moduleHandler) Read(
 		return nil, fmt.Errorf("module refresh failed: %w", err)
 	}
 
-	outputs, err := h.outputs(ctx, tf, state)
+	outputs, err := h.outputs(ctx, tf, state, moduleVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -732,10 +746,14 @@ func (h *moduleHandler) Read(
 	}, nil
 }
 
-func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, rawLockFile []byte) {
+func (h *moduleHandler) getState(props resource.PropertyMap) (
+	rawState []byte,
+	rawLockFile []byte,
+	moduleVersion tfsandbox.TFModuleVersion,
+) {
 	state, ok := props[moduleResourceStatePropName]
 	if !ok {
-		return // empty
+		return rawState, rawLockFile, moduleVersion // empty
 	}
 
 	for state.IsSecret() {
@@ -755,7 +773,28 @@ func (h *moduleHandler) getState(props resource.PropertyMap) (rawState []byte, r
 		lockString := lock.StringValue()
 		rawLockFile = []byte(lockString)
 	}
-	return
+	if version, ok := props[moduleResourceVersionPropName]; ok {
+		for version.IsSecret() {
+			version = version.SecretValue().Element
+		}
+		contract.Assertf(version.IsString(), "Expected %q to carry a String PropertyValue", moduleResourceVersionPropName)
+		moduleVersion = tfsandbox.TFModuleVersion(version.StringValue())
+	}
+	return rawState, rawLockFile, moduleVersion
+}
+
+func versionOrUnknown(v tfsandbox.TFModuleVersion) string {
+	if v == "" {
+		return "unknown"
+	}
+	return string(v)
+}
+
+func needsInitUpgrade(oldOutputs resource.PropertyMap, previousVersion, currentVersion tfsandbox.TFModuleVersion) bool {
+	if oldOutputs == nil {
+		return false
+	}
+	return previousVersion != currentVersion
 }
 
 func (*moduleHandler) marshalOpts() plugin.MarshalOptions {

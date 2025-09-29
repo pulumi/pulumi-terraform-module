@@ -1255,6 +1255,42 @@ func TestE2eYAML(t *testing.T) {
 	}
 }
 
+func TestModuleUpgrade(t *testing.T) {
+	t.Parallel()
+
+	name := "s3bucketmod"
+	moduleName := "terraform-aws-modules/s3-bucket/aws"
+	moduleVersion := "4.5.0"
+	moduleNamespace := "bucket"
+
+	localProviderBinPath := ensureCompiledProvider(t)
+	skipLocalRunsWithoutCreds(t)
+	tw := newTestWriter(t)
+
+	testProgram := filepath.Join("testdata", "programs", "ts", name)
+	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
+	integrationTest := newPulumiTest(t, testProgram, localPath)
+
+	// Get a prefix for resource names
+	prefix := generateTestResourcePrefix()
+
+	// Set prefix via config
+	integrationTest.SetConfig(t, "prefix", prefix)
+
+	// Generate package
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, moduleName,
+		moduleVersion, moduleNamespace)
+
+	t.Logf("# pulumi up - creating resources")
+	integrationTest.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
+
+	t.Log("# upgrading module version")
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, moduleName, "5.0.0", moduleNamespace)
+
+	result := integrationTest.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
+	assert.Contains(t, result.StdOut, "Module version changed from 4.5.0 to 5.0.0; re-running init with -upgrade")
+}
+
 func TestEndToEndUsingModuleWithDashes(t *testing.T) {
 	localProviderBinPath := ensureCompiledProvider(t)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
