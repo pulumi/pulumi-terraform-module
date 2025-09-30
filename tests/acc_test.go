@@ -2148,7 +2148,8 @@ func ensureCompiledProvider(t *testing.T) string {
 func pulumiGetSchema(t *testing.T, localProviderBinPath string, args []string) string {
 	t.Helper()
 
-	cmd := exec.Command("pulumi", append([]string{"package", "get-schema"}, args...)...)
+	newArgs := append([]string{"package", "get-schema"}, args...)
+	cmd := exec.Command("pulumi", newArgs...)
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
