@@ -1,0 +1,7 @@
+[tools]
+terraform = "latest"
+opentofu = "latest"
+
+[settings]
+experimental = true
+lockfile = true

@@ -17,7 +17,6 @@ package tests
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -101,11 +100,7 @@ func skipLocalRunsWithoutCreds(t *testing.T) {
 func newPulumiTest(t pulumitest.PT, source string, opts ...opttest.Option) *pulumitest.PulumiTest {
 	t.Helper()
 
-	// Ensure a locally pinned Pulumi CLI is used for the test.
-	localPulumi := filepath.Join(getRoot(t), ".pulumi")
-	pulumiCommand, err := auto.NewPulumiCommand(&auto.PulumiCommandOptions{
-		Root: localPulumi,
-	})
+	pulumiCommand, err := auto.NewPulumiCommand(&auto.PulumiCommandOptions{})
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
