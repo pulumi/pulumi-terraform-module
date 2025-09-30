@@ -2148,13 +2148,7 @@ func ensureCompiledProvider(t *testing.T) string {
 func pulumiGetSchema(t *testing.T, localProviderBinPath string, args []string) string {
 	t.Helper()
 
-	localPulumi := filepath.Join(getRoot(t), ".pulumi", "bin", "pulumi")
-
-	if _, err := os.Stat(localPulumi); os.IsNotExist(err) {
-		t.Errorf("This test requires a locally pinned Pulumi CLI; run `make prepare_local_workspace` first")
-	}
-
-	cmd := exec.Command(localPulumi, append([]string{"package", "get-schema"}, args...)...)
+	cmd := exec.Command("pulumi", append([]string{"package", "get-schema"}, args...)...)
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
@@ -2183,14 +2177,7 @@ func pulumiConvert(t *testing.T, localProviderBinPath, sourceDir, targetDir, lan
 	}
 	t.Logf("pulumi %s", strings.Join(convertArgs, " "))
 
-	localPulumi := filepath.Join(getRoot(t), ".pulumi", "bin", "pulumi")
-
-	if _, err := os.Stat(localPulumi); os.IsNotExist(err) {
-		t.Errorf("This test requires a locally pinned Pulumi CLI; run `make prepare_local_workspace` first")
-		return
-	}
-
-	cmd := exec.Command(localPulumi, convertArgs...)
+	cmd := exec.Command("pulumi", convertArgs...)
 
 	path := os.Getenv("PATH")
 	path = fmt.Sprintf("%s:%s", filepath.Dir(localProviderBinPath), path)
