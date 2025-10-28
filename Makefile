@@ -33,16 +33,32 @@ LDFLAGS=$(LDFLAGS_PROJ_VERSION) $(LDFLAGS_STRIP_SYMBOLS)
 # Ensure all directories exist before evaluating targets to avoid issues with `touch` creating directories.
 _ := $(shell mkdir -p .make bin .pulumi/bin)
 
+# Installs all necessary tools with mise and records completion in a sentinel
+# file so dependent targets can participate in make's caching behaviour. The
+# environment is refreshed via an order-only prerequisite so it still runs on
+# every invocation without invalidating the sentinel.
+mise_install: .make/mise_install | mise_env
+
+.PHONY: mise_env
+mise_env:
+	@mise env -q  > /dev/null
+
+.make/mise_install:
+	@mise install -q
+	@touch $@
+
 # Build the provider
-build: install_plugins provider
+build: .make/mise_install provider
+build: | mise_env
 # Keep aliases for old targets to ensure backwards compatibility
 development: build
 only_build: build
 # Prepare the workspace for building the provider
 # Importantly this is run by CI ahead of restoring the bin directory
-prepare_local_workspace: install_plugins
+prepare_local_workspace: .make/mise_install
+prepare_local_workspace: | mise_env
 # Creates all generated files which need to be committed
-.PHONY: development only_build build
+.PHONY: development only_build build mise_install mise_env
 
 help:
 	@echo "Usage: make [target]"
@@ -63,7 +79,7 @@ help:
 	@echo ""
 	@echo "Internal Targets (automatically run as dependencies of other targets)"
 	@echo "  prepare_local_workspace  Prepare for building"
-	@echo "  install_plugins          Install plugin dependencies"
+	@echo "  mise_install             Install tools with mise"
 	@echo ""
 .PHONY: help
 
@@ -110,7 +126,6 @@ ci-mgmt: .ci-mgmt.yaml
 	go run github.com/pulumi/ci-mgmt/provider-ci@master generate
 .PHONY: ci-mgmt
 
-include scripts/plugins.mk
 include scripts/crossbuild.mk
 
 # Permit providers to extend the Makefile with provider-specific Make includes.
