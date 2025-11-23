@@ -39,7 +39,7 @@ jobs:
       PROVIDER_VERSION: ${{ inputs.version }}
     steps:
     - name: Checkout Repo
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         ref: ${{ env.PR_COMMIT_SHA }}
         persist-credentials: false    
@@ -47,7 +47,7 @@ jobs:
       name: Map environment to ESC outputs
       uses: ./.github/actions/esc-action
     - name: Checkout p/examples
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       with:
         repository: pulumi/examples
         path: p-examples
@@ -56,10 +56,8 @@ jobs:
       env:
         MISE_ENV: test
       with:
-        # Latest working version. See https://github.com/jdx/mise/discussions/6781
-        version: 2025.10.16
+        version: 2025.11.6
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        cache_key: "mise-{{platform}}-{{file_hash}}"
         # also save this cache since we are using a different mise env.
         cache_save: true
     - name: Prepare local workspace
