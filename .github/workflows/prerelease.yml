@@ -11,6 +11,7 @@ env:
   PULUMI_GO_DEP_ROOT: ${{ github.workspace }}/..
   PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
   PULUMI_PROVIDER_AUTOMATION_TOKEN: ${{ secrets.PULUMI_PROVIDER_AUTOMATION_TOKEN }}
+  PULUMI_PULUMI_ENABLE_JOURNALING: "true"
   RELEASE_BOT_ENDPOINT: ${{ secrets.RELEASE_BOT_ENDPOINT }}
   RELEASE_BOT_KEY: ${{ secrets.RELEASE_BOT_KEY }}
   S3_COVERAGE_BUCKET_NAME: ${{ secrets.S3_COVERAGE_BUCKET_NAME }}
@@ -22,6 +23,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write # For ESC secrets.
     uses: ./.github/workflows/prerequisites.yml
     secrets: inherit
     with:
@@ -30,6 +32,9 @@ jobs:
       is_automated: ${{ github.actor == 'dependabot[bot]' }}
 
   build_provider:
+    permissions:
+      contents: read
+      id-token: write # For ESC secrets.
     uses: ./.github/workflows/build_provider.yml
     needs: prerequisites
     secrets: inherit
@@ -51,6 +56,7 @@ jobs:
     name: publish
     permissions:
       contents: write
+      pull-requests: write
       id-token: write
     needs:
       - prerequisites
