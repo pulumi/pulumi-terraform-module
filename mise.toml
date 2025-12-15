@@ -1,7 +1,6 @@
 [tools]
-terraform = "latest"
-opentofu = "latest"
+terraform = "1.13.1"
+opentofu = "1.10.6"
 
 [settings]
 experimental = true
-lockfile = true

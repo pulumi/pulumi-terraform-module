@@ -86,10 +86,6 @@ jobs:
         PULUMI_ACCESS_TOKEN: ${{ steps.generate_pulumi_token.outputs.pulumi-access-token }}
       with:
         environment: logins/pulumi-ci
-    - name: Install opentofu
-      uses: opentofu/setup-opentofu@v1
-      with:
-        tofu_wrapper: false
     - name: Generate test shards
       run: |-
         cd tests

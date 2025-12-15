@@ -84,10 +84,6 @@ jobs:
       run: make prepare_local_workspace
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Install opentofu
-      uses: opentofu/setup-opentofu@v1
-      with:
-        tofu_wrapper: false
     - name: Build provider binary
       run: make provider
     - name: Unit-test provider code
