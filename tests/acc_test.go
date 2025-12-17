@@ -660,7 +660,9 @@ func TestS3BucketModSecret(t *testing.T) {
 		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
 
 			integrationTest := newPulumiTest(t, testProgram, localPath,
-				opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor))
+				opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", executor),
+				opttest.SkipInstall(), // Always grabs latest...
+			)
 
 			// Get a prefix for resource names
 			prefix := generateTestResourcePrefix()
