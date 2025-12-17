@@ -7,6 +7,7 @@ test-folder: tests
 shards: 8
 aws: true
 freeDiskSpaceBeforeBuild: true
+freeDiskSpaceBeforeTest: true
 modulePath: .
 esc:
   enabled: true
