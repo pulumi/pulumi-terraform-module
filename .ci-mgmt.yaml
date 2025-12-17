@@ -6,6 +6,7 @@ major-version: 0
 test-folder: tests
 shards: 8
 aws: true
+freeDiskSpaceBeforeBuild: true
 modulePath: .
 esc:
   enabled: true
