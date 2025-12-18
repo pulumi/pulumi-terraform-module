@@ -5,3 +5,7 @@
 [env]
 # Acceptance (specifically providertest) tests require that PULUMI_HOME be the default
 PULUMI_HOME = "{{ env.HOME }}/.pulumi"
+
+[tools]
+# always use pulumi latest for tests
+pulumi = "latest"
