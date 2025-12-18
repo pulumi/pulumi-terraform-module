@@ -6,17 +6,11 @@ major-version: 0
 test-folder: tests
 shards: 8
 aws: true
+freeDiskSpaceBeforeBuild: true
+freeDiskSpaceBeforeTest: true
 modulePath: .
+esc:
+  enabled: true
+  environment: imports/github-secrets # No repo-specific secrets.
 env:
-    AWS_REGION: "us-west-2"
-actions:
-    preTest:
-        - name: Install opentofu
-          uses: opentofu/setup-opentofu@v1
-          with:
-            tofu_wrapper: false
-    preBuild:
-        - name: Install opentofu
-          uses: opentofu/setup-opentofu@v1
-          with:
-            tofu_wrapper: false
+  AWS_REGION: "us-west-2"

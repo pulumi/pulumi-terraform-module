@@ -33,7 +33,7 @@ import (
 func newTestRuntime(t *testing.T, executor string) *tfsandbox.ModuleRuntime {
 	srv := newTestAuxProviderServer(t)
 
-	tofu, err := tfsandbox.PickModuleRuntime(context.Background(), tfsandbox.DiscardLogger, nil, srv, executor)
+	tofu, err := tfsandbox.PickModuleRuntime(context.Background(), newTestLogger(t), nil, srv, executor)
 	require.NoError(t, err, "failed to pick module runtime")
 	return tofu
 }
@@ -637,7 +637,7 @@ func TestResolveModuleSources(t *testing.T) {
 				src := filepath.Join("..", "..", "tests", "testdata", "modules", "randmod")
 				p, err := filepath.Abs(src)
 				require.NoError(t, err)
-				d, err := resolveModuleSources(ctx, tf, TFModuleSource(p), "", tfsandbox.DiscardLogger)
+				d, err := resolveModuleSources(ctx, tf, TFModuleSource(p), "", newTestLogger(t))
 				require.NoError(t, err)
 
 				bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -653,7 +653,7 @@ func TestResolveModuleSources(t *testing.T) {
 				ctx := context.Background()
 				s := TFModuleSource("terraform-aws-modules/s3-bucket/aws")
 				v := TFModuleVersion("4.5.0")
-				d, err := resolveModuleSources(ctx, tf, s, v, tfsandbox.DiscardLogger)
+				d, err := resolveModuleSources(ctx, tf, s, v, newTestLogger(t))
 				require.NoError(t, err)
 
 				bytes, err := os.ReadFile(filepath.Join(d, "variables.tf"))
@@ -667,7 +667,7 @@ func TestResolveModuleSources(t *testing.T) {
 			t.Run("remote module source github", func(t *testing.T) {
 				ctx := context.Background()
 				moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo")
-				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
+				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", newTestLogger(t))
 				require.NoError(t, err)
 
 				bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
@@ -680,7 +680,7 @@ func TestResolveModuleSources(t *testing.T) {
 			t.Run("remote module source with version in source path", func(t *testing.T) {
 				ctx := context.Background()
 				moduleSource := TFModuleSource("github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
+				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", newTestLogger(t))
 				require.NoError(t, err)
 
 				bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))
@@ -693,7 +693,7 @@ func TestResolveModuleSources(t *testing.T) {
 			t.Run("remote module source with git path prefix", func(t *testing.T) {
 				ctx := context.Background()
 				moduleSource := TFModuleSource("git::github.com/yemisprojects/s3_website_module_demo?ref=v0.0.1")
-				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", tfsandbox.DiscardLogger)
+				workingDirectory, err := resolveModuleSources(ctx, tf, moduleSource, "", newTestLogger(t))
 				require.NoError(t, err)
 
 				bytes, err := os.ReadFile(filepath.Join(workingDirectory, "variables.tf"))

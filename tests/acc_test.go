@@ -682,7 +682,7 @@ func TestS3BucketModSecret(t *testing.T) {
 			autogold.Expect(map[string]interface{}{
 				"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 				//nolint:lll
-				"plaintext": `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}]}]`,
+				"plaintext": `[{"apply_server_side_encryption_by_default":[{"kms_master_key_id":"","sse_algorithm":"AES256"}],"blocked_encryption_types":[]}]`,
 			}).Equal(t, encrConf.Inputs["rule"])
 
 			autogold.Expect(map[string]interface{}{}).Equal(t, encrConf.Outputs)
