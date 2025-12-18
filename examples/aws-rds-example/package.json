@@ -6,8 +6,8 @@
         "typescript": "^5.0.0"
     },
     "dependencies": {
-        "@pulumi/aws": "^7.0.0",
-        "@pulumi/pulumi": "^3.113.0",
-        "@pulumi/std": "^2.2.0"
+        "@pulumi/aws": "7.15.0",
+        "@pulumi/pulumi": "3.213.0",
+        "@pulumi/std": "2.2.0"
     }
 }
