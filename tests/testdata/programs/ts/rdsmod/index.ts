@@ -52,6 +52,7 @@ const subnet2b = new aws.ec2.Subnet("subnet2b", {
 const testrdsmodule = new rds.Module("test-rds", {
     identifier: `test-rds-module-${prefix}`,
     engine: "mysql",
+    engine_version: "8.4",
     instance_class: "db.t3.micro",
     allocated_storage: 20,
     db_name: "testrdsmoduledatabase",
