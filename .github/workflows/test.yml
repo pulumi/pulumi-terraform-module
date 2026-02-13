@@ -63,14 +63,13 @@ jobs:
         repository: pulumi/examples
         path: p-examples
     - name: Setup mise
-      uses: blampe/mise-action@blampe/plugins
+      uses: jdx/mise-action@c1a019b8d2586943b4dbebc456323b516910e310
       env:
         MISE_ENV: test
         MISE_FETCH_REMOTE_VERSIONS_TIMEOUT: 30s
       with:
-        version: 2026.1.1
+        version: 2026.2.10
         github_token: ${{ steps.app-auth.outputs.token }}
-        plugin_install: https://github.com/pulumi/vfox-pulumi
         # also save this cache since we are using a different mise env.
         cache_save: true
     - name: Prepare local workspace
@@ -89,7 +88,7 @@ jobs:
         requested-token-type: urn:pulumi:token-type:access_token:organization
         export-environment-variables: false
     - name: Export AWS Credentials
-      uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1.5.0
+      uses: pulumi/esc-action@9840934db12128a33f6afb60b17d9de8f7ec5519
       env:
         PULUMI_ACCESS_TOKEN: ${{ steps.generate_pulumi_token.outputs.pulumi-access-token }}
       with:
