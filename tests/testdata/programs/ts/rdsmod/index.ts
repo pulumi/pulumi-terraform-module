@@ -52,6 +52,7 @@ const subnet2b = new aws.ec2.Subnet("subnet2b", {
 const testrdsmodule = new rds.Module("test-rds", {
     identifier: `test-rds-module-${prefix}`,
     engine: "mysql",
+    engine_version: "8.4",
     instance_class: "db.t3.micro",
     allocated_storage: 20,
     db_name: "testrdsmoduledatabase",
@@ -62,13 +63,13 @@ const testrdsmodule = new rds.Module("test-rds", {
 
 
     // DB parameter group
-    family: "mysql8.0",
+    family: "mysql8.4",
 
     // DB subnet group
     create_db_subnet_group: true,
     subnet_ids: [subnet2a.id, subnet2b.id],
 
     // DB option group
-    major_engine_version: "8.0",
+    major_engine_version: "8.4",
     vpc_security_group_ids: [securityGroup.id]
 })
