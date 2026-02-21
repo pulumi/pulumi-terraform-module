@@ -7,7 +7,7 @@
     },
     "dependencies": {
         "@pulumi/azure-native": "3.13.0",
-        "@pulumi/pulumi": "3.221.0",
+        "@pulumi/pulumi": "3.223.0",
         "@pulumi/vnet": "file:sdks/vnet"
     }
 }
