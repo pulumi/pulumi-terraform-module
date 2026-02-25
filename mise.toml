@@ -1,6 +1,7 @@
 [tools]
 terraform = "1.13.1"
 opentofu = "1.10.6"
+golangci-lint = "2.7.0"
 
 [settings]
 experimental = true

@@ -555,18 +555,18 @@ func combineInferredModuleSchema(
 			existingInput.Secret = input.Secret
 		}
 
-		if input.TypeSpec.Type != "" {
-			existingInput.TypeSpec.Type = input.TypeSpec.Type
+		if input.Type != "" {
+			existingInput.Type = input.Type
 		}
 
-		if input.TypeSpec.Items != nil {
-			existingInput.TypeSpec.Items = input.TypeSpec.Items
-			existingInput.TypeSpec.AdditionalProperties = nil
+		if input.Items != nil {
+			existingInput.Items = input.Items
+			existingInput.AdditionalProperties = nil
 		}
 
-		if input.TypeSpec.AdditionalProperties != nil {
-			existingInput.TypeSpec.AdditionalProperties = input.TypeSpec.AdditionalProperties
-			existingInput.TypeSpec.Items = nil
+		if input.AdditionalProperties != nil {
+			existingInput.AdditionalProperties = input.AdditionalProperties
+			existingInput.Items = nil
 		}
 	}
 
@@ -588,23 +588,23 @@ func combineInferredModuleSchema(
 
 		if output.Ref != "" {
 			existingOutput.Ref = output.Ref
-			existingOutput.TypeSpec.AdditionalProperties = nil
-			existingOutput.TypeSpec.Items = nil
-			existingOutput.TypeSpec.Type = ""
+			existingOutput.AdditionalProperties = nil
+			existingOutput.Items = nil
+			existingOutput.Type = ""
 		}
-		if output.TypeSpec.Type != "" {
-			existingOutput.TypeSpec.Type = output.TypeSpec.Type
-			existingOutput.TypeSpec.Ref = ""
+		if output.Type != "" {
+			existingOutput.Type = output.Type
+			existingOutput.Ref = ""
 		}
-		if output.TypeSpec.Items != nil {
-			existingOutput.TypeSpec.Items = output.TypeSpec.Items
-			existingOutput.TypeSpec.AdditionalProperties = nil
-			existingOutput.TypeSpec.Ref = ""
+		if output.Items != nil {
+			existingOutput.Items = output.Items
+			existingOutput.AdditionalProperties = nil
+			existingOutput.Ref = ""
 		}
-		if output.TypeSpec.AdditionalProperties != nil {
-			existingOutput.TypeSpec.AdditionalProperties = output.TypeSpec.AdditionalProperties
-			existingOutput.TypeSpec.Items = nil
-			existingOutput.TypeSpec.Ref = ""
+		if output.AdditionalProperties != nil {
+			existingOutput.AdditionalProperties = output.AdditionalProperties
+			existingOutput.Items = nil
+			existingOutput.Ref = ""
 		}
 	}
 
@@ -620,10 +620,6 @@ func combineInferredModuleSchema(
 		existingType := inferredSchema.SupportingTypes[token]
 		if typeSpec.Type != "" {
 			existingType.Type = typeSpec.Type
-		}
-
-		if typeSpec.ObjectTypeSpec.Type != "" {
-			existingType.ObjectTypeSpec.Type = typeSpec.ObjectTypeSpec.Type
 		}
 
 	}

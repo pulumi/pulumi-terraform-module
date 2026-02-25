@@ -296,7 +296,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 				vpcID := overridenSchema.Outputs["vpc_id"]
 				assert.Equal(t, "The new ID field of the VPC", vpcID.Description, "vpc_id description should be updated")
 				assert.True(t, vpcID.Secret, "vpc_id should be secret")
-				assert.Equal(t, "string", vpcID.TypeSpec.Type, "vpc_id type should not be changed")
+				assert.Equal(t, "string", vpcID.Type, "vpc_id type should not be changed")
 				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
 			})
 		})
