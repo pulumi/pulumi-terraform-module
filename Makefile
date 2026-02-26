@@ -8,6 +8,12 @@ PROVIDER := pulumi-resource-$(PACK)
 TESTPARALLELISM := 10
 GOTESTARGS := ""
 WORKING_DIR := $(shell pwd)
+# Use gotestsum on CI for better output formatting, go test locally
+ifdef CI
+GO_TEST_EXEC ?= gotestsum --
+else
+GO_TEST_EXEC ?= go test
+endif
 PULUMI_PROVIDER_BUILD_PARALLELISM ?=
 
 # Override during CI using `make [TARGET] PROVIDER_VERSION=""` or by setting a PROVIDER_VERSION environment variable
@@ -106,9 +112,9 @@ bin/$(PROVIDER):
 	$(call build_provider_cmd,$(shell go env GOOS),$(shell go env GOARCH),$(WORKING_DIR)/bin/$(PROVIDER))
 
 test:
-	cd tests && go test -parallel $(TESTPARALLELISM) -timeout 2h $(value GOTESTARGS)
+	cd tests && $(GO_TEST_EXEC) -parallel $(TESTPARALLELISM) -timeout 2h $(value GOTESTARGS)
 .PHONY: test
-test_provider_cmd = go test \
+test_provider_cmd = $(GO_TEST_EXEC) \
 	-coverprofile="coverage.txt" \
 	-coverpkg="./..." \
 	-parallel $(TESTPARALLELISM) \

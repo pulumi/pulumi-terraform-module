@@ -1,6 +1,7 @@
 [tools]
 terraform = "1.13.1"
 opentofu = "1.10.6"
+"go:gotest.tools/gotestsum" = "latest"
 
 [settings]
 experimental = true
