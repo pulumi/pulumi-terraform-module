@@ -66,7 +66,7 @@ help:
 	@echo "Main Targets"
 	@echo "  build (default)     Build the provider"
 	@echo "  provider            Build the local provider binary"
-	@echo "  lint_provider<.fix> Run the linter on the provider (& optionally fix)"
+	@echo "  lint<.fix>          Run the linter on the provider (& optionally fix)"
 	@echo "  test_provider       Run the provider tests"
 	@echo "  test                Run the example tests (must run 'build' first)"
 	@echo "  clean               Clean up generated files"
@@ -88,15 +88,15 @@ clean:
 	rm -rf .make/*
 .PHONY: clean
 
-lint_provider: provider
+lint: provider
 	golangci-lint run -c .golangci.yml
 
-# `lint_provider.fix` is a utility target meant to be run manually
+# `lint.fix` is a utility target meant to be run manually
 # that will run the linter and fix errors when possible.
-lint_provider.fix:
+lint.fix:
 	golangci-lint run -c .golangci.yml --fix
 
-.PHONY: lint_provider lint_provider.fix
+.PHONY: lint lint.fix
 build_provider_cmd = GOOS=$(1) GOARCH=$(2) CGO_ENABLED=0 go build $(PULUMI_PROVIDER_BUILD_PARALLELISM) -o "$(3)" -ldflags "$(LDFLAGS)" $(GO_MODULE)/cmd/$(PROVIDER)
 
 .PHONY: provider
