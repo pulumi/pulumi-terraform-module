@@ -7,8 +7,6 @@ GO_MODULE := $(PROJECT)
 PROVIDER := pulumi-resource-$(PACK)
 TESTPARALLELISM := 10
 GOTESTARGS := ""
-TESTTAGS ?= all
-GO_TEST_EXEC ?= go test
 WORKING_DIR := $(shell pwd)
 PULUMI_PROVIDER_BUILD_PARALLELISM ?=
 
@@ -108,9 +106,9 @@ bin/$(PROVIDER):
 	$(call build_provider_cmd,$(shell go env GOOS),$(shell go env GOARCH),$(WORKING_DIR)/bin/$(PROVIDER))
 
 test:
-	cd tests && $(GO_TEST_EXEC) -tags=$(TESTTAGS) -parallel $(TESTPARALLELISM) -timeout 2h $(value GOTESTARGS)
+	cd tests && go test -parallel $(TESTPARALLELISM) -timeout 2h $(value GOTESTARGS)
 .PHONY: test
-test_provider_cmd = $(GO_TEST_EXEC) \
+test_provider_cmd = go test \
 	-coverprofile="coverage.txt" \
 	-coverpkg="./..." \
 	-parallel $(TESTPARALLELISM) \
