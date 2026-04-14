@@ -18,11 +18,40 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_ModuleInstanceWorkdir_LongURN(t *testing.T) {
+	// Short URN: unchanged, legacy format.
+	shortURN := urn.URN("urn:pulumi:stack::proj::mod:index:Module::name")
+	shortWD := ModuleInstanceWorkdir("", shortURN)
+	shortComponent := shortWD[len(shortWD)-1]
+	assert.Equal(t, "urn:pulumi:stack::proj::mod:index:Module::name", shortComponent)
+
+	// Long URN: truncated + hashed so the last component fits under NAME_MAX.
+	longPrefix := "urn:pulumi:stack::proj::" + strings.Repeat("deeply:nested:Component$", 40)
+	urnA := urn.URN(longPrefix + "a:index:Module::leaf-a")
+	urnB := urn.URN(longPrefix + "b:index:Module::leaf-b")
+
+	wdA := ModuleInstanceWorkdir("tofu", urnA)
+	wdB := ModuleInstanceWorkdir("tofu", urnB)
+
+	lastA := wdA[len(wdA)-1]
+	lastB := wdB[len(wdB)-1]
+
+	assert.LessOrEqual(t, len(lastA), maxPathComponentLen)
+	assert.LessOrEqual(t, len(lastB), maxPathComponentLen)
+	assert.NotEqual(t, lastA, lastB, "distinct long URNs must map to distinct workdir components")
+
+	// Deterministic: same URN twice yields the same component.
+	wdA2 := ModuleInstanceWorkdir("tofu", urnA)
+	assert.Equal(t, wdA, wdA2)
+}
 
 func Test_ModuleWorkdir(t *testing.T) {
 	// This is just a convention, testing to illustrate.
