@@ -16,6 +16,8 @@ package tfsandbox
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -32,18 +34,36 @@ type Workdir []string
 
 // This workdir dedicated to given module URN.
 func ModuleInstanceWorkdir(executor string, modUrn urn.URN) Workdir {
-	workdir := Workdir([]string{"by-urn", url.PathEscape(string(modUrn))})
+	workdir := Workdir([]string{"by-urn", safePathComponent(string(modUrn))})
 	return workdir.WithExecutor(executor)
 }
 
 // This workdir will be used for generic operations such as module schema inference.
 func ModuleWorkdir(source TFModuleSource, version TFModuleVersion) Workdir {
-	s := url.PathEscape(string(source))
+	s := safePathComponent(string(source))
 	if version != "" {
-		v := url.PathEscape(string(version))
+		v := safePathComponent(string(version))
 		return Workdir([]string{"by-module-source-and-version", s, v})
 	}
 	return Workdir([]string{"by-module-source", s})
+}
+
+// maxPathComponentLen caps a single path component well under the typical
+// 255-byte NAME_MAX filesystem limit, leaving headroom for suffixes appended
+// by callers/tools.
+const maxPathComponentLen = 200
+
+// safePathComponent URL-escapes s for safe use as a single path component and,
+// if the result would exceed maxPathComponentLen, truncates it and appends a
+// short hash of the original input so the mapping remains stable and unique.
+func safePathComponent(s string) string {
+	escaped := url.PathEscape(s)
+	if len(escaped) <= maxPathComponentLen {
+		return escaped
+	}
+	sum := sha256.Sum256([]byte(s))
+	suffix := "-" + hex.EncodeToString(sum[:])[:16]
+	return escaped[:maxPathComponentLen-len(suffix)] + suffix
 }
 
 // Prepend the executor name to the workdir path.
