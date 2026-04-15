@@ -436,7 +436,7 @@ func (s *server) CheckConfig(
 	// Temporarily duplicate the Handshake check because old Pulumi CLI versions ignored Handshake errors.
 	if !s.pulumiCliSupportsViews {
 		return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
-			"views support. Please update Pulumi CLI to the latest version.")
+			"views support. Please update Pulumi CLI to the latest version")
 	}
 
 	s.providerSelfURN = pulumi.URN(req.Urn)
@@ -509,7 +509,7 @@ func (s *server) Handshake(
 	if !req.SupportsViews {
 		s.pulumiCliSupportsViews = false
 		return nil, errors.New("terraform-module provider requires a Pulumi CLI with resource " +
-			"views support. Please update Pulumi CLI to the latest version.")
+			"views support. Please update Pulumi CLI to the latest version")
 	}
 	s.pulumiCliSupportsViews = true
 	return &pulumirpc.ProviderHandshakeResponse{
