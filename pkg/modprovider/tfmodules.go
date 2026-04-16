@@ -588,23 +588,23 @@ func combineInferredModuleSchema(
 
 		if output.Ref != "" {
 			existingOutput.Ref = output.Ref
-			existingOutput.TypeSpec.AdditionalProperties = nil
-			existingOutput.TypeSpec.Items = nil
-			existingOutput.TypeSpec.Type = ""
+			existingOutput.AdditionalProperties = nil
+			existingOutput.Items = nil
+			existingOutput.Type = ""
 		}
-		if output.TypeSpec.Type != "" {
-			existingOutput.TypeSpec.Type = output.TypeSpec.Type
-			existingOutput.TypeSpec.Ref = ""
+		if output.Type != "" {
+			existingOutput.Type = output.Type
+			existingOutput.Ref = ""
 		}
-		if output.TypeSpec.Items != nil {
-			existingOutput.TypeSpec.Items = output.TypeSpec.Items
-			existingOutput.TypeSpec.AdditionalProperties = nil
-			existingOutput.TypeSpec.Ref = ""
+		if output.Items != nil {
+			existingOutput.Items = output.Items
+			existingOutput.AdditionalProperties = nil
+			existingOutput.Ref = ""
 		}
-		if output.TypeSpec.AdditionalProperties != nil {
-			existingOutput.TypeSpec.AdditionalProperties = output.TypeSpec.AdditionalProperties
-			existingOutput.TypeSpec.Items = nil
-			existingOutput.TypeSpec.Ref = ""
+		if output.AdditionalProperties != nil {
+			existingOutput.AdditionalProperties = output.AdditionalProperties
+			existingOutput.Items = nil
+			existingOutput.Ref = ""
 		}
 	}
 
