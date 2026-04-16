@@ -555,18 +555,18 @@ func combineInferredModuleSchema(
 			existingInput.Secret = input.Secret
 		}
 
-		if input.TypeSpec.Type != "" {
-			existingInput.TypeSpec.Type = input.TypeSpec.Type
+		if input.Type != "" {
+			existingInput.Type = input.Type
 		}
 
-		if input.TypeSpec.Items != nil {
-			existingInput.TypeSpec.Items = input.TypeSpec.Items
-			existingInput.TypeSpec.AdditionalProperties = nil
+		if input.Items != nil {
+			existingInput.Items = input.Items
+			existingInput.AdditionalProperties = nil
 		}
 
-		if input.TypeSpec.AdditionalProperties != nil {
-			existingInput.TypeSpec.AdditionalProperties = input.TypeSpec.AdditionalProperties
-			existingInput.TypeSpec.Items = nil
+		if input.AdditionalProperties != nil {
+			existingInput.AdditionalProperties = input.AdditionalProperties
+			existingInput.Items = nil
 		}
 	}
 
@@ -621,11 +621,6 @@ func combineInferredModuleSchema(
 		if typeSpec.Type != "" {
 			existingType.Type = typeSpec.Type
 		}
-
-		if typeSpec.ObjectTypeSpec.Type != "" {
-			existingType.ObjectTypeSpec.Type = typeSpec.ObjectTypeSpec.Type
-		}
-
 	}
 
 	return inferredSchema
