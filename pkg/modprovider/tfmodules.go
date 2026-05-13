@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -64,7 +65,7 @@ func parseModuleSchemaOverrides(packageName string) []*ModuleSchemaOverride {
 			continue
 		}
 
-		data, err := moduleSchemaOverrides.ReadFile(filepath.Join(dir, file.Name()))
+		data, err := moduleSchemaOverrides.ReadFile(path.Join(dir, file.Name()))
 		if err != nil {
 			panic(fmt.Sprintf("failed to read module schema overrides file %s: %v", file.Name(), err))
 		}
