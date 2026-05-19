@@ -15,6 +15,7 @@
 package auxprovider
 
 import (
+	"errors"
 	"fmt"
 	"net"
 
@@ -33,7 +34,12 @@ type Server struct {
 
 func (srv *Server) Close() error {
 	srv.server.GracefulStop()
-	return <-srv.serveError
+	// Serve returns ErrServerStopped if GracefulStop ran before the serving
+	// goroutine entered Serve. The server is stopped either way.
+	if err := <-srv.serveError; err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+		return err
+	}
+	return nil
 }
 
 func Serve() (*Server, error) {
