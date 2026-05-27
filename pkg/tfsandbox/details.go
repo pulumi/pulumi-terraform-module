@@ -206,17 +206,38 @@ func NewPlan(rawPlan *tfjson.Plan) (*Plan, error) {
 	return p, nil
 }
 
+// isAfterUnknown reports whether a tfjson AfterUnknown value indicates the
+// output is fully or partially unknown. Terraform encodes a fully-unknown value
+// as the bool true, a fully-known value as false (or nil), and a partially
+// unknown value as a structured map/slice mirroring the value's shape. Any
+// non-bool shape means at least one element is unknown, so we treat it as
+// unknown for the purposes of plan-time secret detection.
+func isAfterUnknown(v interface{}) bool {
+	switch x := v.(type) {
+	case nil:
+		return false
+	case bool:
+		return x
+	default:
+		return true
+	}
+}
+
 // outputIsSecret returns true if the output is a secret based on the value of the
 // corresponding is_secret output.
 func (p *Plan) outputIsSecret(outputName string) bool {
 	isSecretKey := fmt.Sprintf("%s%s", terraformIsSecretOutputPrefix, outputName)
 	if isSecretVal, ok := p.rawPlan.OutputChanges[isSecretKey]; ok {
-		// If the value is unknown, just return false because we don't know the value
-		// so secretness doesn't matter yet
-		if afterUnknown, ok := isSecretVal.AfterUnknown.(bool); ok && afterUnknown {
+		// If the value is unknown (in whole or in part), return false: we
+		// don't know the secretness yet, and After is typically nil in that
+		// case so a blind type assertion would panic.
+		if isAfterUnknown(isSecretVal.AfterUnknown) {
 			return false
 		}
-		return isSecretVal.After.(bool)
+		if b, ok := isSecretVal.After.(bool); ok {
+			return b
+		}
+		return false
 	}
 	contract.Failf("isSecret key %q not found in output changes", isSecretKey)
 	return false
@@ -230,7 +251,7 @@ func (p *Plan) Outputs() resource.PropertyMap {
 			continue
 		}
 		key := PulumiTopLevelKey(outputKey)
-		if afterUnknown, ok := output.AfterUnknown.(bool); ok && afterUnknown {
+		if isAfterUnknown(output.AfterUnknown) {
 			outputs[key] = unknown()
 		} else {
 			val := resource.NewPropertyValueRepl(output.After, nil, replaceJSONNumberValue)
@@ -289,7 +310,10 @@ func (s *State) FindResourceState(addr ResourceAddress) (*ResourceState, bool) {
 func (s *State) outputIsSecret(outputName string) bool {
 	isSecretKey := fmt.Sprintf("%s%s", terraformIsSecretOutputPrefix, outputName)
 	if isSecretVal, ok := s.rawState.Values.Outputs[isSecretKey]; ok {
-		return isSecretVal.Value.(bool)
+		if b, ok := isSecretVal.Value.(bool); ok {
+			return b
+		}
+		return false
 	}
 	contract.Failf("isSecret key %q not found in output changes", isSecretKey)
 	return false

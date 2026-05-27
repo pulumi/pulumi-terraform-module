@@ -693,3 +693,81 @@ func Test_DeletePlan(t *testing.T) {
 		}
 	})
 }
+
+// Regression test for https://github.com/pulumi/pulumi-terraform-module/issues/839
+//
+// When a module output references an attribute of a resource scheduled for
+// replacement, the output becomes unknown at plan time. Terraform reports
+// partial unknowns in AfterUnknown as a structured map/slice rather than a
+// plain bool, and the companion internal_output_is_secret_* output that the
+// SDK injects inherits that shape. Previously, Plan.outputIsSecret would
+// fall through to a blind After.(bool) type assertion, which panics when
+// After is nil. Both Plan.Outputs and Plan.outputIsSecret should now treat
+// any non-bool AfterUnknown as unknown without panicking.
+func Test_Plan_Outputs_PartialUnknown(t *testing.T) {
+	rawPlan := &tfjson.Plan{
+		PlannedValues: &tfjson.StateValues{RootModule: &tfjson.StateModule{}},
+		OutputChanges: map[string]*tfjson.Change{
+			"fqdn": {
+				After:        nil,
+				AfterUnknown: map[string]interface{}{"host": true},
+			},
+			terraformIsSecretOutputPrefix + "fqdn": {
+				After:        nil,
+				AfterUnknown: map[string]interface{}{"host": true},
+			},
+		},
+	}
+
+	p, err := NewPlan(rawPlan)
+	require.NoError(t, err)
+
+	var outputs resource.PropertyMap
+	require.NotPanics(t, func() {
+		outputs = p.Outputs()
+	})
+
+	val, ok := outputs["fqdn"]
+	require.True(t, ok)
+	assert.True(t, val.IsComputed(), "expected fqdn to be unknown/computed, got %v", val)
+}
+
+// Defense-in-depth: a non-bool After value on the is_secret companion should
+// not panic either.
+func Test_Plan_outputIsSecret_NonBoolAfter(t *testing.T) {
+	rawPlan := &tfjson.Plan{
+		PlannedValues: &tfjson.StateValues{RootModule: &tfjson.StateModule{}},
+		OutputChanges: map[string]*tfjson.Change{
+			terraformIsSecretOutputPrefix + "weird": {
+				After:        "not-a-bool",
+				AfterUnknown: false,
+			},
+		},
+	}
+	p, err := NewPlan(rawPlan)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		assert.False(t, p.outputIsSecret("weird"))
+	})
+}
+
+// Defense-in-depth: a non-bool Value on the is_secret companion in state
+// should not panic.
+func Test_State_outputIsSecret_NonBoolValue(t *testing.T) {
+	rawState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				terraformIsSecretOutputPrefix + "weird": {
+					Value: "not-a-bool",
+				},
+			},
+		},
+	}
+	s, err := NewState(rawState)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		assert.False(t, s.outputIsSecret("weird"))
+	})
+}
