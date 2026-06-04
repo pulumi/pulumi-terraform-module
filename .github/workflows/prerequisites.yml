@@ -14,6 +14,10 @@ on:
       default_branch:
         type: string
         required: true
+      acceptance_fanout:
+        type: boolean
+        required: false
+        default: false
     outputs:
       version:
         description: "Provider version being built"
