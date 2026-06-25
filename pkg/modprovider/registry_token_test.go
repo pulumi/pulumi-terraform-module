@@ -23,9 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// discoFor returns a discovery client that resolves apiHost to a tfe.v2 service on tfeHost, the way
-// the real Pulumi Cloud backend's discovery document does.
-func discoFor(apiHost, tfeHost string) *disco.Disco {
+func discoveryFor(apiHost, tfeHost string) *disco.Disco {
 	d := disco.New()
 	d.ForceHostServices(svchost.Hostname(apiHost), map[string]interface{}{
 		"tfe.v2": "https://" + tfeHost + "/api/v2",
@@ -42,33 +40,47 @@ func TestDiscoverCloudRegistry(t *testing.T) {
 		apiHost = "api-fnune-review.review-stacks.pulumi-dev.io"
 		tfeHost = "tfe-fnune-review.review-stacks.pulumi-dev.io"
 	)
-	d := discoFor(apiHost, tfeHost)
+	d := discoveryFor(apiHost, tfeHost)
 	want, err := svchost.ForComparison(tfeHost)
 	require.NoError(t, err)
 
 	t.Run("logged in", func(t *testing.T) {
 		t.Parallel()
-		reg := discoverCloudRegistryWith(d, "https://"+apiHost, "the-token")
+		reg, err := discoverCloudRegistryWith(d, "https://"+apiHost, "the-token")
+		require.NoError(t, err)
 		require.NotNil(t, reg)
 		assert.Equal(t, want, reg.host)
 		assert.Equal(t, "the-token", reg.token)
 	})
 
-	t.Run("no token", func(t *testing.T) {
+	t.Run("no token means not logged in, not an error", func(t *testing.T) {
 		t.Parallel()
-		assert.Nil(t, discoverCloudRegistryWith(d, "https://"+apiHost, ""))
+		reg, err := discoverCloudRegistryWith(d, "https://"+apiHost, "")
+		require.NoError(t, err)
+		assert.Nil(t, reg)
 	})
 
-	t.Run("no backend address", func(t *testing.T) {
+	t.Run("no backend address means not logged in, not an error", func(t *testing.T) {
 		t.Parallel()
-		assert.Nil(t, discoverCloudRegistryWith(d, "", "the-token"))
+		reg, err := discoverCloudRegistryWith(d, "", "the-token")
+		require.NoError(t, err)
+		assert.Nil(t, reg)
 	})
 
-	t.Run("backend without module registry", func(t *testing.T) {
+	t.Run("malformed backend address errors", func(t *testing.T) {
+		t.Parallel()
+		reg, err := discoverCloudRegistryWith(d, "https://", "the-token")
+		assert.Nil(t, reg)
+		require.ErrorContains(t, err, "has no host")
+	})
+
+	t.Run("backend without module registry errors", func(t *testing.T) {
 		t.Parallel()
 		bare := disco.New()
 		bare.ForceHostServices(svchost.Hostname("diy.example.com"), map[string]interface{}{})
-		assert.Nil(t, discoverCloudRegistryWith(bare, "https://diy.example.com", "the-token"))
+		reg, err := discoverCloudRegistryWith(bare, "https://diy.example.com", "the-token")
+		assert.Nil(t, reg)
+		require.ErrorIs(t, err, errNoModuleRegistry)
 	})
 }
 

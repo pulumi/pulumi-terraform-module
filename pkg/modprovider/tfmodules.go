@@ -719,7 +719,7 @@ func resolveModuleSources(
 	}
 
 	// init will resolve module sources and create .terraform/modules folder
-	injectRegistryToken()
+	injectRegistryToken(ctx, logger)
 	if err := tf.Init(ctx, logger); err != nil {
 		return "", fmt.Errorf("init failure (%s): %w", tf.Description(), err)
 	}

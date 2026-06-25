@@ -280,7 +280,7 @@ func (h *moduleHandler) prepSandbox(
 		}
 	}
 
-	injectRegistryToken()
+	injectRegistryToken(ctx, logger)
 	// If the module version changed between deployments, rerun init with -upgrade so the lockfile
 	// is refreshed to match the newer constraint set.
 	if needsInitUpgrade(oldOutputs, previousVersion, moduleVersion) {
