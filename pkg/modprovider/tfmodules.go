@@ -312,7 +312,7 @@ func latestModuleVersion(ctx context.Context, moduleSource string) (*version.Ver
 		return nil, fmt.Errorf("module source for %s is not from a remote registry", moduleSource)
 	}
 
-	services := disco.NewWithCredentialsSource(nil)
+	services := disco.NewWithCredentialsSource(cloudRegistryCredentials())
 	reg := registry.NewClient(services, nil)
 	regsrcAddr := regsrc.ModuleFromRegistryPackageAddr(source.Package)
 	resp, err := reg.ModuleVersions(ctx, regsrcAddr)
@@ -719,6 +719,7 @@ func resolveModuleSources(
 	}
 
 	// init will resolve module sources and create .terraform/modules folder
+	injectRegistryToken(ctx, logger)
 	if err := tf.Init(ctx, logger); err != nil {
 		return "", fmt.Errorf("init failure (%s): %w", tf.Description(), err)
 	}
