@@ -32,6 +32,41 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tfsandbox"
 )
 
+const (
+	fullControlPermission                 = "FULL_CONTROL"
+	canonicalUserType                     = "CanonicalUser"
+	glacierStorageClass                   = "GLACIER"
+	abortIncompleteMultipartUploadKey     = "abort_incomplete_multipart_upload"
+	abortIncompleteMultipartUploadDaysKey = "abort_incomplete_multipart_upload_days"
+	andKey                                = "and"
+
+	expirationKey                  = "expiration"
+	transitionKey                  = "transition"
+	noncurrentVersionTransitionKey = "noncurrent_version_transition"
+	noncurrentVersionExpirationKey = "noncurrent_version_expiration"
+	objectSizeGreaterThanKey       = "object_size_greater_than"
+	deleteOnTerminationKey         = "delete_on_termination"
+	prefixKey                      = "prefix"
+	tagsKey                        = "tags"
+	tagsAllKey                     = "tags_all"
+	tagKey                         = "tag"
+	typeKey                        = "type"
+	uriKey                         = "uri"
+	permissionsKey                 = "permissions"
+	filterKey                      = "filter"
+	enabledKey                     = "enabled"
+	ruleIDVal                      = "rule_id"
+	volumeSizeKey                  = "volume_size"
+	volumeTypeKey                  = "volume_type"
+	volumeIDKey                    = "volume_id"
+	deviceNameKey                  = "device_name"
+	encryptedKey                   = "encrypted"
+	iopsKey                        = "iops"
+	kmsKeyIDKey                    = "kms_key_id"
+	snapshotIDKey                  = "snapshot_id"
+	throughputKey                  = "throughput"
+)
+
 // The purpose of this test is to see how the plan is generated for different schema types
 // and how we translate that plan to a resource.PropertyValue.
 func TestUnknownsInCreatePlanBySchemaType(t *testing.T) {
@@ -90,25 +125,25 @@ resource "aws_s3_bucket" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"abort_incomplete_multipart_upload_days": nil,
-						"enabled":                                true,
-						"expiration":                             []interface{}{},
-						"id":                                     "rule_id",
-						"noncurrent_version_expiration":          []interface{}{},
-						"noncurrent_version_transition":          []interface{}{},
-						"prefix":                                 "/abc",
-						"tags":                                   nil,
-						"transition":                             []interface{}{},
+						abortIncompleteMultipartUploadDaysKey: nil,
+						enabledKey:                            true,
+						expirationKey:                         []interface{}{},
+						"id":                                  ruleIDVal,
+						noncurrentVersionExpirationKey:        []interface{}{},
+						noncurrentVersionTransitionKey:        []interface{}{},
+						prefixKey:                             "/abc",
+						tagsKey:                               nil,
+						transitionKey:                         []interface{}{},
 					},
 					map[string]interface{}{
-						"abort_incomplete_multipart_upload_days": nil,
-						"enabled":                                true,
-						"expiration":                             []interface{}{},
-						"noncurrent_version_expiration":          []interface{}{},
-						"noncurrent_version_transition":          []interface{}{},
-						"prefix":                                 nil,
-						"tags":                                   nil,
-						"transition":                             []interface{}{},
+						abortIncompleteMultipartUploadDaysKey: nil,
+						enabledKey:                            true,
+						expirationKey:                         []interface{}{},
+						noncurrentVersionExpirationKey:        []interface{}{},
+						noncurrentVersionTransitionKey:        []interface{}{},
+						prefixKey:                             nil,
+						tagsKey:                               nil,
+						transitionKey:                         []interface{}{},
 					},
 				}).Equal(t, actual)
 			})
@@ -117,17 +152,17 @@ resource "aws_s3_bucket" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"expiration":                    []interface{}{},
-						"noncurrent_version_expiration": []interface{}{},
-						"noncurrent_version_transition": []interface{}{},
-						"transition":                    []interface{}{},
+						expirationKey:                  []interface{}{},
+						noncurrentVersionExpirationKey: []interface{}{},
+						noncurrentVersionTransitionKey: []interface{}{},
+						transitionKey:                  []interface{}{},
 					},
 					map[string]interface{}{
-						"expiration":                    []interface{}{},
-						"noncurrent_version_expiration": []interface{}{},
-						"noncurrent_version_transition": []interface{}{},
-						"id":                            true,
-						"transition":                    []interface{}{},
+						expirationKey:                  []interface{}{},
+						noncurrentVersionExpirationKey: []interface{}{},
+						noncurrentVersionTransitionKey: []interface{}{},
+						"id":                           true,
+						transitionKey:                  []interface{}{},
 					},
 				}).Equal(t, actual)
 			})
@@ -135,27 +170,27 @@ resource "aws_s3_bucket" "this" {
 			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"enabled":                                resource.NewBoolProperty(true),
-						"id":                                     resource.NewStringProperty("rule_id"),
-						"prefix":                                 resource.NewStringProperty("/abc"),
-						"abort_incomplete_multipart_upload_days": resource.NewNullProperty(),
-						"expiration":                             resource.NewArrayProperty([]resource.PropertyValue{}),
-						"noncurrent_version_expiration":          resource.NewArrayProperty([]resource.PropertyValue{}),
-						"noncurrent_version_transition":          resource.NewArrayProperty([]resource.PropertyValue{}),
-						"tags":                                   resource.NewNullProperty(),
-						"transition":                             resource.NewArrayProperty([]resource.PropertyValue{}),
+						enabledKey:                            resource.NewBoolProperty(true),
+						"id":                                  resource.NewStringProperty(ruleIDVal),
+						prefixKey:                             resource.NewStringProperty("/abc"),
+						abortIncompleteMultipartUploadDaysKey: resource.NewNullProperty(),
+						expirationKey:                         resource.NewArrayProperty([]resource.PropertyValue{}),
+						noncurrentVersionExpirationKey:        resource.NewArrayProperty([]resource.PropertyValue{}),
+						noncurrentVersionTransitionKey:        resource.NewArrayProperty([]resource.PropertyValue{}),
+						tagsKey:                               resource.NewNullProperty(),
+						transitionKey:                         resource.NewArrayProperty([]resource.PropertyValue{}),
 					}),
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"enabled":                                resource.NewBoolProperty(true),
-						"id":                                     resource.MakeComputed(resource.NewStringProperty("")),
-						"prefix":                                 resource.NewNullProperty(),
-						"abort_incomplete_multipart_upload_days": resource.NewNullProperty(),
-						"expiration":                             resource.NewArrayProperty([]resource.PropertyValue{}),
-						"noncurrent_version_expiration":          resource.NewArrayProperty([]resource.PropertyValue{}),
-						"noncurrent_version_transition":          resource.NewArrayProperty([]resource.PropertyValue{}),
-						"tags":                                   resource.NewNullProperty(),
-						"transition":                             resource.NewArrayProperty([]resource.PropertyValue{}),
+						enabledKey:                            resource.NewBoolProperty(true),
+						"id":                                  resource.MakeComputed(resource.NewStringProperty("")),
+						prefixKey:                             resource.NewNullProperty(),
+						abortIncompleteMultipartUploadDaysKey: resource.NewNullProperty(),
+						expirationKey:                         resource.NewArrayProperty([]resource.PropertyValue{}),
+						noncurrentVersionExpirationKey:        resource.NewArrayProperty([]resource.PropertyValue{}),
+						noncurrentVersionTransitionKey:        resource.NewArrayProperty([]resource.PropertyValue{}),
+						tagsKey:                               resource.NewNullProperty(),
+						transitionKey:                         resource.NewArrayProperty([]resource.PropertyValue{}),
 					}),
 			}).Equal(t, actual)
 		})
@@ -185,9 +220,9 @@ resource "aws_s3_bucket" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"permissions": []interface{}{"FULL_CONTROL"},
-						"type":        "CanonicalUser",
-						"uri":         "",
+						permissionsKey: []interface{}{fullControlPermission},
+						typeKey:        canonicalUserType,
+						uriKey:         "",
 					},
 				}).Equal(t, actual)
 			})
@@ -197,7 +232,7 @@ resource "aws_s3_bucket" "this" {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
 						"id": true,
-						"permissions": []interface{}{
+						permissionsKey: []interface{}{
 							false,
 						},
 					},
@@ -208,10 +243,11 @@ resource "aws_s3_bucket" "this" {
 			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"id":          resource.MakeComputed(resource.NewStringProperty("")),
-						"permissions": resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("FULL_CONTROL")}),
-						"type":        resource.NewStringProperty("CanonicalUser"),
-						"uri":         resource.NewStringProperty(""),
+						"id": resource.MakeComputed(resource.NewStringProperty("")),
+						permissionsKey: resource.NewArrayProperty(
+							[]resource.PropertyValue{resource.NewStringProperty(fullControlPermission)}),
+						typeKey: resource.NewStringProperty(canonicalUserType),
+						uriKey:  resource.NewStringProperty(""),
 					}),
 			}).Equal(t, actual)
 		})
@@ -242,10 +278,10 @@ resource "aws_instance" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"delete_on_termination": true,
-						"tags":                  nil,
-						"volume_size":           json.Number("8"),
-						"volume_type":           "gp2",
+						deleteOnTerminationKey: true,
+						tagsKey:                nil,
+						volumeSizeKey:          json.Number("8"),
+						volumeTypeKey:          "gp2",
 					},
 				}).Equal(t, actual)
 			})
@@ -254,14 +290,14 @@ resource "aws_instance" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"device_name": true,
-						"encrypted":   true,
-						"iops":        true,
-						"kms_key_id":  true,
-						"snapshot_id": true,
-						"tags_all":    true,
-						"throughput":  true,
-						"volume_id":   true,
+						deviceNameKey: true,
+						encryptedKey:  true,
+						iopsKey:       true,
+						kmsKeyIDKey:   true,
+						snapshotIDKey: true,
+						tagsAllKey:    true,
+						throughputKey: true,
+						volumeIDKey:   true,
 					},
 				}).Equal(t, actual)
 			})
@@ -270,18 +306,18 @@ resource "aws_instance" "this" {
 			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"delete_on_termination": resource.NewBoolProperty(true),
-						"device_name":           resource.MakeComputed(resource.NewStringProperty("")),
-						"tags":                  resource.NewNullProperty(),
-						"volume_size":           resource.NewNumberProperty(8),
-						"volume_type":           resource.NewStringProperty("gp2"),
-						"encrypted":             resource.MakeComputed(resource.NewStringProperty("")),
-						"iops":                  resource.MakeComputed(resource.NewStringProperty("")),
-						"kms_key_id":            resource.MakeComputed(resource.NewStringProperty("")),
-						"snapshot_id":           resource.MakeComputed(resource.NewStringProperty("")),
-						"tags_all":              resource.MakeComputed(resource.NewStringProperty("")),
-						"throughput":            resource.MakeComputed(resource.NewStringProperty("")),
-						"volume_id":             resource.MakeComputed(resource.NewStringProperty("")),
+						deleteOnTerminationKey: resource.NewBoolProperty(true),
+						deviceNameKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						tagsKey:                resource.NewNullProperty(),
+						volumeSizeKey:          resource.NewNumberProperty(8),
+						volumeTypeKey:          resource.NewStringProperty("gp2"),
+						encryptedKey:           resource.MakeComputed(resource.NewStringProperty("")),
+						iopsKey:                resource.MakeComputed(resource.NewStringProperty("")),
+						kmsKeyIDKey:            resource.MakeComputed(resource.NewStringProperty("")),
+						snapshotIDKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						tagsAllKey:             resource.MakeComputed(resource.NewStringProperty("")),
+						throughputKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						volumeIDKey:            resource.MakeComputed(resource.NewStringProperty("")),
 					}),
 			}).Equal(t, actual)
 		})
@@ -328,15 +364,15 @@ resource "aws_instance" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"delete_on_termination": true,
-						"tags":                  nil,
-						"volume_size":           json.Number("7"),
-						"volume_type":           "gp3",
+						deleteOnTerminationKey: true,
+						tagsKey:                nil,
+						volumeSizeKey:          json.Number("7"),
+						volumeTypeKey:          "gp3",
 					},
 					map[string]interface{}{
-						"delete_on_termination": true,
-						"tags":                  nil,
-						"volume_size":           json.Number("8"),
+						deleteOnTerminationKey: true,
+						tagsKey:                nil,
+						volumeSizeKey:          json.Number("8"),
 					},
 				}).Equal(t, actual)
 			})
@@ -345,25 +381,25 @@ resource "aws_instance" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"device_name": true,
-						"encrypted":   true,
-						"iops":        true,
-						"kms_key_id":  true,
-						"snapshot_id": true,
-						"tags_all":    true,
-						"throughput":  true,
-						"volume_id":   true,
+						deviceNameKey: true,
+						encryptedKey:  true,
+						iopsKey:       true,
+						kmsKeyIDKey:   true,
+						snapshotIDKey: true,
+						tagsAllKey:    true,
+						throughputKey: true,
+						volumeIDKey:   true,
 					},
 					map[string]interface{}{
-						"device_name": true,
-						"volume_type": true,
-						"encrypted":   true,
-						"iops":        true,
-						"kms_key_id":  true,
-						"snapshot_id": true,
-						"tags_all":    true,
-						"throughput":  true,
-						"volume_id":   true,
+						deviceNameKey: true,
+						volumeTypeKey: true,
+						encryptedKey:  true,
+						iopsKey:       true,
+						kmsKeyIDKey:   true,
+						snapshotIDKey: true,
+						tagsAllKey:    true,
+						throughputKey: true,
+						volumeIDKey:   true,
 					},
 				}).Equal(t, actual)
 			})
@@ -372,33 +408,33 @@ resource "aws_instance" "this" {
 			autogold.Expect([]resource.PropertyValue{
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"delete_on_termination": resource.NewBoolProperty(true),
-						"device_name":           resource.MakeComputed(resource.NewStringProperty("")),
-						"tags":                  resource.NewNullProperty(),
-						"volume_size":           resource.NewNumberProperty(7),
-						"volume_type":           resource.NewStringProperty("gp3"),
-						"encrypted":             resource.MakeComputed(resource.NewStringProperty("")),
-						"iops":                  resource.MakeComputed(resource.NewStringProperty("")),
-						"kms_key_id":            resource.MakeComputed(resource.NewStringProperty("")),
-						"snapshot_id":           resource.MakeComputed(resource.NewStringProperty("")),
-						"tags_all":              resource.MakeComputed(resource.NewStringProperty("")),
-						"throughput":            resource.MakeComputed(resource.NewStringProperty("")),
-						"volume_id":             resource.MakeComputed(resource.NewStringProperty("")),
+						deleteOnTerminationKey: resource.NewBoolProperty(true),
+						deviceNameKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						tagsKey:                resource.NewNullProperty(),
+						volumeSizeKey:          resource.NewNumberProperty(7),
+						volumeTypeKey:          resource.NewStringProperty("gp3"),
+						encryptedKey:           resource.MakeComputed(resource.NewStringProperty("")),
+						iopsKey:                resource.MakeComputed(resource.NewStringProperty("")),
+						kmsKeyIDKey:            resource.MakeComputed(resource.NewStringProperty("")),
+						snapshotIDKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						tagsAllKey:             resource.MakeComputed(resource.NewStringProperty("")),
+						throughputKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						volumeIDKey:            resource.MakeComputed(resource.NewStringProperty("")),
 					}),
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"delete_on_termination": resource.NewBoolProperty(true),
-						"device_name":           resource.MakeComputed(resource.NewStringProperty("")),
-						"tags":                  resource.NewNullProperty(),
-						"volume_size":           resource.NewNumberProperty(8),
-						"volume_type":           resource.MakeComputed(resource.NewStringProperty("")),
-						"encrypted":             resource.MakeComputed(resource.NewStringProperty("")),
-						"iops":                  resource.MakeComputed(resource.NewStringProperty("")),
-						"kms_key_id":            resource.MakeComputed(resource.NewStringProperty("")),
-						"snapshot_id":           resource.MakeComputed(resource.NewStringProperty("")),
-						"tags_all":              resource.MakeComputed(resource.NewStringProperty("")),
-						"throughput":            resource.MakeComputed(resource.NewStringProperty("")),
-						"volume_id":             resource.MakeComputed(resource.NewStringProperty("")),
+						deleteOnTerminationKey: resource.NewBoolProperty(true),
+						deviceNameKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						tagsKey:                resource.NewNullProperty(),
+						volumeSizeKey:          resource.NewNumberProperty(8),
+						volumeTypeKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						encryptedKey:           resource.MakeComputed(resource.NewStringProperty("")),
+						iopsKey:                resource.MakeComputed(resource.NewStringProperty("")),
+						kmsKeyIDKey:            resource.MakeComputed(resource.NewStringProperty("")),
+						snapshotIDKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						tagsAllKey:             resource.MakeComputed(resource.NewStringProperty("")),
+						throughputKey:          resource.MakeComputed(resource.NewStringProperty("")),
+						volumeIDKey:            resource.MakeComputed(resource.NewStringProperty("")),
 					}),
 			}).Equal(t, actual)
 		})
@@ -428,33 +464,33 @@ resource "aws_s3_bucket_metric" "this" {
 }
 `
 		plan := runPlan(t, tofu, tfFile)
-		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", *plan.RawPlan(),
+		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket_metric.this", filterKey, *plan.RawPlan(),
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
 						"access_point": nil,
-						"prefix":       nil,
+						prefixKey:      nil,
 					},
 				}).Equal(t, actual)
 			})
-		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", *plan.RawPlan(),
+		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_metric.this", filterKey, *plan.RawPlan(),
 			findUnknownChange,
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"tags": true,
+						tagsKey: true,
 					},
 				}).Equal(t, actual)
 			})
 
-		assertPlanForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", plan,
+		assertPlanForAddress(t, "module.local.aws_s3_bucket_metric.this", filterKey, plan,
 			func(actual interface{}) {
 				autogold.Expect([]resource.PropertyValue{
 					resource.NewObjectProperty(
 						resource.PropertyMap{
-							"tags":         resource.MakeComputed(resource.NewStringProperty("")),
+							tagsKey:        resource.MakeComputed(resource.NewStringProperty("")),
 							"access_point": resource.NewNullProperty(),
-							"prefix":       resource.NewNullProperty(),
+							prefixKey:      resource.NewNullProperty(),
 						}),
 				}).Equal(t, actual)
 			})
@@ -539,35 +575,35 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 		assertAttributeValuesForAddress(t, "module.local.aws_s3_bucket_lifecycle_configuration.this", "rule", *plan.RawPlan(),
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{map[string]interface{}{
-					"abort_incomplete_multipart_upload": []interface{}{},
-					"expiration":                        []interface{}{},
-					"filter": []interface{}{map[string]interface{}{
-						"and": []interface{}{map[string]interface{}{
-							"object_size_greater_than": json.Number("200"),
-							"object_size_less_than":    json.Number("0"),
-							"prefix":                   "",
-							"tags":                     nil,
+					abortIncompleteMultipartUploadKey: []interface{}{},
+					expirationKey:                     []interface{}{},
+					filterKey: []interface{}{map[string]interface{}{
+						andKey: []interface{}{map[string]interface{}{
+							objectSizeGreaterThanKey: json.Number("200"),
+							"object_size_less_than":  json.Number("0"),
+							prefixKey:                "",
+							tagsKey:                  nil,
 						}},
-						"object_size_greater_than": nil,
-						"object_size_less_than":    nil,
-						"prefix":                   "test",
-						"tag":                      []interface{}{},
+						objectSizeGreaterThanKey: nil,
+						"object_size_less_than":  nil,
+						prefixKey:                "test",
+						tagKey:                   []interface{}{},
 					}},
-					"id":                            "rule_id",
-					"noncurrent_version_expiration": []interface{}{},
-					"noncurrent_version_transition": []interface{}{},
-					"prefix":                        "",
-					"status":                        "Enabled",
-					"transition": []interface{}{
+					"id":                           ruleIDVal,
+					noncurrentVersionExpirationKey: []interface{}{},
+					noncurrentVersionTransitionKey: []interface{}{},
+					prefixKey:                      "",
+					"status":                       "Enabled",
+					transitionKey: []interface{}{
 						map[string]interface{}{
 							"date":          nil,
 							"days":          json.Number("0"),
-							"storage_class": "GLACIER",
+							"storage_class": glacierStorageClass,
 						},
 						map[string]interface{}{
 							"date":          nil,
 							"days":          json.Number("30"),
-							"storage_class": "GLACIER",
+							"storage_class": glacierStorageClass,
 						},
 					},
 				}}).Equal(t, actual)
@@ -577,15 +613,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 			findUnknownChange,
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{map[string]interface{}{
-					"abort_incomplete_multipart_upload": []interface{}{},
-					"expiration":                        []interface{}{},
-					"filter": []interface{}{map[string]interface{}{
-						"and": []interface{}{map[string]interface{}{}},
-						"tag": []interface{}{},
+					abortIncompleteMultipartUploadKey: []interface{}{},
+					expirationKey:                     []interface{}{},
+					filterKey: []interface{}{map[string]interface{}{
+						andKey: []interface{}{map[string]interface{}{}},
+						tagKey: []interface{}{},
 					}},
-					"noncurrent_version_expiration": []interface{}{},
-					"noncurrent_version_transition": []interface{}{},
-					"transition": []interface{}{
+					noncurrentVersionExpirationKey: []interface{}{},
+					noncurrentVersionTransitionKey: []interface{}{},
+					transitionKey: []interface{}{
 						map[string]interface{}{},
 						map[string]interface{}{},
 					},
@@ -596,45 +632,45 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("abort_incomplete_multipart_upload"): resource.PropertyValue{
+						resource.PropertyKey(abortIncompleteMultipartUploadKey): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("expiration"): resource.PropertyValue{V: []resource.PropertyValue{}},
-						resource.PropertyKey("filter"): resource.PropertyValue{V: []resource.PropertyValue{{
+						resource.PropertyKey(expirationKey): resource.PropertyValue{V: []resource.PropertyValue{}},
+						resource.PropertyKey(filterKey): resource.PropertyValue{V: []resource.PropertyValue{{
 							V: resource.PropertyMap{
-								resource.PropertyKey("and"): resource.PropertyValue{
+								resource.PropertyKey(andKey): resource.PropertyValue{
 									V: []resource.PropertyValue{{
 										V: resource.PropertyMap{
-											resource.PropertyKey("object_size_greater_than"): resource.PropertyValue{
+											resource.PropertyKey(objectSizeGreaterThanKey): resource.PropertyValue{
 												V: 200,
 											},
 											resource.PropertyKey("object_size_less_than"): resource.PropertyValue{V: 0},
-											resource.PropertyKey("prefix"):                resource.PropertyValue{V: ""},
-											resource.PropertyKey("tags"):                  resource.PropertyValue{},
+											resource.PropertyKey(prefixKey):               resource.PropertyValue{V: ""},
+											resource.PropertyKey(tagsKey):                 resource.PropertyValue{},
 										},
 									}},
 								},
-								resource.PropertyKey("object_size_greater_than"): resource.PropertyValue{},
-								resource.PropertyKey("object_size_less_than"):    resource.PropertyValue{},
-								resource.PropertyKey("prefix"):                   resource.PropertyValue{V: "test"},
-								resource.PropertyKey("tag"):                      resource.PropertyValue{V: []resource.PropertyValue{}},
+								resource.PropertyKey(objectSizeGreaterThanKey): resource.PropertyValue{},
+								resource.PropertyKey("object_size_less_than"):  resource.PropertyValue{},
+								resource.PropertyKey(prefixKey):                resource.PropertyValue{V: "test"},
+								resource.PropertyKey(tagKey):                   resource.PropertyValue{V: []resource.PropertyValue{}},
 							},
 						}}},
-						resource.PropertyKey("id"):                            resource.PropertyValue{V: "rule_id"},
-						resource.PropertyKey("noncurrent_version_expiration"): resource.PropertyValue{V: []resource.PropertyValue{}},
-						resource.PropertyKey("noncurrent_version_transition"): resource.PropertyValue{V: []resource.PropertyValue{}},
-						resource.PropertyKey("prefix"):                        resource.PropertyValue{V: ""},
-						resource.PropertyKey("status"):                        resource.PropertyValue{V: "Enabled"},
-						resource.PropertyKey("transition"): resource.PropertyValue{V: []resource.PropertyValue{
+						resource.PropertyKey("id"):                           resource.PropertyValue{V: ruleIDVal},
+						resource.PropertyKey(noncurrentVersionExpirationKey): resource.PropertyValue{V: []resource.PropertyValue{}},
+						resource.PropertyKey(noncurrentVersionTransitionKey): resource.PropertyValue{V: []resource.PropertyValue{}},
+						resource.PropertyKey(prefixKey):                      resource.PropertyValue{V: ""},
+						resource.PropertyKey("status"):                       resource.PropertyValue{V: "Enabled"},
+						resource.PropertyKey(transitionKey): resource.PropertyValue{V: []resource.PropertyValue{
 							{V: resource.PropertyMap{
 								resource.PropertyKey("date"):          resource.PropertyValue{},
 								resource.PropertyKey("days"):          resource.PropertyValue{V: 0},
-								resource.PropertyKey("storage_class"): resource.PropertyValue{V: "GLACIER"},
+								resource.PropertyKey("storage_class"): resource.PropertyValue{V: glacierStorageClass},
 							}},
 							{V: resource.PropertyMap{
 								resource.PropertyKey("date"):          resource.PropertyValue{},
 								resource.PropertyKey("days"):          resource.PropertyValue{V: 30},
-								resource.PropertyKey("storage_class"): resource.PropertyValue{V: "GLACIER"},
+								resource.PropertyKey("storage_class"): resource.PropertyValue{V: glacierStorageClass},
 							}},
 						}},
 					},

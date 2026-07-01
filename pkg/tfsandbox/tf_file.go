@@ -230,10 +230,12 @@ func CreateTFFile(
 	for _, output := range outputs {
 		mOutputs[output.Name] = map[string]any{
 			// wrapping in jsondecode/jsonencode to workaround an issue where nonsensitive/issensitive is not recursive
-			"value": fmt.Sprintf("${jsondecode(nonsensitive(jsonencode(module.%s.%s)))}", name, output.Name),
+			unknownProxyResourceOutputProp: fmt.Sprintf(
+				"${jsondecode(nonsensitive(jsonencode(module.%s.%s)))}", name, output.Name),
 		}
 		mOutputs[fmt.Sprintf("%s%s", terraformIsSecretOutputPrefix, output.Name)] = map[string]any{
-			"value": fmt.Sprintf("${jsondecode(issensitive(jsonencode(module.%s.%s)))}", name, output.Name),
+			unknownProxyResourceOutputProp: fmt.Sprintf(
+				"${jsondecode(issensitive(jsonencode(module.%s.%s)))}", name, output.Name),
 		}
 	}
 

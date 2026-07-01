@@ -75,7 +75,7 @@ func (h *moduleHandler) Check(
 
 	_, nameInputProvided := news["name"]
 	inputProperty, hasNameInput := moduleSchema.Inputs["name"]
-	if hasNameInput && inputProperty.Type == "string" && !nameInputProvided {
+	if hasNameInput && inputProperty.Type == stringTypeName && !nameInputProvided {
 		olds := make(map[string]*structpb.Value)
 		if req.Olds != nil && req.Olds.Fields != nil {
 			olds = req.Olds.Fields

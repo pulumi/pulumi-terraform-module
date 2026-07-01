@@ -30,6 +30,11 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+const (
+	fooKey    = "foo"
+	moduleURN = "urn:pulumi:test::prog::randmod:index:Module::mymod"
+)
+
 // Check that UnmarshalProperties(pm) passes over the gRPC wire RegisterResource call without distortion.
 func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 	type testCase struct {
@@ -44,30 +49,30 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 		{
 			name: "number",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewNumberProperty(42),
+				fooKey: resource.NewNumberProperty(42),
 			},
 		},
 		{
 			name: "string",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewStringProperty("foo"),
+				fooKey: resource.NewStringProperty(fooKey),
 			},
 		},
 		{
 			name: "bool",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewBoolProperty(true),
+				fooKey: resource.NewBoolProperty(true),
 			},
 		},
 		{
 			name: "unknown",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewComputedProperty(resource.Computed{
+				fooKey: resource.NewComputedProperty(resource.Computed{
 					Element: resource.NewStringProperty(""),
 				}),
 			},
 			inputsReceived: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
+				fooKey: resource.NewOutputProperty(resource.Output{
 					Known: false,
 				}),
 			},
@@ -75,12 +80,12 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 		{
 			name: "secret",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewSecretProperty(&resource.Secret{
+				fooKey: resource.NewSecretProperty(&resource.Secret{
 					Element: resource.NewStringProperty("SECRET"),
 				}),
 			},
 			inputsReceived: resource.PropertyMap{
-				"foo": resource.NewOutputProperty(resource.Output{
+				fooKey: resource.NewOutputProperty(resource.Output{
 					Known:   true,
 					Secret:  true,
 					Element: resource.NewStringProperty("SECRET"),
@@ -90,8 +95,8 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 		{
 			name: "array",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("foo"),
+				fooKey: resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty(fooKey),
 					resource.NewNumberProperty(42.0),
 				}),
 			},
@@ -99,8 +104,8 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 		{
 			name: "object",
 			inputs: resource.PropertyMap{
-				"foo": resource.NewObjectProperty(resource.PropertyMap{
-					"p1": resource.NewStringProperty("foo"),
+				fooKey: resource.NewObjectProperty(resource.PropertyMap{
+					"p1": resource.NewStringProperty(fooKey),
 					"p2": resource.NewNumberProperty(42.0),
 				}),
 			},
@@ -142,7 +147,7 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 					Element: resource.NewStringProperty("value"),
 					Known:   true,
 					Dependencies: []urn.URN{
-						"urn:pulumi:test::prog::randmod:index:Module::mymod",
+						moduleURN,
 					},
 				}),
 			},
@@ -153,7 +158,7 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 				"x": resource.NewOutputProperty(resource.Output{
 					Known: false,
 					Dependencies: []urn.URN{
-						"urn:pulumi:test::prog::randmod:index:Module::mymod",
+						moduleURN,
 					},
 				}),
 			},
@@ -166,7 +171,7 @@ func TestUnmarhsalPropertiesThreadThroughRegisterResource(t *testing.T) {
 					Known:   true,
 					Secret:  true,
 					Dependencies: []urn.URN{
-						"urn:pulumi:test::prog::randmod:index:Module::mymod",
+						moduleURN,
 						"urn:pulumi:test::prog::randmod:index:Module::mymod2",
 					},
 				}),

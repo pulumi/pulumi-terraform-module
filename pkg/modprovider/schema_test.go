@@ -24,7 +24,7 @@ import (
 )
 
 func TestParameterizationSpec(t *testing.T) {
-	args := ParameterizeArgs{TFModuleSource: "hashicorp/consul/aws", TFModuleVersion: "0.0.5"}
+	args := ParameterizeArgs{TFModuleSource: consulAwsSource, TFModuleVersion: version005}
 
 	pspec := newParameterizationSpec(&args)
 
@@ -53,21 +53,21 @@ func TestPulumiSchemaForModuleHasLanguageInfoGo(t *testing.T) {
 		{
 			name: "Go module version 0",
 			pArgs: ParameterizeArgs{
-				TFModuleSource:  "hashicorp/consul/aws",
-				TFModuleVersion: "0.0.5",
-				PackageName:     "consul",
+				TFModuleSource:  consulAwsSource,
+				TFModuleVersion: version005,
+				PackageName:     consulPkg,
 			},
-			expectedRootPackageName: "consul",
+			expectedRootPackageName: consulPkg,
 			expectedImportBasePath:  "github.com/pulumi/pulumi-terraform-module/sdks/go/consul/consul",
 		},
 		{
 			name: "Go module version 1",
 			pArgs: ParameterizeArgs{
-				TFModuleSource:  "hashicorp/consul/aws",
-				TFModuleVersion: "1.2.3",
-				PackageName:     "consul",
+				TFModuleSource:  consulAwsSource,
+				TFModuleVersion: version123,
+				PackageName:     consulPkg,
 			},
-			expectedRootPackageName: "consul",
+			expectedRootPackageName: consulPkg,
 			expectedImportBasePath:  "github.com/pulumi/pulumi-terraform-module/sdks/go/consul/consul",
 		},
 		{

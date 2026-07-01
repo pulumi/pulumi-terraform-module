@@ -25,6 +25,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+const (
+	inputVarKey = "inputVar"
+	testStr     = "test"
+)
+
 func TestTofuInit(t *testing.T) {
 	tofu := newTestTofu(t)
 	t.Logf("WorkingDir: %s", tofu.WorkingDir())
@@ -64,8 +69,8 @@ func TestTofuPlan(t *testing.T) {
 	outputs := []TFOutputSpec{}
 	providersConfig := map[string]resource.PropertyMap{}
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
-	err := CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
-		"inputVar": "test",
+	err := CreateTFFile(testStr, ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+		inputVarKey: testStr,
 	}), outputs, providersConfig)
 	assert.NoErrorf(t, err, "error creating tf file")
 
@@ -88,8 +93,8 @@ func TestTofuApply(t *testing.T) {
 	emptyOutputs := []TFOutputSpec{}
 	ms := TFModuleSource(path.Join(getCwd(t), "testdata", "modules", "test_module"))
 	providersConfig := map[string]resource.PropertyMap{}
-	err := CreateTFFile("test", ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
-		"inputVar": "test",
+	err := CreateTFFile(testStr, ms, "", tofu.WorkingDir(), resource.NewPropertyMapFromMap(map[string]interface{}{
+		inputVarKey: testStr,
 	}), emptyOutputs, providersConfig)
 	assert.NoErrorf(t, err, "error creating tf file")
 

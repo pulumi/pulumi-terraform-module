@@ -109,7 +109,12 @@ type InferredModuleSchema struct {
 	SchemaFieldMappings *SchemaFieldMappings                          `json:"schemaFieldMappings,omitempty"`
 }
 
-var stringType = schema.TypeSpec{Type: "string"}
+const (
+	stringTypeName = "string"
+	objectTypeName = "object"
+)
+
+var stringType = schema.TypeSpec{Type: stringTypeName}
 var anyType = schema.TypeSpec{Ref: "pulumi.json#/Any"}
 var boolType = schema.TypeSpec{Type: "boolean"}
 var numberType = schema.TypeSpec{Type: "number"}
@@ -129,7 +134,7 @@ func arrayType(elementType schema.TypeSpec) schema.TypeSpec {
 
 func mapType(elementType schema.TypeSpec) schema.TypeSpec {
 	return schema.TypeSpec{
-		Type:                 "object",
+		Type:                 objectTypeName,
 		AdditionalProperties: &elementType,
 	}
 }
@@ -189,7 +194,7 @@ func convertType(
 
 		complexType := &schema.ComplexTypeSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Type:       "object",
+				Type:       objectTypeName,
 				Properties: propertiesMap,
 			},
 		}
@@ -669,6 +674,7 @@ type modulesJSONEntry struct {
 }
 
 func readModulesJSON(filePath string) (*modulesJSON, error) {
+	//nolint:gosec // G703: filePath is an internally constructed path to Terraform's modules.json, not user input
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read modules.json file: %w", err)

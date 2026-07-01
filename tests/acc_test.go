@@ -58,6 +58,19 @@ const (
 	provider                       = "terraform-module"
 	randmod                        = "randmod"
 	useOpentofuEnvironmentVariable = "PULUMI_TERRAFORM_MODULE_USE_OPENTOFU"
+
+	createOp             = "create"
+	deleteOp             = "delete"
+	sameOp               = "same"
+	updateOp             = "update"
+	terraformExec        = "terraform"
+	tofuExec             = "tofu"
+	bucketNamespace      = "bucket"
+	bucketModuleVersion  = "4.5.0"
+	prefixVal            = "PREFIX"
+	testTagKey           = "TestTag"
+	s3BucketMod          = "s3bucketmod"
+	s3BucketModuleSource = "terraform-aws-modules/s3-bucket/aws"
 )
 
 // testdata/randmod is a fully local module written for test purposes that uses resources from the
@@ -106,7 +119,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 			optpreview.ErrorProgressStreams(tw),
 		)
 		assert.Equal(t, map[apitype.OpType]int{
-			apitype.OpType("create"): 4,
+			apitype.OpType(createOp): 4,
 		}, previewResult.ChangeSummary)
 	})
 
@@ -122,7 +135,7 @@ func Test_RandMod_TypeScript(t *testing.T) {
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
 
 		assert.Equal(t, &map[string]int{
-			"create": 4,
+			createOp: 4,
 		}, upResult.Summary.ResourceChanges)
 
 		outputs, err := pt.CurrentStack().Outputs(context.Background())
@@ -157,14 +170,14 @@ func Test_RandMod_TypeScript(t *testing.T) {
 	t.Run("pulumi preview should be empty", func(t *testing.T) {
 		previewResult := pt.Preview(t)
 		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
-		assert.Equal(t, map[apitype.OpType]int{apitype.OpType("same"): 4},
+		assert.Equal(t, map[apitype.OpType]int{apitype.OpType(sameOp): 4},
 			previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up should be no-op", func(t *testing.T) {
 		upResult := pt.Up(t)
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
-		assert.Equal(t, &map[string]int{"same": 4}, upResult.Summary.ResourceChanges)
+		assert.Equal(t, &map[string]int{sameOp: 4}, upResult.Summary.ResourceChanges)
 	})
 
 	t.Run("pulumi destroy", func(t *testing.T) {
@@ -313,9 +326,9 @@ func TestPartialApply(t *testing.T) {
 	)
 	changes2 := *upRes2.Summary.ResourceChanges
 	assert.Equal(t, map[string]int{
-		"update": 2,
-		"create": 1,
-		"same":   1,
+		updateOp: 2,
+		createOp: 1,
+		sameOp:   1,
 	}, changes2)
 	assert.Contains(t, upRes2.Outputs, "roleArn")
 
@@ -353,9 +366,9 @@ func TestPartialApply(t *testing.T) {
 	)
 	changes4 := *upRes4.Summary.ResourceChanges
 	assert.Equal(t, map[string]int{
-		"update": 2,
-		"create": 1,
-		"same":   1,
+		updateOp: 2,
+		createOp: 1,
+		sameOp:   1,
 	}, changes4)
 	assert.Contains(t, upRes4.Outputs, "roleArn")
 
@@ -391,14 +404,14 @@ func Test_TwoInstances_TypeScript(t *testing.T) {
 		previewResult := pt.Preview(t, optpreview.Diff())
 		t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
 		assert.Equal(t, map[apitype.OpType]int{
-			apitype.OpType("create"): 5,
+			apitype.OpType(createOp): 5,
 		}, previewResult.ChangeSummary)
 	})
 
 	t.Run("pulumi up", func(t *testing.T) {
 		upResult := pt.Up(t)
 		t.Logf("%s", upResult.StdOut+upResult.StdErr)
-		assert.Equal(t, &map[string]int{"create": 5}, upResult.Summary.ResourceChanges)
+		assert.Equal(t, &map[string]int{createOp: 5}, upResult.Summary.ResourceChanges)
 	})
 }
 
@@ -424,10 +437,10 @@ func TestAutomaticallySettingNameInputFromResourceName(t *testing.T) {
 	assert.True(t, ok, "expected output value to be a string")
 	assert.True(t, strings.HasPrefix(resultValue, "exampleResourceName-"))
 	preview := integrationTest.Preview(t)
-	assert.Equal(t, 2, preview.ChangeSummary[apitype.OpType("same")])
+	assert.Equal(t, 2, preview.ChangeSummary[apitype.OpType(sameOp)])
 
 	deleteResult := integrationTest.Destroy(t)
-	expected := &map[string]int{"delete": 2}
+	expected := &map[string]int{deleteOp: 2}
 	assert.Equal(t, deleteResult.Summary.ResourceChanges, expected, "should delete one resource")
 }
 
@@ -464,11 +477,13 @@ func TestChangingLocalModuleSourceCodeOutputsCausesUpdate(t *testing.T) {
 	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
 	require.NoError(t, err, "failed to read v2 source code")
 
+	//nolint:gosec // G703: v1 is a test-controlled temp module directory, not attacker input
 	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0600)
 	require.NoError(t, err, "failed to write v2 source code to v1 module")
 
 	t.Cleanup(func() {
 		// Restore the original source code after the test
+		//nolint:gosec // G703: v1 is a test-controlled temp module directory, not attacker input
 		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0600)
 		require.NoError(t, err, "failed to restore v1 source code")
 	})
@@ -511,19 +526,21 @@ func TestChangingLocalModuleSourceCodeResourcesCausesUpdate(t *testing.T) {
 	v2SourceCode, err := os.ReadFile(filepath.Join(v2, "main.tf"))
 	require.NoError(t, err, "failed to read v2 source code")
 
+	//nolint:gosec // G703: v1 is a test-controlled temp module directory, not attacker input
 	err = os.WriteFile(filepath.Join(v1, "main.tf"), v2SourceCode, 0600)
 	require.NoError(t, err, "failed to write v2 source code to v1 module")
 
 	t.Cleanup(func() {
 		// Restore the original source code after the test
+		//nolint:gosec // G703: v1 is a test-controlled temp module directory, not attacker input
 		err := os.WriteFile(filepath.Join(v1, "main.tf"), v1SourceCode, 0600)
 		require.NoError(t, err, "failed to restore v1 source code")
 	})
 
 	preview := integrationTest.Preview(t)
-	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("delete")],
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType(deleteOp)],
 		"expected one resource to be deleted")
-	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType("create")],
+	assert.Equal(t, 1, preview.ChangeSummary[apitype.OpType(createOp)],
 		"expected one resource to be created")
 
 	integrationTest.Up(t)
@@ -606,7 +623,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 		pulumiConvert(t, localProviderBinPath, pclDir, testDir, "typescript", generateOnly)
 	})
 
-	for _, executor := range []string{"terraform", "tofu"} {
+	for _, executor := range []string{terraformExec, tofuExec} {
 		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
 			pt := newPulumiTest(t, testDir,
 				opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath)),
@@ -629,7 +646,7 @@ func TestTerraformAwsModulesVpcIntoTypeScript(t *testing.T) {
 				expectedResourceCount := 6
 
 				require.Equal(t, res.Summary.ResourceChanges, &map[string]int{
-					"create": expectedResourceCount,
+					createOp: expectedResourceCount,
 				})
 
 				tfStateRaw := mustFindRawState(t, pt, "vpc")
@@ -653,10 +670,10 @@ func TestS3BucketModSecret(t *testing.T) {
 	// t.Parallel() - cannot use t.Parallel because the test uses SetEnv
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
-	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	testProgram := filepath.Join("testdata", "programs", "ts", s3BucketMod)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
-	for _, executor := range []string{"terraform", "tofu"} {
+	for _, executor := range []string{terraformExec, tofuExec} {
 		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
 
 			integrationTest := newPulumiTest(t, testProgram, localPath,
@@ -670,7 +687,7 @@ func TestS3BucketModSecret(t *testing.T) {
 
 			// Generate package
 			//nolint:all
-			pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, s3BucketModuleSource, bucketModuleVersion, bucketNamespace)
 			integrationTest.Up(t)
 
 			encrConf := mustFindDeploymentResourceByType(t,
@@ -694,7 +711,7 @@ func TestShowingModifiedAWSCredentialsError(t *testing.T) {
 	skipLocalRunsWithoutCreds(t)
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	testProgram := filepath.Join("testdata", "programs", "ts", s3BucketMod)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
 	// disable AWS credentials to test the error message shows up
@@ -712,7 +729,7 @@ func TestShowingModifiedAWSCredentialsError(t *testing.T) {
 
 	// Generate package
 	//nolint:all
-	pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	pulumiPackageAdd(t, integrationTest, localProviderBinPath, s3BucketModuleSource, bucketModuleVersion, bucketNamespace)
 	_, err := integrationTest.CurrentStack().Up(context.Background())
 	assert.Error(t, err)
 	// assert that error contains part of the modified credentials error message which is Pulumi sepcific
@@ -728,6 +745,7 @@ func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, repl
 			return err
 		}
 		if !info.IsDir() {
+			//nolint:gosec // G122: walk over a test-controlled fixture directory, no untrusted symlinks
 			b, err := os.ReadFile(path)
 			if err != nil {
 				return err
@@ -737,6 +755,7 @@ func cleanRandomDataFromTerraformArtifacts(t *testing.T, tfFilesDir string, repl
 				s = strings.ReplaceAll(s, data, replace)
 			}
 
+			//nolint:gosec // G122: walk over a test-controlled fixture directory, no untrusted symlinks
 			err = os.WriteFile(path, []byte(s), 0o600)
 			if err != nil {
 				return err
@@ -762,7 +781,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 		return fullPath
 	}
 
-	for _, executor := range []string{"terraform", "tofu"} {
+	for _, executor := range []string{terraformExec, tofuExec} {
 		t.Run(fmt.Sprintf("executor=%s", executor), func(t *testing.T) {
 
 			integrationTest := newPulumiTest(t, testProgram,
@@ -778,7 +797,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 
 			// Generate package
 			//nolint:all
-			pulumiPackageAdd(t, integrationTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+			pulumiPackageAdd(t, integrationTest, localProviderBinPath, s3BucketModuleSource, bucketModuleVersion, bucketNamespace)
 
 			t.Run("pulumi preview", func(t *testing.T) {
 				tfFiles := tfFilesDir("preview")
@@ -786,7 +805,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 				preview := integrationTest.Preview(t)
 				require.Empty(t, preview.StdErr, "expected no errors in preview")
 				cleanRandomDataFromTerraformArtifacts(t, tfFiles, map[string]string{
-					prefix: "PREFIX",
+					prefix: prefixVal,
 				})
 			})
 
@@ -796,7 +815,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 				up := integrationTest.Up(t)
 				require.Empty(t, up.StdErr, "expected no errors in up")
 				cleanRandomDataFromTerraformArtifacts(t, tfFiles, map[string]string{
-					prefix: "PREFIX",
+					prefix: prefixVal,
 				})
 			})
 
@@ -806,7 +825,7 @@ func TestS3BucketWithExplicitProvider(t *testing.T) {
 				destroy := integrationTest.Destroy(t)
 				require.Empty(t, destroy.StdErr, "expected no errors in destroy")
 				cleanRandomDataFromTerraformArtifacts(t, tfFiles, map[string]string{
-					prefix: "PREFIX",
+					prefix: prefixVal,
 				})
 			})
 		})
@@ -831,15 +850,15 @@ func TestE2eTs(t *testing.T) {
 
 	testcases := []testCase{
 		{
-			name:            "s3bucketmod",
-			moduleName:      "terraform-aws-modules/s3-bucket/aws",
-			moduleVersion:   "4.5.0",
-			moduleNamespace: "bucket",
-			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType("create"): 5}),
-			upExpect:        autogold.Expect(&map[string]int{"create": 5}),
-			deleteExpect:    autogold.Expect(&map[string]int{"delete": 5}),
+			name:            s3BucketMod,
+			moduleName:      s3BucketModuleSource,
+			moduleVersion:   bucketModuleVersion,
+			moduleNamespace: bucketNamespace,
+			previewExpect:   autogold.Expect(map[apitype.OpType]int{apitype.OpType(createOp): 5}),
+			upExpect:        autogold.Expect(&map[string]int{createOp: 5}),
+			deleteExpect:    autogold.Expect(&map[string]int{deleteOp: 5}),
 			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
-				apitype.OpType("same"): 5,
+				apitype.OpType(sameOp): 5,
 			}),
 		},
 		{
@@ -850,13 +869,13 @@ func TestE2eTs(t *testing.T) {
 			// aws lambda module creates drift even in terraform
 			skipNoChangesExpect: true,
 			previewExpect: autogold.Expect(map[apitype.OpType]int{
-				apitype.OpType("create"): 8,
+				apitype.OpType(createOp): 8,
 			}),
 			upExpect: autogold.Expect(&map[string]int{
-				"create": 8,
+				createOp: 8,
 			}),
 			deleteExpect: autogold.Expect(&map[string]int{
-				"delete": 8,
+				deleteOp: 8,
 			}),
 			// With Views drift detection does not quite get picked up yet.
 			// TODO[pulumi/pulumi#19487] and opt into this behavior for the Module. This
@@ -864,7 +883,7 @@ func TestE2eTs(t *testing.T) {
 			// the final counts match or not is less important, the user expectation is to
 			// refresh by default as TF does.
 			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
-				apitype.OpType("same"): 8,
+				apitype.OpType(sameOp): 8,
 			}),
 		},
 		{
@@ -876,16 +895,16 @@ func TestE2eTs(t *testing.T) {
 			// so we need to refresh to get the correct preview
 			previewRefresh: true,
 			previewExpect: autogold.Expect(map[apitype.OpType]int{
-				apitype.OpType("create"): 10,
+				apitype.OpType(createOp): 10,
 			}),
 			upExpect: autogold.Expect(&map[string]int{
-				"create": 10,
+				createOp: 10,
 			}),
 			deleteExpect: autogold.Expect(&map[string]int{
-				"delete": 10,
+				deleteOp: 10,
 			}),
 			diffNoChangesExpect: autogold.Expect(map[apitype.OpType]int{
-				apitype.OpType("same"): 10,
+				apitype.OpType(sameOp): 10,
 			}),
 		},
 	}
@@ -958,21 +977,21 @@ func TestE2eDotnet(t *testing.T) {
 
 	testcases := []testCase{
 		{
-			name:            "s3bucketmod",
-			moduleName:      "terraform-aws-modules/s3-bucket/aws",
-			moduleVersion:   "4.5.0",
-			moduleNamespace: "bucket",
+			name:            s3BucketMod,
+			moduleName:      s3BucketModuleSource,
+			moduleVersion:   bucketModuleVersion,
+			moduleNamespace: bucketNamespace,
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 4,
+				apitype.OpType(createOp): 4,
 			},
 			upExpect: &map[string]int{
-				"create": 4,
+				createOp: 4,
 			},
 			deleteExpect: &map[string]int{
-				"delete": 4,
+				deleteOp: 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType(sameOp): 4,
 			},
 		},
 	}
@@ -1036,21 +1055,21 @@ func TestE2ePython(t *testing.T) {
 
 	testcases := []testCase{
 		{
-			name:            "s3bucketmod",
-			moduleName:      "terraform-aws-modules/s3-bucket/aws",
-			moduleVersion:   "4.5.0",
-			moduleNamespace: "bucket",
+			name:            s3BucketMod,
+			moduleName:      s3BucketModuleSource,
+			moduleVersion:   bucketModuleVersion,
+			moduleNamespace: bucketNamespace,
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 4,
+				apitype.OpType(createOp): 4,
 			},
 			upExpect: &map[string]int{
-				"create": 4,
+				createOp: 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType(sameOp): 4,
 			},
 			deleteExpect: &map[string]int{
-				"delete": 4,
+				deleteOp: 4,
 			},
 		},
 	}
@@ -1117,21 +1136,21 @@ func TestE2eGo(t *testing.T) {
 
 	testcases := []testCase{
 		{
-			name:            "s3bucketmod",
-			moduleName:      "terraform-aws-modules/s3-bucket/aws",
-			moduleVersion:   "4.5.0",
-			moduleNamespace: "bucket",
+			name:            s3BucketMod,
+			moduleName:      s3BucketModuleSource,
+			moduleVersion:   bucketModuleVersion,
+			moduleNamespace: bucketNamespace,
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 4,
+				apitype.OpType(createOp): 4,
 			},
 			upExpect: &map[string]int{
-				"create": 4,
+				createOp: 4,
 			},
 			deleteExpect: &map[string]int{
-				"delete": 4,
+				deleteOp: 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType(sameOp): 4,
 			},
 		},
 	}
@@ -1194,21 +1213,21 @@ func TestE2eYAML(t *testing.T) {
 
 	testcases := []testCase{
 		{
-			name:            "s3bucketmod",
-			moduleName:      "terraform-aws-modules/s3-bucket/aws",
-			moduleVersion:   "4.5.0",
-			moduleNamespace: "bucket",
+			name:            s3BucketMod,
+			moduleName:      s3BucketModuleSource,
+			moduleVersion:   bucketModuleVersion,
+			moduleNamespace: bucketNamespace,
 			previewExpect: map[apitype.OpType]int{
-				apitype.OpType("create"): 4,
+				apitype.OpType(createOp): 4,
 			},
 			upExpect: &map[string]int{
-				"create": 4,
+				createOp: 4,
 			},
 			deleteExpect: &map[string]int{
-				"delete": 4,
+				deleteOp: 4,
 			},
 			diffNoChangesExpect: map[apitype.OpType]int{
-				apitype.OpType("same"): 4,
+				apitype.OpType(sameOp): 4,
 			},
 		},
 	}
@@ -1258,10 +1277,10 @@ func TestE2eYAML(t *testing.T) {
 func TestModuleUpgrade(t *testing.T) {
 	t.Parallel()
 
-	name := "s3bucketmod"
-	moduleName := "terraform-aws-modules/s3-bucket/aws"
-	moduleVersion := "4.5.0"
-	moduleNamespace := "bucket"
+	name := s3BucketMod
+	moduleName := s3BucketModuleSource
+	moduleVersion := bucketModuleVersion
+	moduleNamespace := bucketNamespace
 
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
@@ -1329,7 +1348,7 @@ func TestDiffDetailTerraform(t *testing.T) {
 	// Set up a test Bucket
 	localProviderBinPath := ensureCompiledProvider(t)
 	skipLocalRunsWithoutCreds(t)
-	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	testProgram := filepath.Join("testdata", "programs", "ts", s3BucketMod)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
 	diffDetailTest := newPulumiTest(t, testProgram, localPath)
@@ -1342,13 +1361,13 @@ func TestDiffDetailTerraform(t *testing.T) {
 
 	// Generate package
 	//nolint:lll
-	pulumiPackageAdd(t, diffDetailTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	pulumiPackageAdd(t, diffDetailTest, localProviderBinPath, s3BucketModuleSource, bucketModuleVersion, bucketNamespace)
 
 	// Up
 	diffDetailTest.Up(t)
 
 	// Change program to remove the module input `server_side_encryption_configuration`
-	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
+	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", s3BucketMod, "updates"))
 
 	// Preview
 	var debugOpts debug.LoggingOptions
@@ -1369,9 +1388,9 @@ func TestDiffDetailTerraform(t *testing.T) {
 		optpreview.DebugLogging(debugOpts))
 
 	assert.Equal(t, map[apitype.OpType]int{
-		apitype.OpType("delete"): 1,
-		apitype.OpType("same"):   3,
-		apitype.OpType("update"): 1,
+		apitype.OpType(deleteOp): 1,
+		apitype.OpType(sameOp):   3,
+		apitype.OpType(updateOp): 1,
 	}, result.ChangeSummary)
 
 	// Expected CLI to render a diff on removing server_side_encryption_configuration input from the module.
@@ -1387,11 +1406,11 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 	// Set up a test Bucket
 	localProviderBinPath := ensureCompiledProvider(t)
 
-	testProgram := filepath.Join("testdata", "programs", "ts", "s3bucketmod")
+	testProgram := filepath.Join("testdata", "programs", "ts", s3BucketMod)
 	localPath := opttest.LocalProviderPath("terraform-module", filepath.Dir(localProviderBinPath))
 
 	diffDetailTest := pulumitest.NewPulumiTest(t, testProgram, localPath,
-		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
+		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", tofuExec))
 
 	// Get a prefix for resource names
 	prefix := generateTestResourcePrefix()
@@ -1401,13 +1420,13 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 
 	// Generate package
 	//nolint:lll
-	pulumiPackageAdd(t, diffDetailTest, localProviderBinPath, "terraform-aws-modules/s3-bucket/aws", "4.5.0", "bucket")
+	pulumiPackageAdd(t, diffDetailTest, localProviderBinPath, s3BucketModuleSource, bucketModuleVersion, bucketNamespace)
 
 	// Up
 	diffDetailTest.Up(t)
 
 	// Change program to remove the module input `server_side_encryption_configuration`
-	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", "s3bucketmod", "updates"))
+	diffDetailTest.UpdateSource(t, filepath.Join("testdata", "programs", "ts", s3BucketMod, "updates"))
 
 	// Preview
 	var debugOpts debug.LoggingOptions
@@ -1428,9 +1447,9 @@ func TestDiffDetailOpenTofu(t *testing.T) {
 		optpreview.DebugLogging(debugOpts))
 
 	assert.Equal(t, map[apitype.OpType]int{
-		apitype.OpType("delete"): 1,
-		apitype.OpType("same"):   3,
-		apitype.OpType("update"): 1,
+		apitype.OpType(deleteOp): 1,
+		apitype.OpType(sameOp):   3,
+		apitype.OpType(updateOp): 1,
 	}, result.ChangeSummary)
 
 	// Expected CLI to render a diff on removing server_side_encryption_configuration input from the module.
@@ -1466,7 +1485,7 @@ func checkRefresh(t *testing.T, executor string) {
 	expectBucketTag := func(tagvalue string) {
 		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
 		tags := bucket.Inputs["tags"]
-		require.Equal(t, map[string]any{"TestTag": tagvalue}, tags)
+		require.Equal(t, map[string]any{testTagKey: tagvalue}, tags)
 	}
 
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
@@ -1483,7 +1502,7 @@ func checkRefresh(t *testing.T, executor string) {
 	it.Up(t, optup.ErrorProgressStreams(tw), optup.ProgressStreams(tw))
 	outMapB, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
-	autogold.Expect(map[string]any{"TestTag": "b"}).Equal(t, outMapB["tags"].Value)
+	autogold.Expect(map[string]any{testTagKey: "b"}).Equal(t, outMapB["tags"].Value)
 
 	t.Logf("# pulumi stack import --file state-a.json to reset to initial state")
 	it.ImportStack(t, stateA)
@@ -1507,7 +1526,7 @@ func checkRefresh(t *testing.T, executor string) {
 		optrefresh.ProgressStreams(tw),
 	)
 	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"same": 1, "update": 2}).Equal(t, rc)
+	autogold.Expect(&map[string]int{sameOp: 1, updateOp: 2}).Equal(t, rc)
 
 	// Check that in the state the bucket has TestTag="b" now as refresh took effect.
 	expectBucketTag("b")
@@ -1518,7 +1537,7 @@ func checkRefresh(t *testing.T, executor string) {
 	// TODO[github.com/pulumi/pulumi#2710] Refresh does not update stack outputs
 	outMap, err := it.CurrentStack().Outputs(ctx)
 	require.NoError(t, err)
-	autogold.Expect(map[string]any{"TestTag": "a"}).Equal(t, outMap["tags"].Value)
+	autogold.Expect(map[string]any{testTagKey: "a"}).Equal(t, outMap["tags"].Value)
 }
 
 func TestRefreshTerraform(t *testing.T) {
@@ -1526,7 +1545,7 @@ func TestRefreshTerraform(t *testing.T) {
 }
 
 func TestRefreshTofu(t *testing.T) {
-	checkRefresh(t, "tofu")
+	checkRefresh(t, tofuExec)
 }
 
 // This variation of TestRefresh checks that normal pulumi preview and pulumi up detect and correct drift even when
@@ -1555,13 +1574,13 @@ func checkRefreshImplicitly(t *testing.T, executor string) {
 	expectBucketTag := func(tagvalue string) {
 		bucket := mustFindDeploymentResourceByType(t, it, "bucketmod:tf:aws_s3_bucket")
 		tags := bucket.Inputs["tags"]
-		assert.Equalf(t, map[string]any{"TestTag": tagvalue}, tags, "incorrect Pulumi bucket view-state")
+		assert.Equalf(t, map[string]any{testTagKey: tagvalue}, tags, "incorrect Pulumi bucket view-state")
 
 		addr := "module.mybucketmod.aws_s3_bucket.tf-test-bucket"
 		raw := assertTFStateResourceExists(t, it, "bucketmod", addr)
 		instance := raw.(map[string]any)["instances"].([]any)[0].(map[string]any)
 		tfTags := instance["attributes"].(map[string]any)["tags"]
-		assert.Equal(t, map[string]any{"TestTag": tagvalue}, tfTags, "incorrect Terraform bucket state")
+		assert.Equal(t, map[string]any{testTagKey: tagvalue}, tfTags, "incorrect Terraform bucket state")
 	}
 
 	pulumiPackageAdd(t, it, localBin, testMod, "bucketmod")
@@ -1610,7 +1629,7 @@ func checkRefreshImplicitly(t *testing.T, executor string) {
 	expectBucketTag("a")
 
 	//nolint:lll
-	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 2}).Equal(t, previewResult.ChangeSummary)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType(sameOp): 1, apitype.OpType(updateOp): 2}).Equal(t, previewResult.ChangeSummary)
 
 	t.Logf("## pulumi up: expect to detect the drift and correct it")
 	upResult := it.Up(t,
@@ -1620,7 +1639,7 @@ func checkRefreshImplicitly(t *testing.T, executor string) {
 		optup.DebugLogging(debugOpts),
 	)
 
-	autogold.Expect(&map[string]int{"same": 1, "update": 2}).Equal(t, upResult.Summary.ResourceChanges)
+	autogold.Expect(&map[string]int{sameOp: 1, updateOp: 2}).Equal(t, upResult.Summary.ResourceChanges)
 
 	// The state of the bucket should indicate "a" since it was reconciled to the desired state.
 	expectBucketTag("a")
@@ -1631,7 +1650,7 @@ func TestRefreshImplicitlyTerraform(t *testing.T) {
 }
 
 func TestRefreshImplicitlyTofu(t *testing.T) {
-	checkRefreshImplicitly(t, "tofu")
+	checkRefreshImplicitly(t, tofuExec)
 }
 
 // Verify that pulumi refresh detects deleted resources.
@@ -1679,7 +1698,7 @@ func checkRefreshDeleted(t *testing.T, executor string) {
 	)
 
 	rc := refreshResult.Summary.ResourceChanges
-	autogold.Expect(&map[string]int{"delete": 1, "same": 1, "update": 1}).Equal(t, rc)
+	autogold.Expect(&map[string]int{deleteOp: 1, sameOp: 1, updateOp: 1}).Equal(t, rc)
 
 	// Check that the bucket view-state is removed from the statefile.
 	stateR := it.ExportStack(t)
@@ -1702,7 +1721,7 @@ func TestRefreshDeletedTerraform(t *testing.T) {
 }
 
 func TestRefreshDeletedTofu(t *testing.T) {
-	checkRefreshDeleted(t, "tofu")
+	checkRefreshDeleted(t, tofuExec)
 }
 
 // Verify that when there is no drift, refresh works without any changes.
@@ -1755,7 +1774,7 @@ func checkRefreshNoChanges(t *testing.T, executor string) {
 
 	rc := refreshResult.Summary.ResourceChanges
 	assert.Equal(t, &map[string]int{
-		"same": 3,
+		sameOp: 3,
 	}, rc)
 }
 
@@ -1764,7 +1783,7 @@ func TestRefreshNoChangesTerraform(t *testing.T) {
 }
 
 func TestRefreshNoChangesTofu(t *testing.T) {
-	checkRefreshNoChanges(t, "tofu")
+	checkRefreshNoChanges(t, tofuExec)
 }
 
 // Verify that pulumi destroy actually removes cloud resources, using Lambda module as the example
@@ -1988,7 +2007,7 @@ func Test_LocalModule_RelativePath_OpenTofu(t *testing.T) {
 	localPath := opttest.LocalProviderPath(provider, filepath.Dir(localProviderBinPath))
 
 	pt := newPulumiTest(t, anyProgram, localPath,
-		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", "tofu"))
+		opttest.Env("PULUMI_TERRAFORM_MODULE_EXECUTOR", tofuExec))
 	pt.CopyToTempDir(t)
 
 	err = os.CopyFS(filepath.Join(pt.WorkingDir(), "randmod"), os.DirFS(randMod))

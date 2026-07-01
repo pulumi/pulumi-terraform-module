@@ -87,17 +87,17 @@ resource "aws_s3_bucket" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"expiration": []interface{}{}, "noncurrent_version_expiration": []interface{}{},
-						"noncurrent_version_transition": []interface{}{},
-						"prefix":                        true,
-						"transition":                    []interface{}{},
+						expirationKey: []interface{}{}, noncurrentVersionExpirationKey: []interface{}{},
+						noncurrentVersionTransitionKey: []interface{}{},
+						prefixKey:                      true,
+						transitionKey:                  []interface{}{},
 					},
 					map[string]interface{}{
-						"expiration":                    []interface{}{},
-						"noncurrent_version_expiration": []interface{}{},
-						"noncurrent_version_transition": []interface{}{},
-						"transition":                    []interface{}{},
-						"id":                            true,
+						expirationKey:                  []interface{}{},
+						noncurrentVersionExpirationKey: []interface{}{},
+						noncurrentVersionTransitionKey: []interface{}{},
+						transitionKey:                  []interface{}{},
+						"id":                           true,
 					},
 				}).Equal(t, actual)
 			})
@@ -142,16 +142,16 @@ resource "aws_s3_bucket" "this" {
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"id":          "value",
-						"permissions": []interface{}{"FULL_CONTROL"},
-						"type":        "CanonicalUser",
-						"uri":         "",
+						"id":           "value",
+						permissionsKey: []interface{}{fullControlPermission},
+						typeKey:        canonicalUserType,
+						uriKey:         "",
 					},
 					map[string]interface{}{
-						"id":          "value1",
-						"permissions": []interface{}{"FULL_CONTROL"},
-						"type":        "CanonicalUser",
-						"uri":         "",
+						"id":           "value1",
+						permissionsKey: []interface{}{fullControlPermission},
+						typeKey:        canonicalUserType,
+						uriKey:         "",
 					},
 				}).Equal(t, actual)
 			},
@@ -198,12 +198,12 @@ resource "aws_s3_bucket_metric" "this" {
 }
 `
 		plan := runPlan(t, tofu, tfFile)
-		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", *plan.RawPlan(),
+		assertResourceChangeForAddress(t, "module.local.aws_s3_bucket_metric.this", filterKey, *plan.RawPlan(),
 			findSensitiveChange,
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{
 					map[string]interface{}{
-						"tags": map[string]interface{}{
+						tagsKey: map[string]interface{}{
 							"OtherKey": true,
 						},
 					},
@@ -211,7 +211,7 @@ resource "aws_s3_bucket_metric" "this" {
 			})
 
 		// The individual sub property is marked as secret
-		assertPlanForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter", plan, func(actual interface{}) {
+		assertPlanForAddress(t, "module.local.aws_s3_bucket_metric.this", filterKey, plan, func(actual interface{}) {
 			assert.False(t, resource.NewPropertyValue(actual).IsSecret())
 		})
 		assertPlanForAddress(t, "module.local.aws_s3_bucket_metric.this", "filter[0].tags.OtherKey", plan,
@@ -261,17 +261,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
 			findSensitiveChange,
 			func(actual interface{}) {
 				autogold.Expect([]interface{}{map[string]interface{}{
-					"abort_incomplete_multipart_upload": []interface{}{},
-					"expiration":                        []interface{}{},
-					"filter": []interface{}{map[string]interface{}{
-						"and":    []interface{}{map[string]interface{}{"object_size_greater_than": true}},
-						"prefix": true,
-						"tag":    []interface{}{},
+					abortIncompleteMultipartUploadKey: []interface{}{},
+					expirationKey:                     []interface{}{},
+					filterKey: []interface{}{map[string]interface{}{
+						andKey:    []interface{}{map[string]interface{}{objectSizeGreaterThanKey: true}},
+						prefixKey: true,
+						tagKey:    []interface{}{},
 					}},
-					"id":                            true,
-					"noncurrent_version_expiration": []interface{}{},
-					"noncurrent_version_transition": []interface{}{},
-					"transition":                    true,
+					"id":                           true,
+					noncurrentVersionExpirationKey: []interface{}{},
+					noncurrentVersionTransitionKey: []interface{}{},
+					transitionKey:                  true,
 				}}).Equal(t, actual)
 			})
 

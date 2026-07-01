@@ -189,7 +189,7 @@ func Test_AlbExample(t *testing.T) {
 	)
 
 	assert.Equal(t, &map[string]int{
-		"create": 46,
+		createOp: 46,
 	}, upResult.Summary.ResourceChanges)
 
 	integrationTest.Preview(t,
