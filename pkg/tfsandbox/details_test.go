@@ -417,7 +417,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 					bucketNameKey: myBucketVal,
 				},
 			},
-			sensitiveValues: []byte(`{bucketNameKey: true}`),
+			sensitiveValues: []byte(`{"bucketName": true}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
 				bucketNameKey: resource.MakeSecret(resource.NewStringProperty(myBucketVal)),
 			}),
@@ -445,7 +445,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 					bucketNameKey: myBucketVal,
 				},
 			},
-			sensitiveValues: []byte(`{bucketNameKey: {}}`),
+			sensitiveValues: []byte(`{"bucketName": {}}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
 				bucketNameKey: resource.NewStringProperty(myBucketVal),
 			}),
@@ -465,7 +465,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 					},
 				},
 			},
-			sensitiveValues: []byte(`{nestedPropsKey: true}`),
+			sensitiveValues: []byte(`{"nestedProps": true}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
 				nestedPropsKey: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
@@ -489,7 +489,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 					},
 				},
 			},
-			sensitiveValues: []byte(`{nestedPropsKey: [{nestedProp2Key: true},{nestedProp1Key: false}]}`),
+			sensitiveValues: []byte(`{"nestedProps": [{"nestedProp2": true},{"nestedProp1": false}]}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
 				nestedPropsKey: []interface{}{
 					map[string]interface{}{
@@ -519,7 +519,7 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 					},
 				},
 			},
-			sensitiveValues: []byte(`{nestedPropsKey: [true,{nestedProp1Key: true},{nestedProp2Key: false},false]}`),
+			sensitiveValues: []byte(`{"nestedProps": [true,{"nestedProp1": true},{"nestedProp2": false},false]}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
 				nestedPropsKey: []interface{}{
 					resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
