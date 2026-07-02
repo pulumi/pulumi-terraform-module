@@ -30,10 +30,10 @@ import (
 
 func TestState(t *testing.T) {
 	ctx := context.Background()
-	for _, executor := range []string{"terraform", "tofu"} {
+	for _, executor := range []string{terraformName, "tofu"} {
 		t.Run("executor="+executor, func(t *testing.T) {
 			var tf *ModuleRuntime
-			if executor == "terraform" {
+			if executor == terraformName {
 				tf = newTestTerraform(t)
 			} else {
 				tf = newTestTofu(t)
@@ -49,9 +49,9 @@ func TestState(t *testing.T) {
 
 			providersConfig := map[string]resource.PropertyMap{}
 			ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
-			err := CreateTFFile("test", ms, "", tf.WorkingDir(),
+			err := CreateTFFile(testStr, ms, "", tf.WorkingDir(),
 				resource.NewPropertyMapFromMap(map[string]interface{}{
-					"inputVar": "test",
+					inputVarKey: testStr,
 				}), outputs, providersConfig)
 			require.NoError(t, err, "error creating tf file")
 
@@ -74,7 +74,7 @@ func TestState(t *testing.T) {
 
 			moduleOutputs := state.Outputs()
 			// output value is the same as the input
-			expectedOutputValue := resource.NewStringProperty("test")
+			expectedOutputValue := resource.NewStringProperty(testStr)
 			require.Equal(t, resource.PropertyMap{
 				resource.PropertyKey("output1"):          expectedOutputValue,
 				resource.PropertyKey("sensitive_output"): resource.MakeSecret(expectedOutputValue),
@@ -155,13 +155,13 @@ func TestStateMatchesPlan(t *testing.T) {
 			}
 			ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
 			inputs := map[string]interface{}{
-				"inputVar": "test",
+				inputVarKey: testStr,
 			}
 			if tc.inputNumberVar != nil {
 				inputs["inputNumberVar"] = tc.inputNumberVar
 			}
 			emptyProviders := map[string]resource.PropertyMap{}
-			err := CreateTFFile("test", ms, "", tofu.WorkingDir(),
+			err := CreateTFFile(testStr, ms, "", tofu.WorkingDir(),
 				resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 			require.NoError(t, err, "error creating tf file")
 
@@ -214,11 +214,11 @@ func TestSecretOutputs(t *testing.T) {
 		}
 		ms := TFModuleSource(filepath.Join(getCwd(t), "testdata", "modules", "test_module"))
 		inputs := map[string]any{
-			"inputVar":        "test",
+			inputVarKey:       testStr,
 			"anotherInputVar": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("somevalue")}),
 		}
 		emptyProviders := map[string]resource.PropertyMap{}
-		err := CreateTFFile("test", ms, "", tofu.WorkingDir(),
+		err := CreateTFFile(testStr, ms, "", tofu.WorkingDir(),
 			resource.NewPropertyMapFromMap(inputs), outputs, emptyProviders)
 		require.NoError(t, err, "error creating tf file")
 
@@ -241,9 +241,9 @@ func TestSecretOutputs(t *testing.T) {
 			resource.PropertyKey("nested_sensitive_output"): resource.MakeSecret(
 				resource.NewObjectProperty(
 					resource.NewPropertyMapFromMap(map[string]any{
-						"A": resource.NewStringProperty("test"),
+						"A": resource.NewStringProperty(testStr),
 						"B": resource.NewStringProperty("somevalue"),
-						"C": resource.NewStringProperty("test"),
+						"C": resource.NewStringProperty(testStr),
 					}))),
 		}, moduleOutputs)
 	})

@@ -27,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const tofuName = "tofu"
+
 // See [Resolve].
 type ResolveOpts struct {
 	// Required version of tofu.
@@ -47,12 +49,12 @@ func findExistingTofu(ctx context.Context, extraPaths []string) (string, bool) {
 	anyVersion := fs.AnyVersion{
 		ExtraPaths: extraPaths,
 		Product: &product.Product{
-			Name: "tofu",
+			Name: tofuName,
 			BinaryName: func() string {
 				if runtime.GOOS == "windows" {
 					return "tofu.exe"
 				}
-				return "tofu"
+				return tofuName
 			},
 		},
 	}
@@ -67,12 +69,12 @@ func tryGetTofuExecutable(ctx context.Context, version *semver.Version) (string,
 	if err != nil {
 		return "", false, fmt.Errorf("could not find pulumi path: %w", err)
 	}
-	installDir := "tofu"
+	installDir := tofuName
 	if version != nil {
 		installDir = fmt.Sprintf("%s-%s", installDir, version.String())
 	}
 	finalDir := filepath.Join(pulumiPath, installDir)
-	binaryPath := filepath.Join(finalDir, "tofu")
+	binaryPath := filepath.Join(finalDir, tofuName)
 	if runtime.GOOS == "windows" {
 		binaryPath += ".exe"
 	}

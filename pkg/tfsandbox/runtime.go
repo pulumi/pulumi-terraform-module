@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-module/pkg/tofuresolver"
 )
 
+const terraformName = "terraform"
+
 type ModuleRuntime struct {
 	tf          *tfexec.Terraform
 	reattach    *tfexec.ReattachInfo
@@ -168,12 +170,12 @@ func NewTerraform(ctx context.Context, logger Logger, workdir Workdir, auxServer
 
 	tfInfo := fs.AnyVersion{
 		Product: &product.Product{
-			Name: "terraform",
+			Name: terraformName,
 			BinaryName: func() string {
 				if runtime.GOOS == "windows" {
 					return "terraform.exe"
 				}
-				return "terraform"
+				return terraformName
 			},
 		},
 	}

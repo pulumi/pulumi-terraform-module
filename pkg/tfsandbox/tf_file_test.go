@@ -15,6 +15,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+const (
+	stringType             = "string"
+	keyKey                 = "key"
+	key1Key                = "key1"
+	key2Key                = "key2"
+	key3Key                = "key3"
+	value1Val              = "value1"
+	local1Key              = "local1"
+	nestedKeyKey           = "nestedKey"
+	nestedKey2Key          = "nestedKey2"
+	stringValKey           = "string_val"
+	numberValKey           = "number_val"
+	listMapStringType      = "list(map(string))"
+	mapMapAnyType          = "map(map(any))"
+	objectStringNumberType = "object({string_val=string, number_val=number})"
+	unknownProxyValueRef   = "${pulumiaux_unk.unknown_proxy.value}"
+	sensitiveLocal1Ref     = "${sensitive(local.local1)}"
+)
+
 func writeTfVarFile(t *testing.T, workingDir string, varType string) {
 	t.Helper()
 	tfVarFile := fmt.Sprintf(`
@@ -44,19 +63,19 @@ func TestCreateTFFile(t *testing.T) {
 		usesUnknowns    bool
 	}{
 		{
-			name:           "string",
-			tfVariableType: "string",
+			name:           stringType,
+			tfVariableType: stringType,
 			inputsValue:    resource.NewStringProperty("hello"),
 		},
 		{
 			name:           "unknown",
-			tfVariableType: "string",
+			tfVariableType: stringType,
 			inputsValue:    resource.MakeComputed(resource.NewStringProperty("")),
 			usesUnknowns:   true,
 		},
 		{
 			name:           "string secret",
-			tfVariableType: "string",
+			tfVariableType: stringType,
 			inputsValue:    resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("hello")}),
 		},
 		{
@@ -81,42 +100,42 @@ func TestCreateTFFile(t *testing.T) {
 			name:           "map(string)",
 			tfVariableType: "map(string)",
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewStringProperty("value"),
+				keyKey: resource.NewStringProperty(testValue),
 			}),
 		},
 		{
-			name:           "list(map(string))",
-			tfVariableType: "list(map(string))",
+			name:           listMapStringType,
+			tfVariableType: listMapStringType,
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{
-					"key": resource.NewStringProperty("value"),
+					keyKey: resource.NewStringProperty(testValue),
 				}),
 			}),
 		},
 		{
 			name:           "unknown list(map(string))",
-			tfVariableType: "list(map(string))",
+			tfVariableType: listMapStringType,
 			inputsValue: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.PropertyMap{"key": resource.MakeComputed(resource.NewStringProperty(""))}),
+				resource.NewObjectProperty(resource.PropertyMap{keyKey: resource.MakeComputed(resource.NewStringProperty(""))}),
 			}),
 			usesUnknowns: true,
 		},
 		{
-			name:           "map(map(any))",
-			tfVariableType: "map(map(any))",
+			name:           mapMapAnyType,
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{
-					"key": resource.NewStringProperty("value"),
+				keyKey: resource.NewObjectProperty(resource.PropertyMap{
+					keyKey: resource.NewStringProperty(testValue),
 				}),
 			}),
 		},
 		{
 			name:           "unknown map(map(any))",
-			tfVariableType: "map(map(any))",
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(
+				keyKey: resource.NewObjectProperty(
 					resource.PropertyMap{
-						"key": resource.MakeComputed(resource.NewStringProperty("")),
+						keyKey: resource.MakeComputed(resource.NewStringProperty("")),
 					},
 				),
 			}),
@@ -132,56 +151,56 @@ func TestCreateTFFile(t *testing.T) {
 		},
 		{
 			name:           "object type",
-			tfVariableType: "object({string_val=string, number_val=number})",
+			tfVariableType: objectStringNumberType,
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"string_val": resource.NewStringProperty("hello"),
-				"number_val": resource.NewNumberProperty(42),
+				stringValKey: resource.NewStringProperty("hello"),
+				numberValKey: resource.NewNumberProperty(42),
 			}),
 		},
 		{
 			name:           "unknown object type",
-			tfVariableType: "object({string_val=string, number_val=number})",
+			tfVariableType: objectStringNumberType,
 			inputsValue: resource.NewObjectProperty(
 				resource.PropertyMap{
-					"string_val": resource.MakeComputed(resource.NewStringProperty("hello")),
-					"number_val": resource.NewNumberProperty(42),
+					stringValKey: resource.MakeComputed(resource.NewStringProperty("hello")),
+					numberValKey: resource.NewNumberProperty(42),
 				},
 			),
 			usesUnknowns: true,
 		},
 		{
 			name:           "secret list(map(string))",
-			tfVariableType: "list(map(string))",
+			tfVariableType: listMapStringType,
 			inputsValue: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
+				resource.NewObjectProperty(resource.PropertyMap{keyKey: resource.NewStringProperty(testValue)}),
 			})),
 		},
 		{
 			name:           "output secret list(map(string))",
-			tfVariableType: "list(map(string))",
+			tfVariableType: listMapStringType,
 			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("value")}),
+				resource.NewObjectProperty(resource.PropertyMap{keyKey: resource.NewStringProperty(testValue)}),
 			}), Known: true, Secret: true}),
 		},
 		{
 			name:           "secret map(map(any))",
-			tfVariableType: "map(map(any))",
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(
+				keyKey: resource.NewObjectProperty(
 					resource.PropertyMap{
-						"key": resource.MakeSecret(resource.NewStringProperty("value")),
+						keyKey: resource.MakeSecret(resource.NewStringProperty(testValue)),
 					},
 				),
 			}),
 		},
 		{
 			name:           "output secret map(map(any))",
-			tfVariableType: "map(map(any))",
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(
+				keyKey: resource.NewObjectProperty(
 					resource.PropertyMap{
-						"key": resource.NewPropertyValue(resource.Output{
-							Element: resource.NewStringProperty("value"),
+						keyKey: resource.NewPropertyValue(resource.Output{
+							Element: resource.NewStringProperty(testValue),
 							Known:   true,
 							Secret:  true,
 						}),
@@ -191,59 +210,59 @@ func TestCreateTFFile(t *testing.T) {
 		},
 		{
 			name:           "top level secret map(map(any))",
-			tfVariableType: "map(map(any))",
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+				keyKey: resource.NewObjectProperty(resource.PropertyMap{keyKey: resource.NewStringProperty("")}),
 			})),
 		},
 		{
 			name:           "top level secret nested map(map(any))",
-			tfVariableType: "map(map(any))",
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{
-					"key": resource.MakeSecret(resource.NewStringProperty("value")),
+				keyKey: resource.NewObjectProperty(resource.PropertyMap{
+					keyKey: resource.MakeSecret(resource.NewStringProperty(testValue)),
 				}),
 			})),
 		},
 		{
 			name:           "top level output secret map(map(any))",
-			tfVariableType: "map(map(any))",
+			tfVariableType: mapMapAnyType,
 			inputsValue: resource.NewPropertyValue(resource.Output{Element: resource.NewObjectProperty(resource.PropertyMap{
-				"key": resource.NewObjectProperty(resource.PropertyMap{"key": resource.NewStringProperty("")}),
+				keyKey: resource.NewObjectProperty(resource.PropertyMap{keyKey: resource.NewStringProperty("")}),
 			}), Known: true, Secret: true}),
 		},
 		{
 			name:           "secret object type",
-			tfVariableType: "object({string_val=string, number_val=number})",
+			tfVariableType: objectStringNumberType,
 			inputsValue: resource.NewObjectProperty(
 				resource.PropertyMap{
-					"string_val": resource.MakeSecret(resource.NewStringProperty("hello")),
-					"number_val": resource.NewNumberProperty(42),
+					stringValKey: resource.MakeSecret(resource.NewStringProperty("hello")),
+					numberValKey: resource.NewNumberProperty(42),
 				},
 			),
 		},
 		{
 			name:           "output secret object type",
-			tfVariableType: "object({string_val=string, number_val=number})",
+			tfVariableType: objectStringNumberType,
 			inputsValue: resource.NewObjectProperty(
 				resource.PropertyMap{
-					"string_val": resource.NewPropertyValue(resource.Output{
+					stringValKey: resource.NewPropertyValue(resource.Output{
 						Element: resource.NewStringProperty("hello"),
 						Known:   true,
 						Secret:  true,
 					}),
-					"number_val": resource.NewNumberProperty(42),
+					numberValKey: resource.NewNumberProperty(42),
 				},
 			),
 		},
 		{
 			name:           "top level secret object type",
-			tfVariableType: "object({string_val=string, number_val=number})",
+			tfVariableType: objectStringNumberType,
 			inputsValue: resource.MakeSecret(
 				resource.NewObjectProperty(
 					resource.PropertyMap{
-						"string_val": resource.NewStringProperty("hello"),
-						"number_val": resource.NewNumberProperty(42),
+						stringValKey: resource.NewStringProperty("hello"),
+						numberValKey: resource.NewNumberProperty(42),
 					},
 				),
 			),
@@ -291,18 +310,18 @@ func Test_decode(t *testing.T) {
 		{
 			name: "plain values",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewStringProperty("value1"),
-				"key2": resource.NewObjectProperty(resource.PropertyMap{
-					"key3": resource.NewStringProperty("value3"),
+				key1Key: resource.NewStringProperty(value1Val),
+				key2Key: resource.NewObjectProperty(resource.PropertyMap{
+					key3Key: resource.NewStringProperty("value3"),
 				}),
 				"key4": resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewStringProperty("value4"),
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "value1",
-				"key2": map[string]interface{}{
-					"key3": "value3",
+				key1Key: value1Val,
+				key2Key: map[string]interface{}{
+					key3Key: "value3",
 				},
 				"key4": []interface{}{
 					"value4",
@@ -312,43 +331,43 @@ func Test_decode(t *testing.T) {
 		{
 			name: "computed value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.MakeComputed(resource.NewStringProperty("")),
+				key1Key: resource.MakeComputed(resource.NewStringProperty("")),
 			},
 			expected: map[string]interface{}{
-				"key1": "${pulumiaux_unk.unknown_proxy.value}",
+				key1Key: unknownProxyValueRef,
 			},
 		},
 		{
 			name: "output unknown value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewOutputProperty(resource.Output{Known: false}),
+				key1Key: resource.NewOutputProperty(resource.Output{Known: false}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${pulumiaux_unk.unknown_proxy.value}",
+				key1Key: unknownProxyValueRef,
 			},
 		},
 		{
 			name: "output known value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewStringProperty("value")}),
+				key1Key: resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewStringProperty(testValue)}),
 			},
 			expected: map[string]interface{}{
-				"key1": "value",
+				key1Key: testValue,
 			},
 		},
 		{
 			name: "nested computed value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+				key1Key: resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.MakeComputed(resource.NewStringProperty("value1")),
+						key2Key: resource.MakeComputed(resource.NewStringProperty(value1Val)),
 					}),
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": []interface{}{
+				key1Key: []interface{}{
 					map[string]interface{}{
-						"key2": "${pulumiaux_unk.unknown_proxy.value}",
+						key2Key: unknownProxyValueRef,
 					},
 				},
 			},
@@ -356,18 +375,18 @@ func Test_decode(t *testing.T) {
 		{
 			name: "nested output unknown value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+				key1Key: resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewOutputProperty(resource.Output{Known: true, Element: resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.MakeComputed(resource.NewStringProperty("value1")),
-						"key3": resource.NewOutputProperty(resource.Output{Known: false}),
+						key2Key: resource.MakeComputed(resource.NewStringProperty(value1Val)),
+						key3Key: resource.NewOutputProperty(resource.Output{Known: false}),
 					})}),
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": []interface{}{
+				key1Key: []interface{}{
 					map[string]interface{}{
-						"key2": "${pulumiaux_unk.unknown_proxy.value}",
-						"key3": "${pulumiaux_unk.unknown_proxy.value}",
+						key2Key: unknownProxyValueRef,
+						key3Key: unknownProxyValueRef,
 					},
 				},
 			},
@@ -375,56 +394,56 @@ func Test_decode(t *testing.T) {
 		{
 			name: "simple secret value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewSecretProperty(&resource.Secret{
+				key1Key: resource.NewSecretProperty(&resource.Secret{
 					Element: resource.NewStringProperty("some secret value"),
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(local.local1)}",
+				key1Key: sensitiveLocal1Ref,
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": "some secret value",
+				local1Key: "some secret value",
 			},
 		},
 		{
 			name: "simple output secret value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewOutputProperty(resource.Output{
+				key1Key: resource.NewOutputProperty(resource.Output{
 					Element: resource.NewStringProperty("some secret value"),
 					Secret:  true,
 					Known:   true,
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(local.local1)}",
+				key1Key: sensitiveLocal1Ref,
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": "some secret value",
+				local1Key: "some secret value",
 			},
 		},
 		{
 			name: "complex secret value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewSecretProperty(&resource.Secret{
+				key1Key: resource.NewSecretProperty(&resource.Secret{
 					Element: resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewObjectProperty(resource.PropertyMap{
-							"key": resource.NewObjectProperty(resource.PropertyMap{
-								"nestedKey":  resource.NewStringProperty("value"),
-								"nestedKey2": resource.NewNumberProperty(8),
+							keyKey: resource.NewObjectProperty(resource.PropertyMap{
+								nestedKeyKey:  resource.NewStringProperty(testValue),
+								nestedKey2Key: resource.NewNumberProperty(8),
 							}),
 						}),
 					}),
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(local.local1)}",
+				key1Key: sensitiveLocal1Ref,
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": []interface{}{
+				local1Key: []interface{}{
 					map[string]interface{}{
-						"key": map[string]interface{}{
-							"nestedKey":  "value",
-							"nestedKey2": float64(8),
+						keyKey: map[string]interface{}{
+							nestedKeyKey:  testValue,
+							nestedKey2Key: float64(8),
 						},
 					},
 				},
@@ -433,26 +452,26 @@ func Test_decode(t *testing.T) {
 		{
 			name: "complex output secret value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewOutputProperty(resource.Output{
+				key1Key: resource.NewOutputProperty(resource.Output{
 					Element: resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewObjectProperty(resource.PropertyMap{
-							"key": resource.NewObjectProperty(resource.PropertyMap{
-								"nestedKey":  resource.NewStringProperty("value"),
-								"nestedKey2": resource.NewNumberProperty(8),
+							keyKey: resource.NewObjectProperty(resource.PropertyMap{
+								nestedKeyKey:  resource.NewStringProperty(testValue),
+								nestedKey2Key: resource.NewNumberProperty(8),
 							}),
 						}),
 					}),
 					Known: true, Secret: true}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(local.local1)}",
+				key1Key: sensitiveLocal1Ref,
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": []interface{}{
+				local1Key: []interface{}{
 					map[string]interface{}{
-						"key": map[string]interface{}{
-							"nestedKey":  "value",
-							"nestedKey2": float64(8),
+						keyKey: map[string]interface{}{
+							nestedKeyKey:  testValue,
+							nestedKey2Key: float64(8),
 						},
 					},
 				},
@@ -461,30 +480,30 @@ func Test_decode(t *testing.T) {
 		{
 			name: "single nested sensitive value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+				key1Key: resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.MakeSecret(resource.NewStringProperty("value1")),
+						key2Key: resource.MakeSecret(resource.NewStringProperty(value1Val)),
 					}),
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": []interface{}{
+				key1Key: []interface{}{
 					map[string]interface{}{
-						"key2": "${sensitive(local.local1)}",
+						key2Key: sensitiveLocal1Ref,
 					},
 				},
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": "value1",
+				local1Key: value1Val,
 			},
 		},
 		{
 			name: "single nested output secret value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewArrayProperty([]resource.PropertyValue{
+				key1Key: resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.NewPropertyValue(resource.Output{
-							Element: resource.NewStringProperty("value1"),
+						key2Key: resource.NewPropertyValue(resource.Output{
+							Element: resource.NewStringProperty(value1Val),
 							Known:   true,
 							Secret:  true,
 						}),
@@ -492,40 +511,40 @@ func Test_decode(t *testing.T) {
 				}),
 			},
 			expected: map[string]interface{}{
-				"key1": []interface{}{
+				key1Key: []interface{}{
 					map[string]interface{}{
-						"key2": "${sensitive(local.local1)}",
+						key2Key: sensitiveLocal1Ref,
 					},
 				},
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": "value1",
+				local1Key: value1Val,
 			},
 		},
 		{
 			name: "top level sensitive with nested sensitive value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+				key1Key: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.MakeSecret(resource.NewStringProperty("value1")),
+						key2Key: resource.MakeSecret(resource.NewStringProperty(value1Val)),
 					}),
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key3": resource.MakeSecret(resource.NewStringProperty("value2")),
+						key3Key: resource.MakeSecret(resource.NewStringProperty("value2")),
 					}),
 				})),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(local.local3)}",
+				key1Key: "${sensitive(local.local3)}",
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": "value1",
-				"local2": "value2",
+				local1Key: value1Val,
+				"local2":  "value2",
 				"local3": []interface{}{
 					map[string]interface{}{
-						"key2": "${sensitive(local.local1)}",
+						key2Key: sensitiveLocal1Ref,
 					},
 					map[string]interface{}{
-						"key3": "${sensitive(local.local2)}",
+						key3Key: "${sensitive(local.local2)}",
 					},
 				},
 			},
@@ -533,27 +552,27 @@ func Test_decode(t *testing.T) {
 		{
 			name: "top level output secret with nested secret value",
 			inputsValue: resource.PropertyMap{
-				"key1": resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
+				key1Key: resource.NewPropertyValue(resource.Output{Element: resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key2": resource.MakeSecret(resource.NewStringProperty("value1")),
+						key2Key: resource.MakeSecret(resource.NewStringProperty(value1Val)),
 					}),
 					resource.NewObjectProperty(resource.PropertyMap{
-						"key3": resource.MakeSecret(resource.NewStringProperty("value2")),
+						key3Key: resource.MakeSecret(resource.NewStringProperty("value2")),
 					}),
 				}), Known: true, Secret: true}),
 			},
 			expected: map[string]interface{}{
-				"key1": "${sensitive(local.local3)}",
+				key1Key: "${sensitive(local.local3)}",
 			},
 			expectedLocals: map[string]interface{}{
-				"local1": "value1",
-				"local2": "value2",
+				local1Key: value1Val,
+				"local2":  "value2",
 				"local3": []interface{}{
 					map[string]interface{}{
-						"key2": "${sensitive(local.local1)}",
+						key2Key: sensitiveLocal1Ref,
 					},
 					map[string]interface{}{
-						"key3": "${sensitive(local.local2)}",
+						key3Key: "${sensitive(local.local2)}",
 					},
 				},
 			},

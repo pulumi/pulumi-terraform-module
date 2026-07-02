@@ -25,6 +25,18 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+const (
+	version123   = "1.2.3"
+	version005   = "0.0.5"
+	consulPkg    = "consul"
+	awsKey       = "aws"
+	dockerKey    = "docker"
+	opentofuName = "opentofu"
+	vpcIDKey     = "vpc_id"
+
+	consulAwsSource = "hashicorp/consul/aws"
+)
+
 func TestParseParameterizeRequest(t *testing.T) {
 	ctx := context.Background()
 
@@ -32,28 +44,28 @@ func TestParseParameterizeRequest(t *testing.T) {
 		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-					Args: []string{"hashicorp/consul/aws", "consul"},
+					Args: []string{consulAwsSource, consulPkg},
 				},
 			},
 		})
 		assert.NoError(t, err)
 		// we do not assert on the version because latest is resolved when version isn't specified
-		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
-		assert.Equal(t, packageName("consul"), args.PackageName)
+		assert.Equal(t, TFModuleSource(consulAwsSource), args.TFModuleSource)
+		assert.Equal(t, packageName(consulPkg), args.PackageName)
 	})
 
 	t.Run("parses args with module source and version spec", func(t *testing.T) {
 		args, err := parseParameterizeRequest(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-					Args: []string{"hashicorp/consul/aws", "0.0.5", "consul"},
+					Args: []string{consulAwsSource, version005, consulPkg},
 				},
 			},
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
-		assert.Equal(t, TFModuleVersion("0.0.5"), args.TFModuleVersion)
-		assert.Equal(t, packageName("consul"), args.PackageName)
+		assert.Equal(t, TFModuleSource(consulAwsSource), args.TFModuleSource)
+		assert.Equal(t, TFModuleVersion(version005), args.TFModuleVersion)
+		assert.Equal(t, packageName(consulPkg), args.PackageName)
 	})
 
 	t.Run("fails when no args are given", func(t *testing.T) {
@@ -78,9 +90,9 @@ func TestParseParameterizeRequest(t *testing.T) {
 			},
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
+		assert.Equal(t, TFModuleSource(consulAwsSource), args.TFModuleSource)
 		assert.Equal(t, TFModuleVersion(""), args.TFModuleVersion)
-		assert.Equal(t, packageName("consul"), args.PackageName)
+		assert.Equal(t, packageName(consulPkg), args.PackageName)
 	})
 
 	t.Run("parses github-based remote module source", func(t *testing.T) {
@@ -139,8 +151,8 @@ func TestParseParameterizeRequest(t *testing.T) {
 			},
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
-		assert.Equal(t, TFModuleVersion("0.0.5"), args.TFModuleVersion)
+		assert.Equal(t, TFModuleSource(consulAwsSource), args.TFModuleSource)
+		assert.Equal(t, TFModuleVersion(version005), args.TFModuleVersion)
 	})
 
 	t.Run("fails when value does not specify the module", func(t *testing.T) {
@@ -165,8 +177,8 @@ func TestParseParameterizeRequestWithConfig(t *testing.T) {
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 					Args: []string{
-						"hashicorp/consul/aws",
-						"consul",
+						consulAwsSource,
+						consulPkg,
 						"--config",
 						configFilePath,
 					},
@@ -175,8 +187,8 @@ func TestParseParameterizeRequestWithConfig(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		// we do not assert on the version because latest is resolved when version isn't specified
-		assert.Equal(t, TFModuleSource("hashicorp/consul/aws"), args.TFModuleSource)
-		assert.Equal(t, packageName("consul"), args.PackageName)
+		assert.Equal(t, TFModuleSource(consulAwsSource), args.TFModuleSource)
+		assert.Equal(t, packageName(consulPkg), args.PackageName)
 		assert.NotNil(t, args.Config)
 		assert.NotNil(t, args.Config.InferredModuleSchema)
 		assert.Equal(t, args.Config.InferredModuleSchema, &InferredModuleSchema{
@@ -198,11 +210,11 @@ func Test_cleanProvidersConfig(t *testing.T) {
 	t.Run("json-encoded", func(t *testing.T) {
 		inputConfig := resource.PropertyMap{
 			"version": resource.NewStringProperty("0.0.1"),
-			"aws":     resource.NewStringProperty("{\"region\":\"us-west-2\"}"),
+			awsKey:    resource.NewStringProperty("{\"region\":\"us-west-2\"}"),
 		}
 		cleaned := cleanProvidersConfig(inputConfig)
 		expected := map[string]resource.PropertyMap{
-			"aws": {
+			awsKey: {
 				resource.PropertyKey("region"): resource.NewStringProperty("us-west-2"),
 			},
 		}
@@ -212,13 +224,13 @@ func Test_cleanProvidersConfig(t *testing.T) {
 
 	t.Run("json-encoded-secret", func(t *testing.T) {
 		inputConfig := resource.PropertyMap{
-			"aws": resource.MakeSecret(
+			awsKey: resource.MakeSecret(
 				resource.NewStringProperty("{\"accessKey\":\"my-access-key\"}"),
 			),
 		}
 		cleaned := cleanProvidersConfig(inputConfig)
 		expected := map[string]resource.PropertyMap{
-			"aws": {
+			awsKey: {
 				resource.PropertyKey("accessKey"): resource.NewStringProperty("my-access-key"),
 			},
 		}
@@ -228,13 +240,13 @@ func Test_cleanProvidersConfig(t *testing.T) {
 
 	t.Run("non-json-encoded", func(t *testing.T) {
 		inputConfig := resource.PropertyMap{
-			"docker": resource.NewObjectProperty(resource.PropertyMap{
+			dockerKey: resource.NewObjectProperty(resource.PropertyMap{
 				"local": resource.NewStringProperty("mydockerfile"),
 			}),
 		}
 		cleaned := cleanProvidersConfig(inputConfig)
 		expected := map[string]resource.PropertyMap{
-			"docker": {
+			dockerKey: {
 				resource.PropertyKey("local"): resource.NewStringProperty("mydockerfile"),
 			},
 		}
@@ -243,13 +255,13 @@ func Test_cleanProvidersConfig(t *testing.T) {
 
 	t.Run("non-json-encoded-secret", func(t *testing.T) {
 		inputConfig := resource.PropertyMap{
-			"docker": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
+			dockerKey: resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 				"local": resource.NewStringProperty("mydockerfile"),
 			})),
 		}
 		cleaned := cleanProvidersConfig(inputConfig)
 		expected := map[string]resource.PropertyMap{
-			"docker": {
+			dockerKey: {
 				resource.PropertyKey("local"): resource.NewStringProperty("mydockerfile"),
 			},
 		}

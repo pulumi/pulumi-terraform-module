@@ -88,8 +88,8 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    1,
-		apitype.OpType("update"):  1,
+		apitype.OpType(sameOp):    1,
+		apitype.OpType(updateOp):  1,
 	}, diffResult.ChangeSummary)
 
 	replaceResult := pt.Up(t,
@@ -99,8 +99,8 @@ func Test_replace_forcenew_delete_create(t *testing.T) {
 
 	assert.Equal(t, &map[string]int{
 		"replace": 1,
-		"same":    1,
-		"update":  1,
+		sameOp:    1,
+		updateOp:  1,
 	}, replaceResult.Summary.ResourceChanges)
 }
 
@@ -152,8 +152,8 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 1,
-		apitype.OpType("same"):    1,
-		apitype.OpType("update"):  1,
+		apitype.OpType(sameOp):    1,
+		apitype.OpType(updateOp):  1,
 	}, diffResult.ChangeSummary)
 
 	upResult := pt.Up(t,
@@ -165,8 +165,8 @@ func Test_replace_forcenew_create_delete(t *testing.T) {
 
 	assert.Equal(t, &map[string]int{
 		"replace": 1,
-		"same":    1,
-		"update":  1,
+		sameOp:    1,
+		updateOp:  1,
 	}, upResult.Summary.ResourceChanges)
 }
 
@@ -219,8 +219,8 @@ func Test_replace_trigger_delete_create(t *testing.T) {
 
 	assert.Equal(t, map[apitype.OpType]int{
 		apitype.OpType("replace"): 2,
-		apitype.OpType("same"):    1,
-		apitype.OpType("update"):  1,
+		apitype.OpType(sameOp):    1,
+		apitype.OpType(updateOp):  1,
 	}, diffResult.ChangeSummary)
 
 	// Although it is unclear which Pulumi-modeled input caused a replacement, assert that the plan is still a
@@ -309,9 +309,9 @@ func Test_replace_drift_deleted(t *testing.T) {
 	assertTFStateResourceExists(t, pt, packageName, "module.rmod.local_file.hello")
 
 	autogold.Expect(map[apitype.OpType]int{
-		apitype.OpType("create"): 1,
-		apitype.OpType("same"):   1,
-		apitype.OpType("update"): 1,
+		apitype.OpType(createOp): 1,
+		apitype.OpType(sameOp):   1,
+		apitype.OpType(updateOp): 1,
 	}).Equal(t, previewResult.ChangeSummary)
 
 	t.Logf("## pulumi up: fix the drift by re-creating the missing resource")
@@ -330,9 +330,9 @@ func Test_replace_drift_deleted(t *testing.T) {
 	}
 
 	autogold.Expect(&map[string]int{
-		"create": 1,
-		"same":   1,
-		"update": 1,
+		createOp: 1,
+		sameOp:   1,
+		updateOp: 1,
 	}).Equal(t, upResult.Summary.ResourceChanges)
 
 	// The resource representing the file should exist in TF state as well.

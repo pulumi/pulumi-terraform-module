@@ -15,14 +15,14 @@ func TestGetStateIncludesModuleVersion(t *testing.T) {
 	props := resource.PropertyMap{
 		resource.PropertyKey(moduleResourceStatePropName):   resource.MakeSecret(resource.NewStringProperty("state-bytes")),
 		resource.PropertyKey(moduleResourceLockPropName):    resource.NewStringProperty("lock-bytes"),
-		resource.PropertyKey(moduleResourceVersionPropName): resource.NewStringProperty("1.2.3"),
+		resource.PropertyKey(moduleResourceVersionPropName): resource.NewStringProperty(version123),
 	}
 
 	state, lock, version := h.getState(props)
 
 	require.Equal(t, []byte("state-bytes"), state)
 	require.Equal(t, []byte("lock-bytes"), lock)
-	require.Equal(t, tfsandbox.TFModuleVersion("1.2.3"), version)
+	require.Equal(t, tfsandbox.TFModuleVersion(version123), version)
 }
 
 func TestNeedsInitUpgrade(t *testing.T) {
@@ -39,20 +39,20 @@ func TestNeedsInitUpgrade(t *testing.T) {
 			name:          "no-old-outputs",
 			oldOutputs:    nil,
 			previous:      "",
-			current:       "1.2.3",
+			current:       version123,
 			expectUpgrade: false,
 		},
 		{
 			name:          "same-version",
 			oldOutputs:    sampleOutputs,
-			previous:      "1.2.3",
-			current:       "1.2.3",
+			previous:      version123,
+			current:       version123,
 			expectUpgrade: false,
 		},
 		{
 			name:          "version-changed",
 			oldOutputs:    sampleOutputs,
-			previous:      "1.2.3",
+			previous:      version123,
 			current:       "1.4.0",
 			expectUpgrade: true,
 		},

@@ -60,7 +60,7 @@ func getExecutorsFromEnv() []string {
 	if executor != "" {
 		return []string{executor}
 	}
-	return []string{"opentofu", "terraform"}
+	return []string{opentofuName, "terraform"}
 }
 
 func TestInferringModuleSchemaWorks(t *testing.T) {
@@ -125,7 +125,7 @@ func TestInferringModuleSchemaWorks(t *testing.T) {
 
 			// verify a sample of the outputs with different inferred types
 			expectedSampleOutputs := map[string]*schema.PropertySpec{
-				"vpc_id": {
+				vpcIDKey: {
 					Description: "The ID of the VPC",
 					Secret:      false,
 					TypeSpec:    stringType,
@@ -215,7 +215,7 @@ func TestParsingModuleSchemaOverrides(t *testing.T) {
 	assert.Equal(t, testSchemaOverride.PartialSchema.SupportingTypes, map[string]*schema.ComplexTypeSpec{
 		"vpc:index:MyType": {
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Type:        "object",
+				Type:        objectTypeName,
 				Description: "An example supporting type for the module.",
 				Properties: map[string]schema.PropertySpec{
 					"example_property": {
@@ -257,7 +257,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 						Source:         string(source),
 						MaximumVersion: "6.0.0",
 						PartialSchema: &InferredModuleSchema{
-							NonNilOutputs:  []resource.PropertyKey{"vpc_id"},
+							NonNilOutputs:  []resource.PropertyKey{vpcIDKey},
 							RequiredInputs: []resource.PropertyKey{"cidr"},
 						},
 					},
@@ -267,7 +267,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 				assert.True(t, ok, "module schema overrides should be found")
 				overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
 				assert.NotNil(t, overridenSchema, "overridden module schema is nil")
-				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be required")
+				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey(vpcIDKey), "vpc_id should be required")
 				assert.Contains(t, overridenSchema.RequiredInputs, resource.PropertyKey("cidr"), "cidr should be required")
 			})
 
@@ -278,7 +278,7 @@ func TestApplyModuleOverrides(t *testing.T) {
 						MaximumVersion: "6.0.0",
 						PartialSchema: &InferredModuleSchema{
 							Outputs: map[resource.PropertyKey]*schema.PropertySpec{
-								"vpc_id": {
+								vpcIDKey: {
 									Description: "The new ID field of the VPC",
 									Secret:      true,
 								},
@@ -291,13 +291,13 @@ func TestApplyModuleOverrides(t *testing.T) {
 				assert.True(t, ok, "module schema overrides should be found")
 				overridenSchema := combineInferredModuleSchema(awsVpcSchema, partialAwsVpcSchemaOverride)
 				assert.NotNil(t, overridenSchema, "overridden module schema is nil")
-				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
+				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey(vpcIDKey), "vpc_id should be non-nil")
 
-				vpcID := overridenSchema.Outputs["vpc_id"]
+				vpcID := overridenSchema.Outputs[vpcIDKey]
 				assert.Equal(t, "The new ID field of the VPC", vpcID.Description, "vpc_id description should be updated")
 				assert.True(t, vpcID.Secret, "vpc_id should be secret")
-				assert.Equal(t, "string", vpcID.Type, "vpc_id type should not be changed")
-				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey("vpc_id"), "vpc_id should be non-nil")
+				assert.Equal(t, stringTypeName, vpcID.Type, "vpc_id type should not be changed")
+				assert.Contains(t, overridenSchema.NonNilOutputs, resource.PropertyKey(vpcIDKey), "vpc_id should be non-nil")
 			})
 		})
 	}
@@ -326,7 +326,7 @@ func TestInferringInputsFromLocalPath(t *testing.T) {
 	src := filepath.Join("..", "..", "tests", "testdata", "modules", "schema-inference-example")
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
-	for _, executor := range []string{"terraforn", "opentofu"} {
+	for _, executor := range []string{"terraforn", opentofuName} {
 		logger := newTestLogger(t)
 		t.Run("executor="+executor, func(t *testing.T) {
 			tf := newTestRuntime(t, executor)
@@ -420,7 +420,7 @@ func TestInferringSchemaWithDashedFielsFromLocalPath(t *testing.T) {
 	src := filepath.Join("..", "..", "tests", "testdata", "modules", "dashed-module-fields")
 	p, err := filepath.Abs(src)
 	require.NoError(t, err)
-	for _, executor := range []string{"terraforn", "opentofu"} {
+	for _, executor := range []string{"terraforn", opentofuName} {
 		logger := newTestLogger(t)
 		t.Run("executor="+executor, func(t *testing.T) {
 			tf := newTestRuntime(t, executor)
@@ -614,7 +614,7 @@ func TestInferModuleSchemaFromGitHubSourceWithSubModuleAndVersion(t *testing.T) 
 func TestInferRequiredInputsWorks(t *testing.T) {
 	ctx := context.Background()
 	packageName := packageName("http")
-	for _, executor := range []string{"terraform", "opentofu"} {
+	for _, executor := range []string{"terraform", opentofuName} {
 		t.Run("executor="+executor, func(t *testing.T) {
 			source := TFModuleSource("terraform-aws-modules/security-group/aws//modules/http-80")
 			version := TFModuleVersion("5.3.0")
@@ -622,7 +622,7 @@ func TestInferRequiredInputsWorks(t *testing.T) {
 			httpSchema, err := InferModuleSchema(ctx, tf, packageName, source, version)
 			assert.NoError(t, err, "failed to infer module schema for aws vpc module")
 			assert.NotNil(t, httpSchema, "inferred module schema for aws vpc module is nil")
-			assert.Contains(t, httpSchema.RequiredInputs, resource.PropertyKey("vpc_id"))
+			assert.Contains(t, httpSchema.RequiredInputs, resource.PropertyKey(vpcIDKey))
 		})
 	}
 }

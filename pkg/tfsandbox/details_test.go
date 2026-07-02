@@ -28,6 +28,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+const (
+	awsS3BucketType     = "aws_s3_bucket"
+	awsS3BucketAddress  = "aws_s3_bucket.this"
+	bucketNameKey       = "bucketName"
+	nestedPropsKey      = "nestedProps"
+	nestedProp1Key      = "nestedProp1"
+	nestedProp2Key      = "nestedProp2"
+	nestedNestedPropKey = "nestedNestedProp"
+	testValue           = "value"
+	myBucketVal         = "my-bucket"
+)
+
 func Test_extractPropertyMapFromPlan(t *testing.T) {
 	cases := []struct {
 		name           string
@@ -38,37 +50,37 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 		{
 			name: "no resource changes",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"bucketName": "my-bucket",
+					bucketNameKey: myBucketVal,
 				},
 			},
 			resourceChange: nil,
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"bucketName": "my-bucket",
+				bucketNameKey: myBucketVal,
 			}),
 		},
 		{
 			// This is one way that unknowns appear in AttributeValues (as nil)
 			name: "AfterUnknown=true - AttributeValues property is nil",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"bucketName": nil,
+					bucketNameKey: nil,
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"bucketName": true,
+						bucketNameKey: true,
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"bucketName": resource.MakeComputed(resource.NewStringProperty("")),
+				bucketNameKey: resource.MakeComputed(resource.NewStringProperty("")),
 			}),
 		},
 		{
@@ -76,20 +88,20 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			// AfterUnknown is the source of truth
 			name: "AfterUnknown=true - AttributeValues property is missing",
 			stateResource: tfjson.StateResource{
-				Type:            "aws_s3_bucket",
-				Address:         "aws_s3_bucket.this",
+				Type:            awsS3BucketType,
+				Address:         awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"bucketName": true,
+						bucketNameKey: true,
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"bucketName": resource.MakeComputed(resource.NewStringProperty("")),
+				bucketNameKey: resource.MakeComputed(resource.NewStringProperty("")),
 			}),
 		},
 		{
@@ -97,26 +109,26 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			// is marked as unknown in AfterUnknown.
 			name: "AfterUnknown=true (top level) - AttributeValues property is complex type",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []map[string]interface{}{
+					nestedPropsKey: []map[string]interface{}{
 						{
-							"nestedProp2": "value",
+							nestedProp2Key: testValue,
 						},
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": true,
+						nestedPropsKey: true,
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": resource.MakeComputed(resource.NewStringProperty("")),
+				nestedPropsKey: resource.MakeComputed(resource.NewStringProperty("")),
 			}),
 		},
 		{
@@ -124,68 +136,68 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			// If a value is "unknown" it won't also be marked as sensitive
 			name: "AfterUnknown=true and AfterSensitive=true - AttributeValues property is complex type",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []map[string]interface{}{
+					nestedPropsKey: []map[string]interface{}{
 						{
-							"nestedProp2": "value",
+							nestedProp2Key: testValue,
 						},
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": true,
+						nestedPropsKey: true,
 					},
 					AfterSensitive: map[string]interface{}{
-						"nestedProps": []map[string]interface{}{
+						nestedPropsKey: []map[string]interface{}{
 							{
-								"nestedProp2": true,
+								nestedProp2Key: true,
 							},
 						},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": resource.MakeComputed(resource.NewStringProperty("")),
+				nestedPropsKey: resource.MakeComputed(resource.NewStringProperty("")),
 			}),
 		},
 		{
 			// Only those nested properties that are marked as unknown in AfterUnknown should be updated
 			name: "AfterUnknown=true (nested in array) - AttributeValues nested property is nil",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []interface{}{
+					nestedPropsKey: []interface{}{
 						map[string]interface{}{
-							"nestedProp1": nil,
-							"nestedProp2": "value",
+							nestedProp1Key: nil,
+							nestedProp2Key: testValue,
 						},
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": []interface{}{
+						nestedPropsKey: []interface{}{
 							map[string]interface{}{
-								"nestedProp1": true,
-								"nestedProp2": false,
+								nestedProp1Key: true,
+								nestedProp2Key: false,
 							},
 						},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					map[string]interface{}{
-						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
-						"nestedProp2": resource.NewStringProperty("value"),
+						nestedProp1Key: resource.MakeComputed(resource.NewStringProperty("")),
+						nestedProp2Key: resource.NewStringProperty(testValue),
 					},
 				},
 			}),
@@ -193,26 +205,26 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 		{
 			name: "AfterUnknown=true (in array) - AttributeValues nested value is nil",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []interface{}{
+					nestedPropsKey: []interface{}{
 						"",
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": []interface{}{
+						nestedPropsKey: []interface{}{
 							true,
 						},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					resource.MakeComputed(resource.NewStringProperty("")),
 				},
 			}),
@@ -220,21 +232,21 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 		{
 			name: "AfterUnknown mixed (in array) - AttributeValues mixed",
 			stateResource: tfjson.StateResource{
-				Type:            "aws_s3_bucket",
-				Address:         "aws_s3_bucket.this",
+				Type:            awsS3BucketType,
+				Address:         awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": []interface{}{
+						nestedPropsKey: []interface{}{
 							true,
 							map[string]interface{}{
-								"nestedProp1": true,
+								nestedProp1Key: true,
 							},
 							map[string]interface{}{
-								"nestedProp2": false,
+								nestedProp2Key: false,
 							},
 							false,
 						},
@@ -242,10 +254,10 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					resource.MakeComputed(resource.NewStringProperty("")),
 					map[string]interface{}{
-						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
+						nestedProp1Key: resource.MakeComputed(resource.NewStringProperty("")),
 					},
 				},
 			}),
@@ -253,32 +265,32 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 		{
 			name: "AfterUnknown (in array) - AttributeValues shorter length",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []interface{}{
+					nestedPropsKey: []interface{}{
 						"",
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": []interface{}{
+						nestedPropsKey: []interface{}{
 							true,
 							map[string]interface{}{
-								"nestedProp1": true,
+								nestedProp1Key: true,
 							},
 						},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					resource.MakeComputed(resource.NewStringProperty("")),
 					map[string]interface{}{
-						"nestedProp1": resource.MakeComputed(resource.NewStringProperty("")),
+						nestedProp1Key: resource.MakeComputed(resource.NewStringProperty("")),
 					},
 				},
 			}),
@@ -286,24 +298,24 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 		{
 			name: "AfterUnknown (in array) - AttributeValues longer length",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []interface{}{
+					nestedPropsKey: []interface{}{
 						"abc",
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": []interface{}{},
+						nestedPropsKey: []interface{}{},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					resource.NewStringProperty("abc"),
 				},
 			}),
@@ -314,33 +326,33 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			// We should add the missing nested property structure
 			name: "AfterUnknown=true (nested in object) - AttributeValues nested property is missing",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": map[string]interface{}{
-						"nestedProp2": "value",
+					nestedPropsKey: map[string]interface{}{
+						nestedProp2Key: testValue,
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": map[string]interface{}{
-							"nestedProp1": map[string]interface{}{
-								"nestedNestedProp": true,
+						nestedPropsKey: map[string]interface{}{
+							nestedProp1Key: map[string]interface{}{
+								nestedNestedPropKey: true,
 							},
-							"nestedProp2": false,
+							nestedProp2Key: false,
 						},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": map[string]interface{}{
-					"nestedProp1": map[string]interface{}{
-						"nestedNestedProp": resource.MakeComputed(resource.NewStringProperty("")),
+				nestedPropsKey: map[string]interface{}{
+					nestedProp1Key: map[string]interface{}{
+						nestedNestedPropKey: resource.MakeComputed(resource.NewStringProperty("")),
 					},
-					"nestedProp2": resource.NewStringProperty("value"),
+					nestedProp2Key: resource.NewStringProperty(testValue),
 				},
 			}),
 		},
@@ -351,30 +363,30 @@ func Test_extractPropertyMapFromPlan(t *testing.T) {
 			// We should not add the missing nested property structure
 			name: "AfterUnknown=false (nested in object) - AttributeValues nested property is missing",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": map[string]interface{}{
-						"nestedProp2": "value",
+					nestedPropsKey: map[string]interface{}{
+						nestedProp2Key: testValue,
 					},
 				},
 			},
 			resourceChange: &tfjson.ResourceChange{
-				Address: "aws_s3_bucket.this",
+				Address: awsS3BucketAddress,
 				Change: &tfjson.Change{
 					AfterUnknown: map[string]interface{}{
-						"nestedProps": map[string]interface{}{
-							"nestedProp1": map[string]interface{}{
-								"nestedNestedProp": false,
+						nestedPropsKey: map[string]interface{}{
+							nestedProp1Key: map[string]interface{}{
+								nestedNestedPropKey: false,
 							},
-							"nestedProp2": false,
+							nestedProp2Key: false,
 						},
 					},
 				},
 			},
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": map[string]interface{}{
-					"nestedProp2": resource.NewStringProperty("value"),
+				nestedPropsKey: map[string]interface{}{
+					nestedProp2Key: resource.NewStringProperty(testValue),
 				},
 			}),
 		},
@@ -399,43 +411,43 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 		{
 			name: "string value",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"bucketName": "my-bucket",
+					bucketNameKey: myBucketVal,
 				},
 			},
 			sensitiveValues: []byte(`{"bucketName": true}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"bucketName": resource.MakeSecret(resource.NewStringProperty("my-bucket")),
+				bucketNameKey: resource.MakeSecret(resource.NewStringProperty(myBucketVal)),
 			}),
 		},
 		{
 			name: "SensitiveValues property is nil",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"bucketName": "my-bucket",
+					bucketNameKey: myBucketVal,
 				},
 			},
 			sensitiveValues: []byte(`{}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"bucketName": resource.NewStringProperty("my-bucket"),
+				bucketNameKey: resource.NewStringProperty(myBucketVal),
 			}),
 		},
 		{
 			name: "SensitiveValues key is nil",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"bucketName": "my-bucket",
+					bucketNameKey: myBucketVal,
 				},
 			},
 			sensitiveValues: []byte(`{"bucketName": {}}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"bucketName": resource.NewStringProperty("my-bucket"),
+				bucketNameKey: resource.NewStringProperty(myBucketVal),
 			}),
 		},
 		{
@@ -443,21 +455,21 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 			// is marked as secret.
 			name: "Sensitive=true (top level) - AttributeValues property is complex type",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []map[string]interface{}{
+					nestedPropsKey: []map[string]interface{}{
 						{
-							"nestedProp2": "value",
+							nestedProp2Key: testValue,
 						},
 					},
 				},
 			},
 			sensitiveValues: []byte(`{"nestedProps": true}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+				nestedPropsKey: resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 					resource.NewObjectProperty(resource.PropertyMap{
-						"nestedProp2": resource.NewStringProperty("value"),
+						nestedProp2Key: resource.NewStringProperty(testValue),
 					}),
 				})),
 			}),
@@ -466,23 +478,23 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 			// Only those nested properties that are marked as sensitive should be updated
 			name: "Sensitive=true (nested in array)",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []interface{}{
+					nestedPropsKey: []interface{}{
 						map[string]interface{}{
-							"nestedProp2": "value",
-							"nestedProp1": "value",
+							nestedProp2Key: testValue,
+							nestedProp1Key: testValue,
 						},
 					},
 				},
 			},
 			sensitiveValues: []byte(`{"nestedProps": [{"nestedProp2": true},{"nestedProp1": false}]}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					map[string]interface{}{
-						"nestedProp2": resource.MakeSecret(resource.NewStringProperty("value")),
-						"nestedProp1": resource.NewStringProperty("value"),
+						nestedProp2Key: resource.MakeSecret(resource.NewStringProperty(testValue)),
+						nestedProp1Key: resource.NewStringProperty(testValue),
 					},
 				},
 			}),
@@ -490,36 +502,36 @@ func Test_extractPropertyMapFromState(t *testing.T) {
 		{
 			name: "Sensitive mixed (in array) - AttributeValues mixed",
 			stateResource: tfjson.StateResource{
-				Type:    "aws_s3_bucket",
-				Address: "aws_s3_bucket.this",
+				Type:    awsS3BucketType,
+				Address: awsS3BucketAddress,
 				AttributeValues: map[string]interface{}{
-					"nestedProps": []interface{}{
+					nestedPropsKey: []interface{}{
 						map[string]interface{}{
-							"nestedProp2": "value",
+							nestedProp2Key: testValue,
 						},
 						map[string]interface{}{
-							"nestedProp1": "value",
+							nestedProp1Key: testValue,
 						},
 						map[string]interface{}{
-							"nestedProp2": "value",
+							nestedProp2Key: testValue,
 						},
-						"value",
+						testValue,
 					},
 				},
 			},
 			sensitiveValues: []byte(`{"nestedProps": [true,{"nestedProp1": true},{"nestedProp2": false},false]}`),
 			expected: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"nestedProps": []interface{}{
+				nestedPropsKey: []interface{}{
 					resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-						"nestedProp2": "value",
+						nestedProp2Key: testValue,
 					}))),
 					resource.NewPropertyMapFromMap(map[string]interface{}{
-						"nestedProp1": resource.MakeSecret(resource.NewStringProperty("value")),
+						nestedProp1Key: resource.MakeSecret(resource.NewStringProperty(testValue)),
 					}),
 					resource.NewPropertyMapFromMap(map[string]interface{}{
-						"nestedProp2": resource.NewStringProperty("value"),
+						nestedProp2Key: resource.NewStringProperty(testValue),
 					}),
-					resource.NewStringProperty("value"),
+					resource.NewStringProperty(testValue),
 				},
 			}),
 		},
@@ -600,7 +612,7 @@ func TestCreatePlan(t *testing.T) {
 	rBucket, ok := p.FindResourcePlan("module.s3_bucket.aws_s3_bucket.this[0]")
 	require.True(t, ok)
 	assert.Equal(t, ResourceAddress("module.s3_bucket.aws_s3_bucket.this[0]"), rBucket.Address())
-	assert.Equal(t, TFResourceType("aws_s3_bucket"), rBucket.Type())
+	assert.Equal(t, TFResourceType(awsS3BucketType), rBucket.Type())
 	assert.Equal(t, Create, rBucket.ChangeKind())
 
 	plannedValues, ok := rBucket.PlannedValues()
