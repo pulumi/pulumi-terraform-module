@@ -8,7 +8,7 @@ const prefix = config.get('prefix') ?? pulumi.getStack();
 
 const testlambda = new lambda.Module("test-lambda", {
     function_name: `${prefix}-testlambda`,
-    source_path:  path.join(process.env["PWD"], "/src/app.ts"),
+    source_path:  path.join(__dirname, "src/app.ts"),
     runtime:  "nodejs22.x",
     handler: "app.handler",
 })
