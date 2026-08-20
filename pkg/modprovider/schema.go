@@ -129,7 +129,7 @@ func pulumiSchemaForModule(pargs *ParameterizeArgs, inferredModule *InferredModu
 		Name:    string(packageName),
 		Version: string(pkgVer),
 		Types:   supportingTypes,
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: inferredModule.ProvidersConfig.Variables,
 		},
 		Resources: map[string]schema.ResourceSpec{
