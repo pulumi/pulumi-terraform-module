@@ -2,6 +2,9 @@
 
 This provider supports running Terraform Modules directly in Pulumi.
 
+> [!IMPORTANT]
+> This Package is deprecated. To use Terraform modules in Pulumi, we recommend using the [Any Terraform Module](https://www.pulumi.com/registry/packages/hcl/) provider.
+
 ## Usage
 
 To get started, run this in the context of a Pulumi program:
